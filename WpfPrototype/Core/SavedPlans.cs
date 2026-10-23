@@ -27,6 +27,7 @@ namespace AchievementTimelineReplay
         public int Version { get; set; } = 1;
         public uint AccountId { get; set; }
         public uint AppId { get; set; }
+        public string HistoryId { get; set; }
         public string GameName { get; set; }
         public DateTime SavedAtUtc { get; set; }
         public PlanParameters Parameters { get; set; }
@@ -42,14 +43,14 @@ namespace AchievementTimelineReplay
     {
         readonly string directory;
         public PlanStore(string directory) { this.directory=directory; }
-        public string FilePath(GameEntry game) => Path.Combine(directory,$"{game.AccountId}_{game.AppId}.json");
+        public string FilePath(GameEntry game) => Path.Combine(directory,game.StorageKey+".json");
         public bool Exists(GameEntry game) => File.Exists(FilePath(game));
         public static string Signature(SavedPlan plan) => JsonSerializer.Serialize(new{plan.Parameters,plan.Achievements});
         public static SavedPlan Capture(GameEntry game,IEnumerable<AchievementRecord> order,PlanParameters parameters)
         {
             var plan=new SavedPlan
             {
-                AccountId=game.AccountId,AppId=game.AppId,GameName=game.GameName,
+                AccountId=game.AccountId,AppId=game.AppId,HistoryId=game.HistoryId,GameName=game.GameName,
                 SavedAtUtc=DateTime.UtcNow,Parameters=parameters,
                 Achievements=order.Select(a=>new SavedAchievement{ApiId=a.ApiId,Included=a.Included,ManualGapSeconds=a.ManualGapSeconds}).ToList()
             };
@@ -58,7 +59,7 @@ namespace AchievementTimelineReplay
         }
         static void Validate(SavedPlan plan,GameEntry game)
         {
-            if(plan==null || plan.Version!=1 || plan.AccountId!=game.AccountId || plan.AppId!=game.AppId)
+            if(plan==null || plan.Version!=1 || plan.AccountId!=game.AccountId || plan.AppId!=game.AppId || plan.HistoryId!=game.HistoryId)
                 throw new InvalidDataException("El plan no corresponde a esta cuenta/juego o usa un formato no compatible.");
             var p=plan.Parameters;
             if(p==null || !double.IsFinite(p.DurationSeconds) || p.DurationSeconds<0 || p.DurationSeconds>35999999 ||

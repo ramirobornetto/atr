@@ -109,7 +109,7 @@ namespace AchievementTimelineReplay.Wpf
             initialized=true;
             GoTo("Escaneo");
             UpdateButtons();
-            Log("WPF v0.6.5 iniciada. Motor derivado de v0.5.3. No se ha modificado Steam.");
+            Log("WPF v0.7.0 iniciada. Motor derivado de v0.5.3. No se ha modificado Steam.");
             if(!String.IsNullOrWhiteSpace(SamPath.Text)) _=ValidateSamAsync(false);
         }
         void Log(string s)
@@ -183,6 +183,7 @@ namespace AchievementTimelineReplay.Wpf
             SavePaths();
             string steam=SteamPath.Text.Trim();
             string cli=SamPath.Text.Trim();
+            bool scanGoldberg=ScanGoldbergDefaults.IsChecked==true;
             if(!Directory.Exists(Path.Combine(steam,"appcache","stats")))
             {
                 MessageBox.Show(this,"No encontré Steam\\appcache\\stats en la carpeta seleccionada.","Escaneo",MessageBoxButton.OK,MessageBoxImage.Warning);return;
@@ -206,9 +207,15 @@ namespace AchievementTimelineReplay.Wpf
             try
             {
                 var scanner=new LegacyScanner(Log);
-                var found=await Task.Run(()=>scanner.Scan(steam,cli,samMode,progress,token),token);
+                var found=await Task.Run(()=>
+                {
+                    var all=scanner.Scan(steam,cli,samMode,progress,token);
+                    if(scanGoldberg)foreach(var root in GoldbergHistory.DefaultRoots().Where(Directory.Exists))
+                        all.AddRange(GoldbergHistory.Scan(root,steam,Path.Combine(LegacyTools.DataDirectory,"Snapshots"),Log,token));
+                    return all.OrderBy(g=>g.GameName,StringComparer.CurrentCultureIgnoreCase).ToList();
+                },token);
                 token.ThrowIfCancellationRequested();
-                foreach(var g in found) games.Add(new GameRow{GameName=g.GameName,AppId=g.AppId,Source="UserGameStats (.bin)",Origin=ReadLibraryOrigin(g),Count=AchievementCounts.Format(g),Snapshot=g.HasSnapshot?"Protegido ✓":"—",Game=g});
+                foreach(var g in found) games.Add(new GameRow{GameName=g.GameName,AppId=g.AppId,Source=g.SourceLabel,Origin=ReadLibraryOrigin(g),Count=AchievementCounts.Format(g),Snapshot=g.HasSnapshot?"Protegido ✓":"—",Game=g});
                 LibraryCount.Text=games.Count+" juegos";
                 ScanResult.Text="Escaneo terminado: "+games.Count+" historiales aprovechables.";
                 SetStatus(ScanResult.Text);
@@ -227,6 +234,48 @@ namespace AchievementTimelineReplay.Wpf
                 MessageBox.Show(this,ex.Message,"Escaneo",MessageBoxButton.OK,MessageBoxImage.Error);
             }
             finally {scanning=false;scanCancellation.Dispose();scanCancellation=null;ScanProgress.IsIndeterminate=false;UpdateButtons();}
+        }
+        async void ImportGoldbergClick(object sender,RoutedEventArgs e)
+        {
+            if(scanning || running || querying || preparing)return;
+            var dialog=new OpenFileDialog{Title="Seleccioná el estado Goldberg: <AppID>/achievements.json (no el de steam_settings)",Filter="Estado Goldberg (achievements.json)|achievements.json|JSON (*.json)|*.json"};
+            var existing=GoldbergHistory.DefaultRoots().FirstOrDefault(Directory.Exists);
+            if(existing!=null)dialog.InitialDirectory=existing;
+            if(dialog.ShowDialog(this)!=true)return;
+            string folder=Path.GetDirectoryName(dialog.FileName);
+            if(!UInt32.TryParse(Path.GetFileName(folder),out uint appId) || appId==0)
+            {MessageBox.Show(this,"El archivo de estado debe estar dentro de una carpeta con el AppID del juego como nombre. No selecciones la definición de steam_settings.","Goldberg",MessageBoxButton.OK,MessageBoxImage.Information);return;}
+            string definitions=Path.Combine(folder,"steam_settings","achievements.json");
+            if(!File.Exists(definitions))definitions=null;
+            if(GoldbergDefinitions.IsChecked==true)
+            {
+                var metadata=new OpenFileDialog{Title="Opcional: elegí steam_settings/achievements.json; Cancelar importa sin esa definición",Filter="Definición Goldberg (*.json)|*.json"};
+                if(metadata.ShowDialog(this)==true)definitions=metadata.FileName;
+            }
+            string statePath=dialog.FileName,steam=SteamPath.Text.Trim();
+            scanning=true;scanCancellation=new CancellationTokenSource();var token=scanCancellation.Token;UpdateButtons();
+            ScanProgress.IsIndeterminate=true;SetStatus("Importando Goldberg…");
+            try
+            {
+                var game=await Task.Run(()=>
+                {
+                    token.ThrowIfCancellationRequested();
+                    string schema=Path.Combine(steam,"appcache","stats","UserGameStatsSchema_"+appId+".bin");
+                    var imported=GoldbergHistory.Load(statePath,appId,definitions,schema,Log);
+                    token.ThrowIfCancellationRequested();
+                    return GoldbergHistory.Protect(imported,Path.Combine(LegacyTools.DataDirectory,"Snapshots"));
+                },token);
+                token.ThrowIfCancellationRequested();
+                var row=games.FirstOrDefault(g=>g.Game.StorageKey==game.StorageKey);
+                if(row==null){row=new GameRow{Game=game,GameName=game.GameName,AppId=game.AppId,Source=game.SourceLabel,Origin=ReadLibraryOrigin(game),Count=AchievementCounts.Format(game),Snapshot="Protegido ✓"};games.Add(row);}
+                // Existing imported sources retain drafts and their protected original.
+                scanning=false;GamesGrid.SelectedItem=row;GameChanged(GamesGrid,null);
+                ScanResult.Text=game.IsDemo?"Demostración cargada. Podés editar y guardar planes; Steam y SAM están bloqueados para esta muestra.":"Goldberg importado. Solo se añadieron logros desbloqueados con fecha válida. Revisá el log para omisiones.";
+                LibraryCount.Text=games.Count+" historiales";SetStatus(ScanResult.Text);Log(ScanResult.Text);GoTo("Plan");
+            }
+            catch(OperationCanceledException){SetStatus("Importación Goldberg cancelada.");}
+            catch(Exception ex){Log(ex.ToString());MessageBox.Show(this,ex.Message,"Goldberg",MessageBoxButton.OK,MessageBoxImage.Warning);}
+            finally{scanning=false;scanCancellation.Dispose();scanCancellation=null;ScanProgress.IsIndeterminate=false;UpdateButtons();}
         }
         void CancelScanClick(object sender,RoutedEventArgs e) {scanCancellation?.Cancel();CancelScanButton.IsEnabled=false;ScanResult.Text="Cancelando escaneo…";}
         void LibraryFilterChanged(object sender,TextChangedEventArgs e)
@@ -258,7 +307,7 @@ namespace AchievementTimelineReplay.Wpf
                 if(saved)order.AddRange(previous.Records);
                 else foreach(var a in currentGame.Achievements.OrderBy(x=>x.OriginalUnix))order.Add(a.Clone());
                 HeaderGame.Text=currentGame.GameName;
-                HeaderGameInfo.Text="AppID "+currentGame.AppId+" · "+order.Count+" logros · "+(currentGame.HasSnapshot?"Snapshot protegido":"Sin snapshot");
+                HeaderGameInfo.Text=(currentGame.IsDemo?"DEMO · ":"")+"AppID "+currentGame.AppId+" · "+order.Count+" logros · "+(currentGame.HasSnapshot?"Snapshot protegido":"Sin snapshot");
                 if(!running)ExecutionGame.Text=currentGame.GameName;
                 ApplyPlanParameters(saved?previous.Parameters:new PlanParameters{DurationSeconds=LegacyPlanner.OriginalSpan(order)});
                 Log("Cargado "+currentGame.GameName+" ["+currentGame.AppId+"]: "+order.Count+" logros.");
@@ -281,7 +330,7 @@ namespace AchievementTimelineReplay.Wpf
         }
         string ReadLibraryOrigin(GameEntry game)
         {
-            try {return originStore.Load(game)??"Sin clasificar";}
+            try {return originStore.Load(game)??game.DetectedOrigin??"Sin clasificar";}
             catch(Exception ex){Log("No se pudo leer el origen de "+game.AppId+": "+ex.Message);return "Sin clasificar";}
         }
         void SelectOrigin(string label)
@@ -297,8 +346,8 @@ namespace AchievementTimelineReplay.Wpf
             try
             {
                 var origin=originStore.Load(currentGame);
-                SelectOrigin(origin??"Sin clasificar");
-                OriginStatus.Text=origin==null?"Sin origen asignado.":"Origen manual guardado para esta cuenta y juego.";
+                SelectOrigin(origin??currentGame.DetectedOrigin??"Sin clasificar");
+                OriginStatus.Text=origin==null?(currentGame.DetectedOrigin==null?"Sin origen asignado.":"Origen detectado por formato Goldberg/GBE; podés corregirlo manualmente."):"Origen manual guardado para esta cuenta y juego.";
             }
             catch(Exception ex){SelectOrigin("Sin clasificar");OriginStatus.Text="No se pudo leer el origen: "+ex.Message;}
         }
@@ -467,7 +516,7 @@ namespace AchievementTimelineReplay.Wpf
             DetailTitle.Text=r?.DisplayName??"Seleccioná un logro";
             DetailDescription.Text=r?.Description??"";
             DetailTime.Text=r==null?"":"Fecha original: "+r.OriginalDate;
-            DetailSource.Text="Fuente: "+(r==null?"—":"Steam local");
+            DetailSource.Text="Fuente: "+(r==null?"—":currentGame.SourceLabel);
             DetailSteam.Text="Steam: "+(r?.SteamState??"—");
             DetailOrder.Text="Orden: "+(r?.Order??"—")+" de "+order.Count(a=>a.Included);
         }
@@ -599,7 +648,7 @@ namespace AchievementTimelineReplay.Wpf
         }
         async void QuerySteamClick(object sender,RoutedEventArgs e)
         {
-            if(!CanQueryPlan)return;
+            if(!CanQueryPlan || currentGame.IsDemo)return;
             var game=currentGame;
             string cli=SamPath.Text.Trim();
             if(samMode!=SamCliMode.Modern || !File.Exists(cli))
@@ -629,7 +678,7 @@ namespace AchievementTimelineReplay.Wpf
         }
         void OpenSamClick(object sender,RoutedEventArgs e)
         {
-            if(currentGame==null)return;
+            if(currentGame==null || currentGame.IsDemo)return;
             string cli=SamPath.Text.Trim(),folder=Path.GetDirectoryName(cli),gui=null;
             try {if(Directory.Exists(folder)) gui=Directory.GetFiles(folder,"*.exe").FirstOrDefault(f=>Path.GetFileName(f).Contains("samrewritten",StringComparison.OrdinalIgnoreCase) && !Path.GetFileName(f).Contains("cli",StringComparison.OrdinalIgnoreCase));}catch{}
             if(gui==null) {MessageBox.Show(this,"No encontré la interfaz gráfica de SamRewritten junto al CLI. Abrí SAM y buscá el AppID "+currentGame.AppId,"Abrir SAM",MessageBoxButton.OK,MessageBoxImage.Information);return;}
@@ -638,7 +687,7 @@ namespace AchievementTimelineReplay.Wpf
         }
         async void StartReplayClick(object sender,RoutedEventArgs e)
         {
-            if(running||scanning||querying||preparing||currentGame==null || !currentGame.HasLocalHistory || !GapLimitValid())return;
+            if(running||scanning||querying||preparing||currentGame==null || currentGame.IsDemo || !currentGame.HasLocalHistory || !GapLimitValid())return;
             if(!CommitPlanEdits())return;
             preparing=true;UpdateButtons();
             try
@@ -719,12 +768,14 @@ namespace AchievementTimelineReplay.Wpf
         {
             if(!initialized)return;
             bool available=currentGame!=null && currentGame.HasLocalHistory;
+            bool live=available && !currentGame.IsDemo;
             ScanButton.IsEnabled=!scanning && !running && !querying && !preparing;
             CancelScanButton.IsEnabled=scanning;
-            StartButton.IsEnabled=available && !running && !scanning && !querying && !preparing && order.Any(x=>x.Included) && GapLimitValid();
+            ImportGoldbergButton.IsEnabled=GoldbergDefinitions.IsEnabled=ScanGoldbergDefaults.IsEnabled=ScanButton.IsEnabled;
+            StartButton.IsEnabled=live && !running && !scanning && !querying && !preparing && order.Any(x=>x.Included) && GapLimitValid();
             CancelReplayButton.IsEnabled=running;
-            QueryButton.IsEnabled=CanQueryPlan && samMode==SamCliMode.Modern;
-            OpenSamButton.IsEnabled=available && !running && !preparing && !querying && samMode==SamCliMode.Modern;
+            QueryButton.IsEnabled=live && CanQueryPlan && samMode==SamCliMode.Modern;
+            OpenSamButton.IsEnabled=live && !running && !preparing && !querying && samMode==SamCliMode.Modern;
             UpButton.IsEnabled=DownButton.IsEnabled=CanEditPlan && CustomOrder.IsChecked==true;
             AchievementsGrid.IsEnabled=available;
             AchievementsGrid.IsReadOnly=!CanEditPlan;

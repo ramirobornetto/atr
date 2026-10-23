@@ -4,7 +4,7 @@
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
     <Nullable>disable</Nullable>
-    <Version>0.6.5</Version>
+    <Version>0.7.0</Version>
     <AssemblyName>AchievementTimelineReplay.Wpf</AssemblyName>
   </PropertyGroup>
 </Project>

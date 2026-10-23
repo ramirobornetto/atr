@@ -41,6 +41,11 @@ namespace AchievementTimelineReplay {
     {
         public uint AppId;
         public uint AccountId;
+        public string HistoryId;
+        public string SourceLabel = "UserGameStats (.bin)";
+        public string DetectedOrigin;
+        public bool IsDemo;
+        public string StorageKey => String.IsNullOrEmpty(HistoryId) ? AccountId+"_"+AppId : HistoryId+"_"+AppId;
         public string GameName;
         public string AppType;
         public int TotalAchievements;

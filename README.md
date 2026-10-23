@@ -1,8 +1,8 @@
 # Achievement Timeline Replay
 
-## Descargar v0.6.5 para Windows x64
+## Descargar v0.7.0 para Windows x64
 
-[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.6.5_Windows_x64.zip)
+[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.7.0_Windows_x64.zip)
 
 Extraer **todo el ZIP** en una carpeta nueva y abrir `AchievementTimelineReplay.Wpf.exe`. No se necesita compilar ni instalar .NET. Mantener las DLL y demás archivos junto al ejecutable. Steam y SamRewritten se seleccionan en la aplicación, como antes; no vienen incluidos.
 
@@ -117,3 +117,14 @@ Biblioteca muestra la columna **Origen** en modo lectura; solo se edita desde el
 En el futuro, reglas de directorios conocidos podrán sugerir un origen detectado, separado de las asignaciones manuales y sin reemplazarlas. Esta versión no detecta orígenes automáticamente ni incorpora importadores nuevos.
 
 Comprobación manual: elegir origen para A, cambiar a B y comprobar que no se hereda; volver a A y reiniciar/escanear para verificar persistencia. Restaurar el original y cargar un plan deben conservar ese origen. El campo queda bloqueado en el juego activo durante una migración, igual que las demás ediciones del plan.
+
+
+## v0.7.0 — importación Goldberg / GBE
+
+- Lectura de `achievements.json` de usuario: solo desbloqueos con fecha Unix válida, sin ejecutar ni modificar emuladores.
+- Búsqueda opcional en las carpetas habituales de Goldberg y GBE, más importación manual de archivos en otras rutas, independiente del escaneo Steam.
+- Definiciones opcionales de `steam_settings/achievements.json`, con nombres y descripciones localizados. Alternativa: esquema local Steam o IDs API.
+- Fuente por archivo y origen detectado corregible manualmente. Historiales, snapshots, planes y etiquetas independientes por fuente, incluso para un mismo AppID.
+- Muestra sintética incluida: `muestras/Goldberg/480/achievements.json`, cuatro logros con fecha de seis conocidos. Sus acciones de Steam están bloqueadas.
+
+Instrucciones, formato, persistencia y limitaciones: [GOLDBERG.md](GOLDBERG.md). No hace falta tener una emulación para probar la muestra. Compilación WPF y publicación autónoma Windows x64 verificadas; 68 comprobaciones automáticas pasadas, incluyendo 21 de Goldberg y la muestra distribuida. Pendiente prueba visual en Windows y validación con archivos de una instalación real.

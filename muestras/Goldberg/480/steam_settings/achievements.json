@@ -1,0 +1,68 @@
+[
+  {
+    "name": "ATR_DEMO_BEGIN",
+    "displayName": {
+      "spanish": "Primer paso",
+      "english": "Primer paso"
+    },
+    "description": {
+      "spanish": "Empieza una partida ficticia."
+    },
+    "hidden": 0
+  },
+  {
+    "name": "ATR_DEMO_EXPLORE",
+    "displayName": {
+      "spanish": "Explorador",
+      "english": "Explorador"
+    },
+    "description": {
+      "spanish": "Completa una zona ficticia."
+    },
+    "hidden": 0
+  },
+  {
+    "name": "ATR_DEMO_RETURN",
+    "displayName": {
+      "spanish": "De vuelta",
+      "english": "De vuelta"
+    },
+    "description": {
+      "spanish": "Continúa en otra sesión ficticia."
+    },
+    "hidden": 0
+  },
+  {
+    "name": "ATR_DEMO_FINISH",
+    "displayName": {
+      "spanish": "Final de muestra",
+      "english": "Final de muestra"
+    },
+    "description": {
+      "spanish": "Termina la demostración."
+    },
+    "hidden": 0
+  },
+  {
+    "name": "ATR_DEMO_LOCKED",
+    "displayName": {
+      "spanish": "Todavía pendiente",
+      "english": "Todavía pendiente"
+    },
+    "description": {
+      "spanish": "Este logro no se importa al plan."
+    },
+    "hidden": 0
+  },
+  {
+    "name": "ATR_DEMO_SECRET",
+    "displayName": {
+      "spanish": "Otro pendiente",
+      "english": "Otro pendiente"
+    },
+    "description": {
+      "spanish": "Cuenta para el total, pero no se selecciona."
+    },
+    "hidden": 0
+  }
+]
