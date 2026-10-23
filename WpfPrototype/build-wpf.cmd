@@ -8,7 +8,7 @@ if errorlevel 1 (
  exit /b 1
 )
 echo.
-echo Compilando Achievement Timeline Replay WPF v0.6.4...
+echo Compilando Achievement Timeline Replay WPF v0.6.5...
 dotnet build "AchievementTimelineReplay.Wpf.csproj" -c Release
 if errorlevel 1 (
  echo.

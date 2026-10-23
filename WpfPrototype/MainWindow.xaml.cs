@@ -22,6 +22,12 @@ namespace AchievementTimelineReplay.Wpf
         public string GameName { get; set; }
         public uint AppId { get; set; }
         public string Source { get; set; }
+        string origin;
+        public string Origin
+        {
+            get => origin;
+            set {if(origin!=value){origin=value;PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(nameof(Origin)));}}
+        }
         string count;
         public string Count
         {
@@ -74,9 +80,11 @@ namespace AchievementTimelineReplay.Wpf
         SamCliMode samMode=SamCliMode.Unknown;
         CancellationTokenSource scanCancellation;
         CancellationTokenSource replayCancellation;
+        bool selectingOrigin;
         bool querying;
         bool preparing;
         LegacyReplayer activeReplayer;
+        readonly OriginStore originStore=new OriginStore(Path.Combine(LegacyTools.DataDirectory,"Origins"));
         readonly PlanStore planStore=new PlanStore(Path.Combine(LegacyTools.DataDirectory,"Plans"));
         bool CanEditPlan => currentGame!=null && !scanning && !preparing && (!running || !ReferenceEquals(currentGame,executingGame));
         bool CanQueryPlan => CanEditPlan && !querying;
@@ -101,7 +109,7 @@ namespace AchievementTimelineReplay.Wpf
             initialized=true;
             GoTo("Escaneo");
             UpdateButtons();
-            Log("WPF v0.6.4 iniciada. Motor derivado de v0.5.3. No se ha modificado Steam.");
+            Log("WPF v0.6.5 iniciada. Motor derivado de v0.5.3. No se ha modificado Steam.");
             if(!String.IsNullOrWhiteSpace(SamPath.Text)) _=ValidateSamAsync(false);
         }
         void Log(string s)
@@ -200,7 +208,7 @@ namespace AchievementTimelineReplay.Wpf
                 var scanner=new LegacyScanner(Log);
                 var found=await Task.Run(()=>scanner.Scan(steam,cli,samMode,progress,token),token);
                 token.ThrowIfCancellationRequested();
-                foreach(var g in found) games.Add(new GameRow{GameName=g.GameName,AppId=g.AppId,Source="Steam local",Count=AchievementCounts.Format(g),Snapshot=g.HasSnapshot?"Protegido ✓":"—",Game=g});
+                foreach(var g in found) games.Add(new GameRow{GameName=g.GameName,AppId=g.AppId,Source="UserGameStats (.bin)",Origin=ReadLibraryOrigin(g),Count=AchievementCounts.Format(g),Snapshot=g.HasSnapshot?"Protegido ✓":"—",Game=g});
                 LibraryCount.Text=games.Count+" juegos";
                 ScanResult.Text="Escaneo terminado: "+games.Count+" historiales aprovechables.";
                 SetStatus(ScanResult.Text);
@@ -255,6 +263,7 @@ namespace AchievementTimelineReplay.Wpf
                 ApplyPlanParameters(saved?previous.Parameters:new PlanParameters{DurationSeconds=LegacyPlanner.OriginalSpan(order)});
                 Log("Cargado "+currentGame.GameName+" ["+currentGame.AppId+"]: "+order.Count+" logros.");
                 RefreshPlan();
+                LoadOrigin();
 
                 if(saved && previous.Selected!=null)
                 {
@@ -266,8 +275,46 @@ namespace AchievementTimelineReplay.Wpf
             {
                 HeaderGame.Text="Sin juego seleccionado";HeaderGameInfo.Text="Elegí un historial";
                 if(!running)ExecutionGame.Text="No hay ningún plan preparado";
+                SelectOrigin("Sin clasificar");OriginStatus.Text="";
             }
             UpdateButtons();
+        }
+        string ReadLibraryOrigin(GameEntry game)
+        {
+            try {return originStore.Load(game)??"Sin clasificar";}
+            catch(Exception ex){Log("No se pudo leer el origen de "+game.AppId+": "+ex.Message);return "Sin clasificar";}
+        }
+        void SelectOrigin(string label)
+        {
+            var item=OriginChoice.Items.Cast<ComboBoxItem>().FirstOrDefault(i=>Convert.ToString(i.Content)==label);
+            if(item==null){item=new ComboBoxItem{Content=label};OriginChoice.Items.Add(item);}
+            selectingOrigin=true;
+            try {OriginChoice.SelectedItem=item;}
+            finally {selectingOrigin=false;}
+        }
+        void LoadOrigin()
+        {
+            try
+            {
+                var origin=originStore.Load(currentGame);
+                SelectOrigin(origin??"Sin clasificar");
+                OriginStatus.Text=origin==null?"Sin origen asignado.":"Origen manual guardado para esta cuenta y juego.";
+            }
+            catch(Exception ex){SelectOrigin("Sin clasificar");OriginStatus.Text="No se pudo leer el origen: "+ex.Message;}
+        }
+        void OriginChanged(object sender,SelectionChangedEventArgs e)
+        {
+            if(!initialized || selectingOrigin || !CanEditPlan)return;
+            try
+            {
+                string label=Convert.ToString((OriginChoice.SelectedItem as ComboBoxItem)?.Content)??"Sin clasificar";
+                originStore.Save(currentGame,label=="Sin clasificar"?null:label);
+                LoadOrigin();
+                var row=games.FirstOrDefault(g=>ReferenceEquals(g.Game,currentGame));
+                if(row!=null)row.Origin=ReadLibraryOrigin(currentGame);
+                SetStatus("Origen actualizado para "+currentGame.GameName+". No modifica archivos de logros ni Steam.");
+            }
+            catch(Exception ex){LoadOrigin();MessageBox.Show(this,ex.Message,"No se pudo guardar el origen",MessageBoxButton.OK,MessageBoxImage.Warning);}
         }
         void LibraryDoubleClick(object sender,MouseButtonEventArgs e) {if(currentGame!=null)GoTo("Plan");}
         void SetDuration(long seconds)
@@ -686,6 +733,7 @@ namespace AchievementTimelineReplay.Wpf
             GamesGrid.IsEnabled=!scanning && !preparing;
             SteamPath.IsEnabled=SamPath.IsEnabled=ValidateSamButton.IsEnabled=BrowseSamButton.IsEnabled=BrowseSteamButton.IsEnabled=!running && !scanning && !querying && !preparing;
             RestoreOrderButton.IsEnabled=ClearTimingsButton.IsEnabled=RestoreOriginalButton.IsEnabled=CanEditPlan;
+            OriginChoice.IsEnabled=CanEditPlan;
             SavePlanButton.IsEnabled=CanEditPlan && GapLimitValid();
             LoadPlanButton.IsEnabled=CanEditPlan && planStore.Exists(currentGame);
             EditingStatus.Text=running?"En ejecución: "+executingGame?.GameName+(ReferenceEquals(currentGame,executingGame)?" · Este plan está bloqueado.":" · Podés preparar este otro juego."):"Editando borrador. Guardar plan conserva los cambios al cerrar.";

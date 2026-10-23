@@ -47,6 +47,18 @@ static class SavedPlanChecks
         File.WriteAllText(store.FilePath(game),"{\"Version\":999,\"AccountId\":7,\"AppId\":42}");
         Reject(()=>store.Load(game),"Unsupported saved format is rejected");
         Check(Directory.GetFiles(Path.Combine(root,"Plans"),"*.tmp").Length==0,"Atomic saves leave no temporary files");
+        var origins=new OriginStore(Path.Combine(root,"Origins"));
+        Check(origins.Load(game)==null,"Unclassified origin does not imply an official Steam license");
+        origins.Save(game,"  Steamidra  ");
+        Check(new OriginStore(Path.Combine(root,"Origins")).Load(game)=="Steamidra","Manual origin survives a new store instance and trims whitespace");
+        Check(origins.Load(other)==null,"Manual origin is isolated by account");
+        Check(File.ReadAllText(origins.FilePath(game)).Contains("manual"),"Origin metadata explicitly identifies a manual assignment");
+        var originBytes=File.ReadAllText(origins.FilePath(game));
+        Reject(()=>origins.Save(game,new string('x',121)),"Oversized origin labels are rejected");
+        Check(File.ReadAllText(origins.FilePath(game))==originBytes,"Invalid origin edit preserves the saved label");
+        origins.Save(game,null);
+        Check(origins.Load(game)==null,"Clearing an origin restores unclassified state");
+        Check(File.ReadAllText(store.FilePath(game)).Contains("999"),"Origin edits do not change saved plan files");
         ReplayQueryCheck(root);
     }
     static void ReplayQueryCheck(string root)

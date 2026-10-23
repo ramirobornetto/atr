@@ -1,8 +1,8 @@
 # Achievement Timeline Replay
 
-## Descargar v0.6.4 para Windows x64
+## Descargar v0.6.5 para Windows x64
 
-[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.6.4_Windows_x64.zip)
+[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.6.5_Windows_x64.zip)
 
 Extraer **todo el ZIP** en una carpeta nueva y abrir `AchievementTimelineReplay.Wpf.exe`. No se necesita compilar ni instalar .NET. Mantener las DLL y demás archivos junto al ejecutable. Steam y SamRewritten se seleccionan en la aplicación, como antes; no vienen incluidos.
 
@@ -107,3 +107,13 @@ Pruebas adicionales: guardar un plan con orden personalizado y todos los paráme
 La columna Logros conserva el total conocido del juego al consultar Steam. Una respuesta parcial de 16 logros desbloqueados mantiene **16 / 40** si el esquema contiene 40, y no cambia a 16 / 16. Si Steam informa una lista más grande que el esquema local, se recuerda ese total para las siguientes consultas. El cuadro flotante de toda la tabla de Biblioteca se eliminó.
 
 Fuente identifica dónde se leyó el historial (actualmente Steam local), no acredita la licencia ni identifica la herramienta usada para obtener el juego. Los archivos UserGameStats/Schema y la aparición en list-apps no permiten distinguir de forma fiable una instalación oficial de Steamidra. Los importadores futuros identificarán el formato/proveedor cuando existan pruebas suficientes; los formatos compartidos necesitarán una etiqueta genérica.
+
+## v0.6.5 — origen manual en el plan
+
+En **Plan de desbloqueo**, el campo **Origen (manual)** permite elegir Steam oficial, Steamidra, Goldberg, CODEX, RUNE u OnlineFix, además de Otro y Sin clasificar. El desplegable está junto al nombre del juego, que reemplaza el título genérico del plan. La elección se guarda automáticamente por cuenta y juego, independientemente de Guardar plan. Se almacena en `%LOCALAPPDATA%\AchievementTimelineReplay\Origins\<cuenta>_<appid>.json` con la indicación explícita `manual`. Elegir Sin clasificar elimina esa asignación. No modifica historiales, snapshots, planes guardados ni Steam. Restaurar original o cargar un plan no borra el origen.
+
+Biblioteca muestra la columna **Origen** en modo lectura; solo se edita desde el desplegable en Plan de desbloqueo y se actualiza al elegir el origen. La columna **Fuente** describe el archivo leído: actualmente **UserGameStats (.bin)**. Esa etiqueta no pretende verificar una licencia ni afirmar qué herramienta obtuvo el juego. Las opciones Goldberg/CODEX del origen son etiquetas manuales y no habilitan importadores de esos formatos.
+
+En el futuro, reglas de directorios conocidos podrán sugerir un origen detectado, separado de las asignaciones manuales y sin reemplazarlas. Esta versión no detecta orígenes automáticamente ni incorpora importadores nuevos.
+
+Comprobación manual: elegir origen para A, cambiar a B y comprobar que no se hereda; volver a A y reiniciar/escanear para verificar persistencia. Restaurar el original y cargar un plan deben conservar ese origen. El campo queda bloqueado en el juego activo durante una migración, igual que las demás ediciones del plan.
