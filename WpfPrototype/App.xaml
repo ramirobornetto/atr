@@ -3,17 +3,27 @@
     <SolidColorBrush x:Key="Bg" Color="#0A1421"/>
     <SolidColorBrush x:Key="Panel" Color="#162538"/>
     <SolidColorBrush x:Key="Inset" Color="#101D2D"/>
-    <SolidColorBrush x:Key="Accent" Color="#25D6D8"/>
+    <SolidColorBrush x:Key="Accent" Color="#00E5FF"/>
     <SolidColorBrush x:Key="Muted" Color="#A5BCCE"/>
-    <Style TargetType="TextBlock"><Setter Property="Foreground" Value="#F0F7FC"/><Setter Property="FontFamily" Value="Segoe UI"/></Style>
+    <Style TargetType="TextBlock"><Setter Property="FontFamily" Value="Segoe UI"/></Style>
     <Style TargetType="Button">
       <Setter Property="Background" Value="#254052"/><Setter Property="Foreground" Value="#F1FAFE"/>
       <Setter Property="BorderBrush" Value="#39586B"/><Setter Property="BorderThickness" Value="1"/>
       <Setter Property="Padding" Value="13,8"/><Setter Property="Margin" Value="3,2"/>
       <Setter Property="Cursor" Value="Hand"/><Setter Property="MinHeight" Value="32"/>
+      <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button">
+        <Border x:Name="ButtonSurface" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="5" Padding="{TemplateBinding Padding}">
+          <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" RecognizesAccessKey="True"/>
+        </Border>
+        <ControlTemplate.Triggers>
+          <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="ButtonSurface" Property="Background" Value="#00E5FF"/><Setter TargetName="ButtonSurface" Property="BorderBrush" Value="#6AF3FF"/><Setter Property="Foreground" Value="#061923"/></Trigger>
+          <Trigger Property="IsPressed" Value="True"><Setter TargetName="ButtonSurface" Property="Background" Value="#00AFC9"/><Setter Property="Foreground" Value="#061923"/></Trigger>
+          <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="ButtonSurface" Property="BorderBrush" Value="#00E5FF"/></Trigger>
+        </ControlTemplate.Triggers>
+      </ControlTemplate></Setter.Value></Setter>
       <Style.Triggers><Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.44"/></Trigger></Style.Triggers>
     </Style>
-    <Style x:Key="AccentButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Setter Property="Background" Value="#23CBD2"/><Setter Property="Foreground" Value="#071B23"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="BorderBrush" Value="#23CBD2"/></Style>
+    <Style x:Key="AccentButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Setter Property="Background" Value="#00E5FF"/><Setter Property="Foreground" Value="#071B23"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="BorderBrush" Value="#00E5FF"/></Style>
     <Style x:Key="NavButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Setter Property="HorizontalContentAlignment" Value="Left"/><Setter Property="Padding" Value="17,12"/><Setter Property="Background" Value="Transparent"/><Setter Property="BorderBrush" Value="Transparent"/><Setter Property="FontSize" Value="14"/><Setter Property="Margin" Value="1,3"/></Style>
     <Style TargetType="TextBox"><Setter Property="Background" Value="#1B3042"/><Setter Property="Foreground" Value="White"/><Setter Property="BorderBrush" Value="#36576A"/><Setter Property="CaretBrush" Value="White"/><Setter Property="Padding" Value="9,6"/><Setter Property="VerticalContentAlignment" Value="Center"/></Style>
     <Style TargetType="CheckBox"><Setter Property="Foreground" Value="#E5F0F6"/><Setter Property="VerticalAlignment" Value="Center"/><Setter Property="Margin" Value="4,3"/></Style>
@@ -21,6 +31,6 @@
     <Style TargetType="DataGridColumnHeader"><Setter Property="Background" Value="#294157"/><Setter Property="Foreground" Value="#F2F9FD"/><Setter Property="BorderBrush" Value="#36566B"/><Setter Property="BorderThickness" Value="0,0,1,1"/><Setter Property="Padding" Value="10,8"/><Setter Property="FontWeight" Value="SemiBold"/></Style>
     <Style TargetType="DataGridCell"><Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="#EDF6FA"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Padding" Value="7,3"/></Style>
     <Style TargetType="DataGridRow"><Setter Property="Foreground" Value="#EAF4F9"/><Style.Triggers><Trigger Property="IsSelected" Value="True"><Setter Property="Background" Value="#176477"/><Setter Property="Foreground" Value="#FFFFFF"/></Trigger></Style.Triggers></Style>
-    <Style TargetType="ProgressBar"><Setter Property="Foreground" Value="#20CFD1"/><Setter Property="Background" Value="#274052"/><Setter Property="Height" Value="14"/></Style>
+    <Style TargetType="ProgressBar"><Setter Property="Foreground" Value="#00E5FF"/><Setter Property="Background" Value="#274052"/><Setter Property="Height" Value="14"/></Style>
   </Application.Resources>
 </Application>

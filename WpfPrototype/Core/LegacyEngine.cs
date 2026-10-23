@@ -366,7 +366,7 @@ namespace AchievementTimelineReplay
                         uint dataAccount=root.GetProperty("AccountId").GetUInt32();
                         if(dataApp!=current.AppId || dataAccount!=current.AccountId)
                             throw new InvalidDataException("El snapshot pertenece a otra cuenta o juego.");
-                        var game=new GameEntry{AppId=current.AppId,AccountId=current.AccountId,GameName=current.GameName,IsOwned=current.IsOwned,HasLocalHistory=true,HasSnapshot=true,StatsPath=current.StatsPath,SchemaPath=current.SchemaPath};
+                        var game=new GameEntry{AppId=current.AppId,AccountId=current.AccountId,GameName=current.GameName,IsOwned=current.IsOwned,HasLocalHistory=true,HasSnapshot=true,TotalAchievements=current.TotalAchievements,StatsPath=current.StatsPath,SchemaPath=current.SchemaPath};
                         foreach(var a in ach.EnumerateArray()) game.Achievements.Add(new AchievementRecord
                         {
                             ApiId=a.GetProperty("ApiId").GetString(),
@@ -407,7 +407,7 @@ namespace AchievementTimelineReplay
             var list=order.Where(a=>a.Included).OrderBy(a=>a.OriginalUnix).ToList();
             return list.Count<2?0:Math.Max(0,list[list.Count-1].OriginalUnix-list[0].OriginalUnix);
         }
-        public static Dictionary<AchievementRecord,ScheduleItem> Calculate(List<AchievementRecord> order,double targetSpan)
+        public static Dictionary<AchievementRecord,ScheduleItem> Calculate(List<AchievementRecord> order,double targetSpan,double? maximumAutomaticGapSeconds=null)
         {
             // Cálculo conservado de MainForm.CalculateSchedule en v0.5.3.
             var result=new Dictionary<AchievementRecord,ScheduleItem>();
@@ -423,6 +423,13 @@ namespace AchievementTimelineReplay
             {
                 var a=replayOrder[i];
                 double autoGap=i==0?0:originalGaps[i]*factor;
+                // Limita solo las esperas automáticas; los tiempos explícitos conservan prioridad.
+                if(maximumAutomaticGapSeconds.HasValue)
+                {
+                    if(!double.IsFinite(maximumAutomaticGapSeconds.Value) || maximumAutomaticGapSeconds.Value<=0)
+                        throw new ArgumentOutOfRangeException(nameof(maximumAutomaticGapSeconds));
+                    autoGap=Math.Min(autoGap,maximumAutomaticGapSeconds.Value);
+                }
                 double gap=a.ManualGapSeconds??autoGap;
                 if(i==0 || gap<0) gap=0;
                 cumulative+=gap;

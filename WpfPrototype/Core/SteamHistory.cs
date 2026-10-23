@@ -43,6 +43,7 @@ namespace AchievementTimelineReplay {
         public uint AccountId;
         public string GameName;
         public string AppType;
+        public int TotalAchievements;
         public bool IsOwned;
         public bool HasLocalHistory;
         public bool HasSnapshot;
@@ -126,6 +127,9 @@ namespace AchievementTimelineReplay {
 
                 Dictionary<string, object> bits = GetDictOrNull(group, "bits");
                 Dictionary<string, object> cacheGroup = GetDictOrNull(cache, groupEntry.Key);
+
+                if (bits != null)
+                    game.TotalAchievements += bits.Values.Count(value => value is Dictionary<string, object>);
 
                 if (bits == null || cacheGroup == null)
                     continue;
