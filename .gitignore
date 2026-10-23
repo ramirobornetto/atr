@@ -4,3 +4,4 @@
 *.user
 *.suo
 Legacy_v0.5.3/*.exe
+artifacts/

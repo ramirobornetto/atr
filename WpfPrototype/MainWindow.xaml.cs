@@ -60,7 +60,17 @@ namespace AchievementTimelineReplay.Wpf
         readonly ObservableCollection<GameRow> games=new ObservableCollection<GameRow>();
         readonly ObservableCollection<AchievementView> achievementRows=new ObservableCollection<AchievementView>();
         readonly List<AchievementRecord> order=new List<AchievementRecord>();
+        sealed class BrowsedPlan
+        {
+            public List<AchievementRecord> Records;
+            public bool CustomOrder;
+            public long Duration;
+            public AchievementRecord Selected;
+        }
+        readonly Dictionary<GameEntry,BrowsedPlan> browsedPlans=new Dictionary<GameEntry,BrowsedPlan>();
         GameEntry currentGame;
+        GameEntry executingGame;
+        Dictionary<AchievementRecord,ScheduleItem> activeSchedule;
         SamCliMode samMode=SamCliMode.Unknown;
         CancellationTokenSource scanCancellation;
         CancellationTokenSource replayCancellation;
@@ -85,7 +95,7 @@ namespace AchievementTimelineReplay.Wpf
             initialized=true;
             GoTo("Escaneo");
             UpdateButtons();
-            Log("WPF v0.6.1 iniciada. Motor derivado de v0.5.3. No se ha modificado Steam.");
+            Log("WPF v0.6.2 iniciada. Motor derivado de v0.5.3. No se ha modificado Steam.");
             if(!String.IsNullOrWhiteSpace(SamPath.Text)) _=ValidateSamAsync(false);
         }
         void Log(string s)
@@ -166,7 +176,7 @@ namespace AchievementTimelineReplay.Wpf
             var token=scanCancellation.Token;
             ScanProgress.IsIndeterminate=true;
             ScanResult.Text="Iniciando escaneo…";
-            games.Clear();achievementRows.Clear();order.Clear();currentGame=null;
+            games.Clear();achievementRows.Clear();order.Clear();browsedPlans.Clear();currentGame=null;
             UpdateButtons();
             SetStatus("Escaneando historiales locales…");
             Log("=== Inicio de escaneo ===");
@@ -213,23 +223,43 @@ namespace AchievementTimelineReplay.Wpf
         }
         void GameChanged(object sender,SelectionChangedEventArgs e)
         {
-            if(!initialized || running)return;
-            currentGame=(GamesGrid.SelectedItem as GameRow)?.Game;
+            if(!initialized || scanning)return;
+            var next=(GamesGrid.SelectedItem as GameRow)?.Game;
+            if(ReferenceEquals(next,currentGame))return;
+            // Navegar conserva el plan mostrado. La ejecución retiene su propia lista
+            // de ScheduleItems y no depende del juego seleccionado en la biblioteca.
+            if(currentGame!=null)
+                browsedPlans[currentGame]=new BrowsedPlan
+                {
+                    Records=order.ToList(),CustomOrder=CustomOrder.IsChecked==true,
+                    Duration=(long)TargetDuration(),Selected=(AchievementsGrid.SelectedItem as AchievementView)?.Record
+                };
+            currentGame=next;
             order.Clear();achievementRows.Clear();
             if(currentGame!=null)
             {
-                foreach(var a in currentGame.Achievements.OrderBy(x=>x.OriginalUnix)) order.Add(a.Clone());
+                bool saved=browsedPlans.TryGetValue(currentGame,out var previous);
+                if(saved)order.AddRange(previous.Records);
+                else foreach(var a in currentGame.Achievements.OrderBy(x=>x.OriginalUnix))order.Add(a.Clone());
                 HeaderGame.Text=currentGame.GameName;
                 HeaderGameInfo.Text="AppID "+currentGame.AppId+" · "+order.Count+" logros · "+(currentGame.HasSnapshot?"Snapshot protegido":"Sin snapshot");
-                ExecutionGame.Text=currentGame.GameName;
-                CustomOrder.IsChecked=false;
-                SetDuration(LegacyPlanner.OriginalSpan(order));
+                if(!running)ExecutionGame.Text=currentGame.GameName;
+                updating=true;
+                CustomOrder.IsChecked=saved && previous.CustomOrder;
+                updating=false;
+                SetDuration(saved?previous.Duration:LegacyPlanner.OriginalSpan(order));
                 Log("Cargado "+currentGame.GameName+" ["+currentGame.AppId+"]: "+order.Count+" logros.");
                 RefreshPlan();
+                if(saved && previous.Selected!=null)
+                {
+                    AchievementsGrid.SelectedItem=achievementRows.FirstOrDefault(a=>ReferenceEquals(a.Record,previous.Selected));
+                    AchievementsGrid.ScrollIntoView(AchievementsGrid.SelectedItem);
+                }
             }
             else
             {
-                HeaderGame.Text="Sin juego seleccionado";HeaderGameInfo.Text="Elegí un historial";ExecutionGame.Text="No hay ningún plan preparado";
+                HeaderGame.Text="Sin juego seleccionado";HeaderGameInfo.Text="Elegí un historial";
+                if(!running)ExecutionGame.Text="No hay ningún plan preparado";
             }
             UpdateButtons();
         }
@@ -275,7 +305,7 @@ namespace AchievementTimelineReplay.Wpf
             if(!initialized || updating)return;
             updating=true;
             var selectedRecord=(AchievementsGrid.SelectedItem as AchievementView)?.Record;
-            var schedule=LegacyPlanner.Calculate(order,TargetDuration(),AutomaticGapLimit());
+            var schedule=running && ReferenceEquals(currentGame,executingGame) && activeSchedule!=null ? activeSchedule : LegacyPlanner.Calculate(order,TargetDuration(),AutomaticGapLimit());
             var originals=LegacyPlanner.OriginalGaps(order);
             achievementRows.Clear();
             int index=0;
@@ -288,7 +318,9 @@ namespace AchievementTimelineReplay.Wpf
                 {
                     r.NewGap=LegacyTools.FormatSpan((long)Math.Round(item.GapSeconds));
                     r.TargetOffset=LegacyTools.FormatSpan((long)Math.Round(item.OffsetSeconds));
-                    r.TargetTime=DateTime.Now.AddSeconds(InitialSeconds()+item.OffsetSeconds).ToString("dd/MM HH:mm:ss");
+                    r.TargetTime=running && ReferenceEquals(currentGame,executingGame) && item.Due!=default
+                        ? item.Due.ToString("dd/MM HH:mm:ss")
+                        : DateTime.Now.AddSeconds(InitialSeconds()+item.OffsetSeconds).ToString("dd/MM HH:mm:ss");
                 }
                 else {r.NewGap="—";r.TargetOffset="—";r.TargetTime="—";}
                 achievementRows.Add(r);
@@ -299,7 +331,7 @@ namespace AchievementTimelineReplay.Wpf
             double last=schedule.Count>0?schedule.Values.Max(x=>x.OffsetSeconds):0;
             EffectiveDuration.Text="Efectiva: "+LegacyTools.FormatSpan((long)Math.Round(last));
             GapLimitValidation.Text=GapLimitValid()?"Solo esperas automáticas; los tiempos manuales tienen prioridad.":"Ingresá un máximo mayor que 0 y hasta 525600 minutos.";
-            ExecutionSummary.Text=index+" logros · "+LegacyTools.FormatSpan((long)Math.Round(last))+" · espera inicial "+InitialSeconds()+"s";
+            if(!running)ExecutionSummary.Text=index+" logros · "+LegacyTools.FormatSpan((long)Math.Round(last))+" · espera inicial "+InitialSeconds()+"s";
             ReplayProgressText.Text=running ? ReplayProgressText.Text : "0 / "+index+" logros";
             updating=false;
             UpdateButtons();
@@ -460,12 +492,14 @@ namespace AchievementTimelineReplay.Wpf
                     var libraryRow=games.FirstOrDefault(g=>g.AppId==appId);
                     if(libraryRow!=null)
                     {
-                        libraryRow.Count=states.Values.Count(state=>state=="Desbloqueado" || state.StartsWith("✓ ",StringComparison.Ordinal))+" / "+states.Count;
+                        libraryRow.Count=states.Values.Count(SamRunner.IsUnlocked)+" / "+states.Count;
                     }
-                    foreach(var a in order) a.SteamState=states.TryGetValue(a.ApiId,out var state)?state:"No encontrado";
+                    int omitted=SamRunner.ApplySteamStates(order,states,true);
                     RefreshPlan();
+                    Log("Steam: "+omitted+" logros seleccionados ya desbloqueados fueron desmarcados. Los demás conservan su selección.");
+                    SetStatus("Estado actualizado: "+omitted+" logros ya desbloqueados desmarcados.");
                 }
-                SetStatus("Estado de Steam actualizado.");Log("Consulta SAM completada ["+appId+"].");
+                Log("Consulta SAM completada ["+appId+"].");
             }catch(Exception ex){Log("Error consultando Steam: "+ex.Message);MessageBox.Show(this,ex.Message,"SamRewritten",MessageBoxButton.OK,MessageBoxImage.Warning);}
             finally {UpdateButtons();}
         }
@@ -499,6 +533,31 @@ namespace AchievementTimelineReplay.Wpf
             var verify=await Task.Run(()=>SamRunner.List(cli,mode,appId));
             if(currentGame==null || currentGame.AppId!=appId) {SetStatus("El juego seleccionado cambió durante la validación. Prepará el plan de nuevo.");return;}
             if(SamRunner.Failed(verify)) {MessageBox.Show(this,"SAM no pudo leer los logros:\n"+verify.StdErr+"\n"+verify.StdOut,"SAM",MessageBoxButton.OK,MessageBoxImage.Error);return;}
+            // En modo normal, volver a comprobar antes de ejecutar: el estado pudo cambiar
+            // desde la última consulta. Si cambió el plan, pedir que se revise de nuevo.
+            if(mode==SamCliMode.Modern && !locked)
+            {
+                try
+                {
+                    var latest=SamRunner.States(verify.StdOut);
+                    if(latest.Count==0)throw new InvalidDataException("SAM no devolvió estados utilizables.");
+                    int omitted=SamRunner.ApplySteamStates(order,latest,true);
+                    if(omitted>0)
+                    {
+                        RefreshPlan();GoTo("Plan");
+                        SetStatus(omitted+" logros ya desbloqueados fueron desmarcados. Revisá el plan e iniciá nuevamente.");
+                        Log(GlobalStatus.Text);
+                        return;
+                    }
+                }
+                catch(Exception ex)
+                {
+                    MessageBox.Show(this,"No se pudo verificar qué logros ya están desbloqueados. No se inició la migración.\n"+ex.Message,"Steam",MessageBoxButton.OK,MessageBoxImage.Warning);
+                    return;
+                }
+            }
+            ExecutionGame.Text=name;
+            executingGame=currentGame;activeSchedule=schedule;
             running=true;replayCancellation=new CancellationTokenSource();
             ReplayProgress.Maximum=plan.Count;ReplayProgress.Value=0;ReplayProgressText.Text="0 / "+plan.Count+" logros";
             GoTo("Ejecucion");UpdateButtons();
@@ -516,7 +575,7 @@ namespace AchievementTimelineReplay.Wpf
             }
             catch(OperationCanceledException){Log("=== Migración cancelada por el usuario ===");ReplayStatus.Text="Cancelado.";SetStatus("Migración cancelada.");}
             catch(Exception ex){Log("ERROR: "+ex);ReplayStatus.Text="ERROR: "+ex.Message;MessageBox.Show(this,ex.Message,"Error de migración",MessageBoxButton.OK,MessageBoxImage.Error);}
-            finally {running=false;replayCancellation.Dispose();replayCancellation=null;UpdateButtons();}
+            finally {running=false;executingGame=null;activeSchedule=null;replayCancellation.Dispose();replayCancellation=null;UpdateButtons();}
         }
         void CancelReplayClick(object sender,RoutedEventArgs e)
         {
@@ -535,10 +594,11 @@ namespace AchievementTimelineReplay.Wpf
             QueryButton.IsEnabled=available && !running && samMode==SamCliMode.Modern;
             OpenSamButton.IsEnabled=available && !running && samMode==SamCliMode.Modern;
             UpButton.IsEnabled=DownButton.IsEnabled=available && !running && CustomOrder.IsChecked==true;
-            AchievementsGrid.IsEnabled=available && !running;
+            AchievementsGrid.IsEnabled=available;
+            AchievementsGrid.IsReadOnly=running;
             foreach(var control in new Control[]{DurationHours,DurationMinutes,DurationSeconds,InitialDelay,LockFirst,IdleDuringMigration,CustomOrder,LimitLongGaps}) control.IsEnabled=available && !running;
             MaxGapMinutes.IsEnabled=available && !running && LimitLongGaps.IsChecked==true;
-            GamesGrid.IsEnabled=!running;
+            GamesGrid.IsEnabled=!scanning;
             SteamPath.IsEnabled=SamPath.IsEnabled=!running && !scanning;
             NavScan.IsEnabled=NavLibrary.IsEnabled=NavPlan.IsEnabled=NavExecution.IsEnabled=NavLogs.IsEnabled=true;
         }

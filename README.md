@@ -1,5 +1,11 @@
 # Achievement Timeline Replay
 
+## Descargar v0.6.2 para Windows x64
+
+[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.6.2_Windows_x64.zip)
+
+Extraer **todo el ZIP** en una carpeta nueva y abrir `AchievementTimelineReplay.Wpf.exe`. No se necesita compilar ni instalar .NET. Mantener las DLL y demás archivos junto al ejecutable. Steam y SamRewritten se seleccionan en la aplicación, como antes; no vienen incluidos.
+
 Aplicación Windows para revisar y reproducir historiales locales de logros de Steam mediante SamRewritten.
 
 ## Compilar y abrir en Windows
@@ -60,3 +66,23 @@ En el plan, activar **Limitar esperas automáticas largas** y elegir el máximo 
 El signo **?** explica la diferencia entre tiempo calendario y tiempo jugado. No se infieren sesiones reales ni se cambian timestamps históricos en Steam. No se agregan funciones para repartir logros entre días.
 
 Prueba manual adicional: comparar el mismo plan con el límite desactivado/activado, probar una espera manual superior al límite y comprobar que los valores inválidos impiden iniciar. Desactivar el límite debe recuperar el escalado automático completo. Las pruebas del núcleo cubren estas reglas con intervalos de 18 horas y 3 días.
+
+## v0.6.2 — consulta Steam, ayudas y navegación durante la ejecución
+
+- Consultar Steam desmarca los logros seleccionados que SAM informa como desbloqueados, con o sin fecha. Los demás conservan su selección. No se cambian las fechas históricas, los tiempos manuales ni los snapshots.
+- En modo normal, se comprueba de nuevo antes de ejecutar. Si se detectan logros ya desbloqueados, se desmarcan y se devuelve al plan para revisarlo y confirmar nuevamente. Si la respuesta no se puede interpretar, no se inicia. El modo reparación permite bloquear y volver a desbloquear logros que se hayan seleccionado explícitamente; puede cambiar su fecha oficial.
+- Ayudas **?** para espera inicial, modo reparación y SAM idle.
+- Durante una migración se puede buscar y seleccionar otros juegos, desplazar tablas y seleccionar logros para leer sus detalles. Las casillas, tiempos y orden quedan bloqueados hasta terminar o cancelar. Se conserva en memoria el plan de cada juego al navegar; el plan en marcha, sus fechas previstas y la pantalla de ejecución siguen asociados al juego original. No es guardado persistente entre cierres.
+- Paquete Windows x64 autónomo con runtime .NET 8 incluido. El código fuente sigue disponible y `WpfPrototype/publish-windows.cmd` permite regenerar la carpeta distribuible desde Windows con el SDK de .NET 8.
+
+### Verificación de v0.6.2
+
+Las pruebas del núcleo incluyen desbloqueados con y sin fecha, conservación de selecciones previas y tiempos, consultas repetidas, reparación explícita, límites de espera y conservación de snapshots. El ejecutable Windows se genera por compilación cruzada; su inicio y los gestos WPF requieren comprobación en Windows.
+
+Pruebas manuales adicionales:
+
+1. Consultar Steam: los ya desbloqueados deben quedar desmarcados, los bloqueados conservar su selección y los tiempos manuales mantenerse. Repetir la consulta.
+2. Pasar el cursor por cada **?** de las tres opciones y leer su explicación.
+3. Durante una espera del plan, desplazar la biblioteca, filtrar, seleccionar otro juego y leer sus logros. Volver al juego original: conservar selección, orden y tiempos. La pantalla Ejecución debe conservar el juego original, progreso y cancelación.
+4. Comprobar que se puede seleccionar una fila y desplazarse, pero no editar casillas, tiempos ni orden durante la ejecución.
+5. Extraer el paquete autónomo completo en una carpeta nueva y abrir el .exe directamente, sin ejecutar build-wpf.cmd.

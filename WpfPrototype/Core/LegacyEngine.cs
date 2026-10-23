@@ -179,6 +179,21 @@ namespace AchievementTimelineReplay
             string text=(r.StdOut+"\n"+r.StdErr).ToLowerInvariant();
             return r.TimedOut || r.ExitCode != 0 || text.Contains("\"success\": false") || text.Contains("\"success\":false") || text.Contains("failed to ");
         }
+        public static bool IsUnlocked(string state) => state=="Desbloqueado" || (state?.StartsWith("✓ ",StringComparison.Ordinal)??false);
+        public static int ApplySteamStates(IEnumerable<AchievementRecord> achievements,Dictionary<string,string> states,bool omitUnlocked)
+        {
+            int omitted=0;
+            foreach(var a in achievements)
+            {
+                a.SteamState=states.TryGetValue(a.ApiId,out var state)?state:"No encontrado";
+                if(omitUnlocked && IsUnlocked(a.SteamState) && a.Included)
+                {
+                    a.Included=false;
+                    omitted++;
+                }
+            }
+            return omitted;
+        }
         public static Dictionary<string,string> States(string response)
         {
             var d=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
