@@ -469,6 +469,33 @@ namespace AchievementTimelineReplay
     }
     internal sealed class LegacyReplayer
     {
+        readonly object samGate=new object();
+        Process idleProcess;
+        bool replayActive;
+        string replayCli;
+        uint replayApp;
+        SamCliMode replayMode;
+        bool replayIdle;
+        CancellationToken replayCancellation;
+        Exception idleFailure;
+        public ProcessResult QueryOtherGame(string cli,uint appId)
+        {
+            lock(samGate)
+            {
+                if(replayActive && appId==replayApp)throw new InvalidOperationException("El juego en ejecución no se puede consultar mientras se desbloquea.");
+                try {return SamRunner.RunProcess(cli,"list-achievements "+appId,15000);}
+                finally
+                {
+                    if(replayActive && replayIdle && replayMode==SamCliMode.Modern && !replayCancellation.IsCancellationRequested)
+                    {
+                        StopIdle(idleProcess,Log,false);idleProcess=null;
+                        idleProcess=StartIdle(replayCli,replayApp,true,replayMode,Log,false);
+                        if(idleProcess==null)idleFailure=new InvalidOperationException("No se pudo restaurar SAM idle después de consultar otro juego.");
+                        else Log("SAM idle restaurado para el juego en ejecución después de la consulta.");
+                    }
+                }
+            }
+        }
         readonly ReplayEvents ev;
         public LegacyReplayer(ReplayEvents events) {ev=events;}
         void Log(string s)=>ev.Log?.Invoke(s);
@@ -513,9 +540,11 @@ namespace AchievementTimelineReplay
         }
         void RunSync(List<ScheduleItem> plan,string cli,SamCliMode mode,uint appId,string name,bool lockFirst,bool idle,int initialDelay,CancellationToken cancellation)
         {
-            Process idleProcess=null;
             try
             {
+                lock(samGate)
+                {
+                replayActive=true;replayCli=cli;replayApp=appId;replayMode=mode;replayIdle=idle;replayCancellation=cancellation;
                 if(lockFirst)
                 {
                     Status("Bloqueando logros seleccionados…");
@@ -530,6 +559,7 @@ namespace AchievementTimelineReplay
                     Thread.Sleep(2000);
                     if(idleProcess==null || idleProcess.HasExited) throw new InvalidOperationException("No pude mantener activo SAM idle para registrar tiempo de juego.");
                 }
+                }
                 DateTime start=DateTime.Now.AddSeconds(initialDelay);
                 foreach(var item in plan) item.Due=start.AddSeconds(item.OffsetSeconds);
                 for(int i=0;i<plan.Count;i++)
@@ -538,12 +568,22 @@ namespace AchievementTimelineReplay
                     while(true)
                     {
                         cancellation.ThrowIfCancellationRequested();
+                        lock(samGate)
+                        {
+                            if(idleFailure!=null)throw idleFailure;
+                            if(idle && mode==SamCliMode.Modern && (idleProcess==null || idleProcess.HasExited))
+                                throw new InvalidOperationException("SAM idle se cerró durante la espera.");
+                        }
                         TimeSpan left=item.Due-DateTime.Now;
                         if(left.TotalMilliseconds<=0) break;
                         Status("Próximo: "+item.Achievement.DisplayName+" en "+LegacyTools.FormatSpan((long)Math.Ceiling(left.TotalSeconds)));
                         Thread.Sleep((int)Math.Min(1000,Math.Max(100,left.TotalMilliseconds)));
                     }
                     cancellation.ThrowIfCancellationRequested();
+                    lock(samGate)
+                    {
+                    cancellation.ThrowIfCancellationRequested();
+                    if(idleFailure!=null)throw idleFailure;
                     Status("Desbloqueando: "+item.Achievement.DisplayName);
                     var r=SamRunner.Set(cli,mode,appId,new List<string>{item.Achievement.ApiId},true);
                     Log("UNLOCK "+item.Achievement.ApiId+": "+r.StdOut+" "+r.StdErr);
@@ -557,11 +597,12 @@ namespace AchievementTimelineReplay
                         if(idleProcess.HasExited) throw new InvalidOperationException("SAM idle se cerró al intentar restaurar 'En ejecución'.");
                         Log("SAM idle restaurado después del logro.");
                     }
+                    }
                     Progress(i+1,plan.Count,item.Achievement.DisplayName);
                 }
                 Log("=== Migración completada: "+name+" ===");
             }
-            finally {StopIdle(idleProcess,Log);}
+            finally {lock(samGate){replayActive=false;StopIdle(idleProcess,Log);idleProcess=null;}}
         }
     }
 }

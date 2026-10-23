@@ -40,6 +40,7 @@ static class Program
         Directory.CreateDirectory(root);
         try
         {
+            SavedPlanChecks.Run(root);
             var first=new AchievementRecord{ApiId="A",OriginalUnix=100};
             var second=new AchievementRecord{ApiId="B",OriginalUnix=100+18*3600};
             var third=new AchievementRecord{ApiId="C",OriginalUnix=100+18*3600+3*86400};

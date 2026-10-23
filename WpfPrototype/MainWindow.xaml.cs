@@ -63,10 +63,10 @@ namespace AchievementTimelineReplay.Wpf
         sealed class BrowsedPlan
         {
             public List<AchievementRecord> Records;
-            public bool CustomOrder;
-            public long Duration;
+            public PlanParameters Parameters;
             public AchievementRecord Selected;
         }
+        readonly Dictionary<GameEntry,string> savedSignatures=new Dictionary<GameEntry,string>();
         readonly Dictionary<GameEntry,BrowsedPlan> browsedPlans=new Dictionary<GameEntry,BrowsedPlan>();
         GameEntry currentGame;
         GameEntry executingGame;
@@ -74,6 +74,12 @@ namespace AchievementTimelineReplay.Wpf
         SamCliMode samMode=SamCliMode.Unknown;
         CancellationTokenSource scanCancellation;
         CancellationTokenSource replayCancellation;
+        bool querying;
+        bool preparing;
+        LegacyReplayer activeReplayer;
+        readonly PlanStore planStore=new PlanStore(Path.Combine(LegacyTools.DataDirectory,"Plans"));
+        bool CanEditPlan => currentGame!=null && !scanning && !preparing && (!running || !ReferenceEquals(currentGame,executingGame));
+        bool CanQueryPlan => CanEditPlan && !querying;
         bool scanning;
         bool running;
         bool initialized;
@@ -95,7 +101,7 @@ namespace AchievementTimelineReplay.Wpf
             initialized=true;
             GoTo("Escaneo");
             UpdateButtons();
-            Log("WPF v0.6.2 iniciada. Motor derivado de v0.5.3. No se ha modificado Steam.");
+            Log("WPF v0.6.3 iniciada. Motor derivado de v0.5.3. No se ha modificado Steam.");
             if(!String.IsNullOrWhiteSpace(SamPath.Text)) _=ValidateSamAsync(false);
         }
         void Log(string s)
@@ -133,12 +139,14 @@ namespace AchievementTimelineReplay.Wpf
         }
         void BrowseSteam(object sender,RoutedEventArgs e)
         {
+            if(running || preparing || querying)return;
             // WPF usa el diálogo nativo de Windows sin agregar paquetes externos.
             var dlg=new Microsoft.Win32.OpenFolderDialog {Title="Seleccioná la carpeta raíz de Steam",InitialDirectory=Directory.Exists(SteamPath.Text)?SteamPath.Text:Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86)};
             if(dlg.ShowDialog(this)==true) {SteamPath.Text=dlg.FolderName;SavePaths();}
         }
         void BrowseSam(object sender,RoutedEventArgs e)
         {
+            if(running || preparing || querying)return;
             var dlg=new OpenFileDialog {Filter="SamRewritten CLI (*.exe)|*.exe|Todos los archivos (*.*)|*.*",Title="Seleccioná samrewritten-cli.exe"};
             if(dlg.ShowDialog(this)==true) {SamPath.Text=dlg.FileName;SavePaths();_=ValidateSamAsync(true);}
         }
@@ -163,7 +171,7 @@ namespace AchievementTimelineReplay.Wpf
         }
         async void ScanClick(object sender,RoutedEventArgs e)
         {
-            if(scanning || running) return;
+            if(scanning || running || querying || preparing) return;
             SavePaths();
             string steam=SteamPath.Text.Trim();
             string cli=SamPath.Text.Trim();
@@ -223,7 +231,7 @@ namespace AchievementTimelineReplay.Wpf
         }
         void GameChanged(object sender,SelectionChangedEventArgs e)
         {
-            if(!initialized || scanning)return;
+            if(!initialized || scanning || preparing)return;
             var next=(GamesGrid.SelectedItem as GameRow)?.Game;
             if(ReferenceEquals(next,currentGame))return;
             // Navegar conserva el plan mostrado. La ejecución retiene su propia lista
@@ -231,8 +239,8 @@ namespace AchievementTimelineReplay.Wpf
             if(currentGame!=null)
                 browsedPlans[currentGame]=new BrowsedPlan
                 {
-                    Records=order.ToList(),CustomOrder=CustomOrder.IsChecked==true,
-                    Duration=(long)TargetDuration(),Selected=(AchievementsGrid.SelectedItem as AchievementView)?.Record
+                    Records=order.ToList(),
+                    Parameters=ReadPlanParameters(),Selected=(AchievementsGrid.SelectedItem as AchievementView)?.Record
                 };
             currentGame=next;
             order.Clear();achievementRows.Clear();
@@ -244,12 +252,10 @@ namespace AchievementTimelineReplay.Wpf
                 HeaderGame.Text=currentGame.GameName;
                 HeaderGameInfo.Text="AppID "+currentGame.AppId+" · "+order.Count+" logros · "+(currentGame.HasSnapshot?"Snapshot protegido":"Sin snapshot");
                 if(!running)ExecutionGame.Text=currentGame.GameName;
-                updating=true;
-                CustomOrder.IsChecked=saved && previous.CustomOrder;
-                updating=false;
-                SetDuration(saved?previous.Duration:LegacyPlanner.OriginalSpan(order));
+                ApplyPlanParameters(saved?previous.Parameters:new PlanParameters{DurationSeconds=LegacyPlanner.OriginalSpan(order)});
                 Log("Cargado "+currentGame.GameName+" ["+currentGame.AppId+"]: "+order.Count+" logros.");
                 RefreshPlan();
+
                 if(saved && previous.Selected!=null)
                 {
                     AchievementsGrid.SelectedItem=achievementRows.FirstOrDefault(a=>ReferenceEquals(a.Record,previous.Selected));
@@ -289,13 +295,84 @@ namespace AchievementTimelineReplay.Wpf
         bool GapLimitValid() => LimitLongGaps.IsChecked!=true || AutomaticGapLimit().HasValue;
         void GapLimitChanged(object sender,RoutedEventArgs e)
         {
-            if(initialized && !updating && !running)RefreshPlan();
+            if(initialized && !updating && CanEditPlan)RefreshPlan();
+        }
+        PlanParameters ReadPlanParameters() => new PlanParameters
+        {
+            DurationSeconds=TargetDuration(),CustomOrder=CustomOrder.IsChecked==true,
+            InitialDelaySeconds=InitialSeconds(),Repair=LockFirst.IsChecked==true,Idle=IdleDuringMigration.IsChecked==true,
+            LimitLongGaps=LimitLongGaps.IsChecked==true,
+            MaximumGapMinutes=double.TryParse(MaxGapMinutes.Text,out var maximum) && double.IsFinite(maximum) && maximum>0 && maximum<=525600?maximum:30
+        };
+        void ApplyPlanParameters(PlanParameters p)
+        {
+            SetDuration((long)p.DurationSeconds);
+            updating=true;
+            CustomOrder.IsChecked=p.CustomOrder;InitialDelay.Text=p.InitialDelaySeconds.ToString();
+            LockFirst.IsChecked=p.Repair;IdleDuringMigration.IsChecked=p.Idle;
+            LimitLongGaps.IsChecked=p.LimitLongGaps;MaxGapMinutes.Text=p.MaximumGapMinutes.ToString();
+            updating=false;
+        }
+        void UpdatePlanSaveStatus()
+        {
+            if(currentGame==null){PlanSaveStatus.Text="Sin juego seleccionado.";return;}
+            try
+            {
+                if(!planStore.Exists(currentGame)){PlanSaveStatus.Text="Sin plan guardado en disco. Guardá para conservar los cambios.";return;}
+                if(!savedSignatures.TryGetValue(currentGame,out var signature))
+                    savedSignatures[currentGame]=signature=PlanStore.Signature(planStore.Load(currentGame));
+                PlanSaveStatus.Text=PlanStore.Signature(PlanStore.Capture(currentGame,order,ReadPlanParameters()))==signature
+                    ? "El borrador coincide con el plan guardado en disco."
+                    : "El borrador difiere del guardado. Guardá los cambios o usá Cargar guardado.";
+            }
+            catch(Exception ex){PlanSaveStatus.Text="No se pudo comprobar el plan guardado: "+ex.Message;}
+        }
+        bool CommitPlanEdits() => AchievementsGrid.CommitEdit(DataGridEditingUnit.Cell,true) && AchievementsGrid.CommitEdit(DataGridEditingUnit.Row,true);
+        void SavePlanClick(object sender,RoutedEventArgs e)
+        {
+            if(!CanEditPlan || !GapLimitValid() || !CommitPlanEdits())return;
+            try
+            {
+                var saved=PlanStore.Capture(currentGame,order,ReadPlanParameters());
+                planStore.Save(currentGame,saved);savedSignatures[currentGame]=PlanStore.Signature(saved);
+                PlanSaveStatus.Text="Plan guardado en disco: "+DateTime.Now.ToString("dd/MM HH:mm:ss");
+                SetStatus("Plan de "+currentGame.GameName+" guardado. No modifica Steam ni el historial original.");
+            }
+            catch(Exception ex){MessageBox.Show(this,ex.Message,"No se pudo guardar el plan",MessageBoxButton.OK,MessageBoxImage.Warning);}
+        }
+        void LoadPlanClick(object sender,RoutedEventArgs e)
+        {
+            if(!CanEditPlan)return;
+            if(MessageBox.Show(this,"Cargar el plan guardado reemplazará los cambios de este borrador. No modifica Steam. ¿Continuar?","Cargar plan",MessageBoxButton.YesNo,MessageBoxImage.Question)!=MessageBoxResult.Yes)return;
+            try
+            {
+                var saved=planStore.Load(currentGame);
+                var restored=PlanStore.Restore(currentGame,saved);
+                savedSignatures[currentGame]=PlanStore.Signature(saved);
+                order.Clear();order.AddRange(restored.Records);ApplyPlanParameters(saved.Parameters);RefreshPlan();
+                PlanSaveStatus.Text="Plan cargado. Consultá Steam antes de ejecutarlo.";
+                if(restored.Added>0 || restored.Missing>0)
+                    MessageBox.Show(this,$"El historial cambió: {restored.Missing} logros guardados ya no están y {restored.Added} son nuevos. Los nuevos se agregaron desmarcados. Revisá el plan.","Plan actualizado",MessageBoxButton.OK,MessageBoxImage.Information);
+            }
+            catch(Exception ex){MessageBox.Show(this,ex.Message,"No se pudo cargar el plan",MessageBoxButton.OK,MessageBoxImage.Warning);}
+        }
+        void RestoreOriginalClick(object sender,RoutedEventArgs e)
+        {
+            if(!CanEditPlan)return;
+            if(MessageBox.Show(this,"Restaurar el historial importado descarta los cambios de este borrador: selección, orden, tiempos y opciones. El plan guardado en disco y Steam no cambian. ¿Continuar?","Restaurar original",MessageBoxButton.YesNo,MessageBoxImage.Question)!=MessageBoxResult.Yes)return;
+            order.Clear();
+            foreach(var source in currentGame.Achievements.OrderBy(a=>a.OriginalUnix))
+            {
+                var a=source.Clone();a.Included=true;a.ManualGapSeconds=null;order.Add(a);
+            }
+            ApplyPlanParameters(new PlanParameters{DurationSeconds=LegacyPlanner.OriginalSpan(order)});
+            RefreshPlan();PlanSaveStatus.Text="Historial original restaurado en el borrador. El guardado en disco no cambió.";
         }
         int InitialSeconds() => int.TryParse(InitialDelay.Text,out int delay)?Math.Clamp(delay,0,3600):10;
-        void DurationChanged(object sender,TextChangedEventArgs e) {if(initialized && !updating && !running)RefreshPlan();}
+        void DurationChanged(object sender,TextChangedEventArgs e) {if(initialized && !updating && CanEditPlan)RefreshPlan();}
         void IncludedChanged()
         {
-            if(!initialized || updating || running)return;
+            if(!initialized || updating || !CanEditPlan)return;
             // En la versión 0.5.3 al cambiar selección se ajusta la duración automática al intervalo histórico seleccionado.
             SetDuration(LegacyPlanner.OriginalSpan(order));
             Dispatcher.BeginInvoke(new Action(RefreshPlan));
@@ -334,6 +411,7 @@ namespace AchievementTimelineReplay.Wpf
             if(!running)ExecutionSummary.Text=index+" logros · "+LegacyTools.FormatSpan((long)Math.Round(last))+" · espera inicial "+InitialSeconds()+"s";
             ReplayProgressText.Text=running ? ReplayProgressText.Text : "0 / "+index+" logros";
             updating=false;
+            UpdatePlanSaveStatus();
             UpdateButtons();
         }
         void AchievementChanged(object sender,SelectionChangedEventArgs e)
@@ -348,7 +426,7 @@ namespace AchievementTimelineReplay.Wpf
         }
         void AchievementCellEditEnding(object sender,DataGridCellEditEndingEventArgs e)
         {
-            if(!initialized || updating || running || e.EditAction!=DataGridEditAction.Commit)return;
+            if(!initialized || updating || !CanEditPlan || e.EditAction!=DataGridEditAction.Commit)return;
             var row=e.Row.Item as AchievementView;
             var box=e.EditingElement as TextBox;
             if(row==null || box==null || !row.Record.Included)return;
@@ -378,7 +456,7 @@ namespace AchievementTimelineReplay.Wpf
         }
         void CustomOrderChanged(object sender,RoutedEventArgs e)
         {
-            if(!initialized || updating || running)return;
+            if(!initialized || updating || !CanEditPlan)return;
             if(CustomOrder.IsChecked!=true) {RestoreChronological();RefreshPlan();}
             UpdateButtons();
         }
@@ -386,7 +464,7 @@ namespace AchievementTimelineReplay.Wpf
         void MoveDown(object sender,RoutedEventArgs e)=>MoveSelected(1);
         void MoveSelected(int dir)
         {
-            if(CustomOrder.IsChecked!=true || running)return;
+            if(CustomOrder.IsChecked!=true || !CanEditPlan)return;
             var a=(AchievementsGrid.SelectedItem as AchievementView)?.Record;
             int i=a==null?-1:order.IndexOf(a), next=i+dir;
             if(i<0||next<0||next>=order.Count)return;
@@ -398,8 +476,8 @@ namespace AchievementTimelineReplay.Wpf
             var chronological=order.OrderBy(a=>a.OriginalUnix).ToList();
             order.Clear();order.AddRange(chronological);
         }
-        void RestoreOrder(object sender,RoutedEventArgs e) {if(running)return;RestoreChronological();RefreshPlan();}
-        void ClearTimings(object sender,RoutedEventArgs e) {if(running)return;foreach(var a in order)a.ManualGapSeconds=null;RefreshPlan();}
+        void RestoreOrder(object sender,RoutedEventArgs e) {if(!CanEditPlan)return;RestoreChronological();RefreshPlan();}
+        void ClearTimings(object sender,RoutedEventArgs e) {if(!CanEditPlan)return;foreach(var a in order)a.ManualGapSeconds=null;RefreshPlan();}
         static T Ancestor<T>(DependencyObject x) where T:DependencyObject
         {
             while(x!=null && x is not T)
@@ -419,7 +497,7 @@ namespace AchievementTimelineReplay.Wpf
         }
         void AchievementMouseMove(object sender,MouseEventArgs e)
         {
-            if(running || e.LeftButton!=MouseButtonState.Pressed || dragRow==null)return;
+            if(!CanEditPlan || e.LeftButton!=MouseButtonState.Pressed || dragRow==null)return;
             Point position=e.GetPosition(AchievementsGrid);
             if(Math.Abs(position.X-dragStart.X)<SystemParameters.MinimumHorizontalDragDistance && Math.Abs(position.Y-dragStart.Y)<SystemParameters.MinimumVerticalDragDistance)return;
             var source=dragRow;dragRow=null;
@@ -431,7 +509,7 @@ namespace AchievementTimelineReplay.Wpf
         {
             e.Handled=true;
             e.Effects=DragDropEffects.None;
-            if(running || !e.Data.GetDataPresent(typeof(AchievementRecord)))return;
+            if(!CanEditPlan || !e.Data.GetDataPresent(typeof(AchievementRecord)))return;
             e.Effects=DragDropEffects.Move;
             var scroll=FindScrollViewer(AchievementsGrid);
             var position=e.GetPosition(AchievementsGrid);
@@ -455,7 +533,7 @@ namespace AchievementTimelineReplay.Wpf
         void AchievementDrop(object sender,DragEventArgs e)
         {
             e.Handled=true;
-            if(running)return;
+            if(!CanEditPlan)return;
             var from=e.Data.GetData(typeof(AchievementRecord)) as AchievementRecord;
             var row=Ancestor<DataGridRow>(e.OriginalSource as DependencyObject);
             var to=row?.Item as AchievementView;
@@ -474,34 +552,33 @@ namespace AchievementTimelineReplay.Wpf
         }
         async void QuerySteamClick(object sender,RoutedEventArgs e)
         {
-            if(currentGame==null||running)return;
-            if(!await ValidateSamAsync(false) || samMode!=SamCliMode.Modern)
+            if(!CanQueryPlan)return;
+            var game=currentGame;
+            string cli=SamPath.Text.Trim();
+            if(samMode!=SamCliMode.Modern || !File.Exists(cli))
             {
-                MessageBox.Show(this,"Consultar logros requiere el CLI moderno de SamRewritten.","Steam",MessageBoxButton.OK,MessageBoxImage.Information);return;
+                MessageBox.Show(this,"Seleccioná y validá el CLI moderno de SamRewritten en Escaneo.","Steam",MessageBoxButton.OK,MessageBoxImage.Information);return;
             }
-            string cli=SamPath.Text.Trim();uint appId=currentGame.AppId;
-            QueryButton.IsEnabled=false;SetStatus("Consultando logros actuales de Steam…");
+            querying=true;UpdateButtons();
+            var replayer=activeReplayer;
+            SetStatus("Consultando Steam: "+game.GameName+"…");
             try
             {
-                var r=await Task.Run(()=>SamRunner.RunProcess(cli,"list-achievements "+appId,90000));
-                if(SamRunner.Failed(r)) throw new Exception(r.StdErr+"\n"+r.StdOut);
+                var r=await Task.Run(()=>replayer!=null ? replayer.QueryOtherGame(cli,game.AppId) : SamRunner.List(cli,SamCliMode.Modern,game.AppId));
+                if(SamRunner.Failed(r))throw new Exception(r.StdErr+"\n"+r.StdOut);
                 var states=SamRunner.States(r.StdOut);
                 if(states.Count==0)throw new InvalidDataException("SAM no devolvió estados de logros; se conserva el contador anterior.");
-                if(currentGame!=null && currentGame.AppId==appId)
-                {
-                    var libraryRow=games.FirstOrDefault(g=>g.AppId==appId);
-                    if(libraryRow!=null)
-                    {
-                        libraryRow.Count=states.Values.Count(SamRunner.IsUnlocked)+" / "+states.Count;
-                    }
-                    int omitted=SamRunner.ApplySteamStates(order,states,true);
-                    RefreshPlan();
-                    Log("Steam: "+omitted+" logros seleccionados ya desbloqueados fueron desmarcados. Los demás conservan su selección.");
-                    SetStatus("Estado actualizado: "+omitted+" logros ya desbloqueados desmarcados.");
-                }
-                Log("Consulta SAM completada ["+appId+"].");
-            }catch(Exception ex){Log("Error consultando Steam: "+ex.Message);MessageBox.Show(this,ex.Message,"SamRewritten",MessageBoxButton.OK,MessageBoxImage.Warning);}
-            finally {UpdateButtons();}
+                var libraryRow=games.FirstOrDefault(g=>ReferenceEquals(g.Game,game));
+                if(libraryRow!=null)libraryRow.Count=states.Values.Count(SamRunner.IsUnlocked)+" / "+states.Count;
+                // Si se navegó mientras llegaba la respuesta, actualizar el borrador correcto.
+                var target=ReferenceEquals(currentGame,game)?order:browsedPlans.TryGetValue(game,out var cached)?cached.Records:null;
+                int omitted=target==null?0:SamRunner.ApplySteamStates(target,states,true);
+                if(ReferenceEquals(currentGame,game))RefreshPlan();
+                SetStatus(game.GameName+": "+omitted+" logros ya desbloqueados desmarcados.");
+                Log("Consulta SAM ["+game.AppId+"]: "+omitted+" logros seleccionados desmarcados.");
+            }
+            catch(Exception ex){Log("Error consultando Steam: "+ex.Message);MessageBox.Show(this,ex.Message,"SamRewritten",MessageBoxButton.OK,MessageBoxImage.Warning);}
+            finally {querying=false;UpdateButtons();}
         }
         void OpenSamClick(object sender,RoutedEventArgs e)
         {
@@ -514,68 +591,76 @@ namespace AchievementTimelineReplay.Wpf
         }
         async void StartReplayClick(object sender,RoutedEventArgs e)
         {
-            if(running||scanning||currentGame==null || !currentGame.HasLocalHistory || !GapLimitValid())return;
-            var selected=order.Where(x=>x.Included).ToList();
-            if(selected.Count==0) {MessageBox.Show(this,"No hay logros seleccionados.","Migración",MessageBoxButton.OK,MessageBoxImage.Warning);return;}
-            if(!await ValidateSamAsync(false)) {MessageBox.Show(this,"Seleccioná y validá el ejecutable CLI de SamRewritten.","SAM",MessageBoxButton.OK,MessageBoxImage.Warning);return;}
-            if(Process.GetProcessesByName("steam").Length==0) {MessageBox.Show(this,"Steam no parece estar abierto. Abrilo e iniciá sesión.","Steam",MessageBoxButton.OK,MessageBoxImage.Warning);return;}
-            var schedule=LegacyPlanner.Calculate(order,TargetDuration(),AutomaticGapLimit());
-            if(schedule.Count==0)return;
-            var plan=schedule.Values.OrderBy(x=>x.OffsetSeconds).ToList();
-            double last=schedule.Values.Max(x=>x.OffsetSeconds);
-            string summary="Juego: "+currentGame.GameName+" ["+currentGame.AppId+"]\nLogros: "+selected.Count+"\nHistorial calendario original: "+LegacyTools.FormatSpan(LegacyPlanner.OriginalSpan(order))+"\nDuración automática elegida: "+LegacyTools.FormatSpan((long)TargetDuration())+"\nDuración efectiva: "+LegacyTools.FormatSpan((long)Math.Round(last))+"\nLímite por espera automática: "+(AutomaticGapLimit() is double limit?LegacyTools.FormatSpan((long)Math.Round(limit)):"desactivado")+"\nOrden: "+(CustomOrder.IsChecked==true?"personalizado":"original")+"\nBloquear antes: "+(LockFirst.IsChecked==true?"sí":"no")+"\nRegistrar tiempo de juego: "+(IdleDuringMigration.IsChecked==true?"sí":"no")+"\n\nEsto modificará los logros de Steam. ¿Continuar?";
-            if(MessageBox.Show(this,summary,"Confirmar migración",MessageBoxButton.YesNo,MessageBoxImage.Warning)!=MessageBoxResult.Yes)return;
-            string cli=SamPath.Text.Trim();uint appId=currentGame.AppId;SamCliMode mode=samMode;
-            bool locked=LockFirst.IsChecked==true, idle=IdleDuringMigration.IsChecked==true;
-            int delay=InitialSeconds();
-            string name=currentGame.GameName;
-            SetStatus("Verificando logros con SAM…");
-            var verify=await Task.Run(()=>SamRunner.List(cli,mode,appId));
-            if(currentGame==null || currentGame.AppId!=appId) {SetStatus("El juego seleccionado cambió durante la validación. Prepará el plan de nuevo.");return;}
-            if(SamRunner.Failed(verify)) {MessageBox.Show(this,"SAM no pudo leer los logros:\n"+verify.StdErr+"\n"+verify.StdOut,"SAM",MessageBoxButton.OK,MessageBoxImage.Error);return;}
-            // En modo normal, volver a comprobar antes de ejecutar: el estado pudo cambiar
-            // desde la última consulta. Si cambió el plan, pedir que se revise de nuevo.
-            if(mode==SamCliMode.Modern && !locked)
+            if(running||scanning||querying||preparing||currentGame==null || !currentGame.HasLocalHistory || !GapLimitValid())return;
+            if(!CommitPlanEdits())return;
+            preparing=true;UpdateButtons();
+            try
             {
-                try
+                var selected=order.Where(x=>x.Included).ToList();
+                if(selected.Count==0) {MessageBox.Show(this,"No hay logros seleccionados.","Migración",MessageBoxButton.OK,MessageBoxImage.Warning);return;}
+                if(!await ValidateSamAsync(false)) {MessageBox.Show(this,"Seleccioná y validá el ejecutable CLI de SamRewritten.","SAM",MessageBoxButton.OK,MessageBoxImage.Warning);return;}
+                if(Process.GetProcessesByName("steam").Length==0) {MessageBox.Show(this,"Steam no parece estar abierto. Abrilo e iniciá sesión.","Steam",MessageBoxButton.OK,MessageBoxImage.Warning);return;}
+                var schedule=LegacyPlanner.Calculate(order,TargetDuration(),AutomaticGapLimit());
+                if(schedule.Count==0)return;
+                var plan=schedule.Values.OrderBy(x=>x.OffsetSeconds).ToList();
+                double last=schedule.Values.Max(x=>x.OffsetSeconds);
+                string summary="Juego: "+currentGame.GameName+" ["+currentGame.AppId+"]\nLogros: "+selected.Count+"\nHistorial calendario original: "+LegacyTools.FormatSpan(LegacyPlanner.OriginalSpan(order))+"\nDuración automática elegida: "+LegacyTools.FormatSpan((long)TargetDuration())+"\nDuración efectiva: "+LegacyTools.FormatSpan((long)Math.Round(last))+"\nLímite por espera automática: "+(AutomaticGapLimit() is double limit?LegacyTools.FormatSpan((long)Math.Round(limit)):"desactivado")+"\nOrden: "+(CustomOrder.IsChecked==true?"personalizado":"original")+"\nBloquear antes: "+(LockFirst.IsChecked==true?"sí":"no")+"\nRegistrar tiempo de juego: "+(IdleDuringMigration.IsChecked==true?"sí":"no")+"\n\nEsto modificará los logros de Steam. ¿Continuar?";
+                if(MessageBox.Show(this,summary,"Confirmar migración",MessageBoxButton.YesNo,MessageBoxImage.Warning)!=MessageBoxResult.Yes)return;
+                string cli=SamPath.Text.Trim();uint appId=currentGame.AppId;SamCliMode mode=samMode;
+                bool locked=LockFirst.IsChecked==true, idle=IdleDuringMigration.IsChecked==true;
+                int delay=InitialSeconds();
+                string name=currentGame.GameName;
+                SetStatus("Verificando logros con SAM…");
+                var verify=await Task.Run(()=>SamRunner.List(cli,mode,appId));
+                if(currentGame==null || currentGame.AppId!=appId) {SetStatus("El juego seleccionado cambió durante la validación. Prepará el plan de nuevo.");return;}
+                if(SamRunner.Failed(verify)) {MessageBox.Show(this,"SAM no pudo leer los logros:\n"+verify.StdErr+"\n"+verify.StdOut,"SAM",MessageBoxButton.OK,MessageBoxImage.Error);return;}
+                // En modo normal, volver a comprobar antes de ejecutar: el estado pudo cambiar
+                // desde la última consulta. Si cambió el plan, pedir que se revise de nuevo.
+                if(mode==SamCliMode.Modern && !locked)
                 {
-                    var latest=SamRunner.States(verify.StdOut);
-                    if(latest.Count==0)throw new InvalidDataException("SAM no devolvió estados utilizables.");
-                    int omitted=SamRunner.ApplySteamStates(order,latest,true);
-                    if(omitted>0)
+                    try
                     {
-                        RefreshPlan();GoTo("Plan");
-                        SetStatus(omitted+" logros ya desbloqueados fueron desmarcados. Revisá el plan e iniciá nuevamente.");
-                        Log(GlobalStatus.Text);
+                        var latest=SamRunner.States(verify.StdOut);
+                        if(latest.Count==0)throw new InvalidDataException("SAM no devolvió estados utilizables.");
+                        int omitted=SamRunner.ApplySteamStates(order,latest,true);
+                        if(omitted>0)
+                        {
+                            RefreshPlan();GoTo("Plan");
+                            SetStatus(omitted+" logros ya desbloqueados fueron desmarcados. Revisá el plan e iniciá nuevamente.");
+                            Log(GlobalStatus.Text);
+                            return;
+                        }
+                    }
+                    catch(Exception ex)
+                    {
+                        MessageBox.Show(this,"No se pudo verificar qué logros ya están desbloqueados. No se inició la migración.\n"+ex.Message,"Steam",MessageBoxButton.OK,MessageBoxImage.Warning);
                         return;
                     }
                 }
-                catch(Exception ex)
+                ExecutionGame.Text=name;
+                executingGame=currentGame;activeSchedule=schedule;
+                preparing=false;
+                running=true;replayCancellation=new CancellationTokenSource();
+                ReplayProgress.Maximum=plan.Count;ReplayProgress.Value=0;ReplayProgressText.Text="0 / "+plan.Count+" logros";
+                GoTo("Ejecucion");UpdateButtons();
+                Log("=== Inicio de migración: "+name+" ===");
+                var replayer=new LegacyReplayer(new ReplayEvents
                 {
-                    MessageBox.Show(this,"No se pudo verificar qué logros ya están desbloqueados. No se inició la migración.\n"+ex.Message,"Steam",MessageBoxButton.OK,MessageBoxImage.Warning);
-                    return;
+                    Log=Log,
+                    Status=s=>Dispatcher.BeginInvoke(new Action(()=>{ReplayStatus.Text=s;SetStatus(s);})),
+                    Progress=(done,total,title)=>Dispatcher.BeginInvoke(new Action(()=>{ReplayProgress.Maximum=total;ReplayProgress.Value=done;ReplayProgressText.Text=done+" / "+total+" logros · Último: "+title;}))
+                });
+                try
+                {
+                    activeReplayer=replayer;
+                    await replayer.Run(plan,cli,mode,appId,name,locked,idle,delay,replayCancellation.Token);
+                    ReplayStatus.Text="Migración completada.";SetStatus("Migración completada.");
                 }
+                catch(OperationCanceledException){Log("=== Migración cancelada por el usuario ===");ReplayStatus.Text="Cancelado.";SetStatus("Migración cancelada.");}
+                catch(Exception ex){Log("ERROR: "+ex);ReplayStatus.Text="ERROR: "+ex.Message;MessageBox.Show(this,ex.Message,"Error de migración",MessageBoxButton.OK,MessageBoxImage.Error);}
+                finally {running=false;activeReplayer=null;executingGame=null;activeSchedule=null;replayCancellation.Dispose();replayCancellation=null;UpdateButtons();}
             }
-            ExecutionGame.Text=name;
-            executingGame=currentGame;activeSchedule=schedule;
-            running=true;replayCancellation=new CancellationTokenSource();
-            ReplayProgress.Maximum=plan.Count;ReplayProgress.Value=0;ReplayProgressText.Text="0 / "+plan.Count+" logros";
-            GoTo("Ejecucion");UpdateButtons();
-            Log("=== Inicio de migración: "+name+" ===");
-            var replayer=new LegacyReplayer(new ReplayEvents
-            {
-                Log=Log,
-                Status=s=>Dispatcher.BeginInvoke(new Action(()=>{ReplayStatus.Text=s;SetStatus(s);})),
-                Progress=(done,total,title)=>Dispatcher.BeginInvoke(new Action(()=>{ReplayProgress.Maximum=total;ReplayProgress.Value=done;ReplayProgressText.Text=done+" / "+total+" logros · Último: "+title;}))
-            });
-            try
-            {
-                await replayer.Run(plan,cli,mode,appId,name,locked,idle,delay,replayCancellation.Token);
-                ReplayStatus.Text="Migración completada.";SetStatus("Migración completada.");
-            }
-            catch(OperationCanceledException){Log("=== Migración cancelada por el usuario ===");ReplayStatus.Text="Cancelado.";SetStatus("Migración cancelada.");}
-            catch(Exception ex){Log("ERROR: "+ex);ReplayStatus.Text="ERROR: "+ex.Message;MessageBox.Show(this,ex.Message,"Error de migración",MessageBoxButton.OK,MessageBoxImage.Error);}
-            finally {running=false;executingGame=null;activeSchedule=null;replayCancellation.Dispose();replayCancellation=null;UpdateButtons();}
+            finally {preparing=false;UpdateButtons();}
         }
         void CancelReplayClick(object sender,RoutedEventArgs e)
         {
@@ -587,27 +672,31 @@ namespace AchievementTimelineReplay.Wpf
         {
             if(!initialized)return;
             bool available=currentGame!=null && currentGame.HasLocalHistory;
-            ScanButton.IsEnabled=!scanning && !running;
+            ScanButton.IsEnabled=!scanning && !running && !querying && !preparing;
             CancelScanButton.IsEnabled=scanning;
-            StartButton.IsEnabled=available && !running && !scanning && order.Any(x=>x.Included) && GapLimitValid();
+            StartButton.IsEnabled=available && !running && !scanning && !querying && !preparing && order.Any(x=>x.Included) && GapLimitValid();
             CancelReplayButton.IsEnabled=running;
-            QueryButton.IsEnabled=available && !running && samMode==SamCliMode.Modern;
-            OpenSamButton.IsEnabled=available && !running && samMode==SamCliMode.Modern;
-            UpButton.IsEnabled=DownButton.IsEnabled=available && !running && CustomOrder.IsChecked==true;
+            QueryButton.IsEnabled=CanQueryPlan && samMode==SamCliMode.Modern;
+            OpenSamButton.IsEnabled=available && !running && !preparing && !querying && samMode==SamCliMode.Modern;
+            UpButton.IsEnabled=DownButton.IsEnabled=CanEditPlan && CustomOrder.IsChecked==true;
             AchievementsGrid.IsEnabled=available;
-            AchievementsGrid.IsReadOnly=running;
-            foreach(var control in new Control[]{DurationHours,DurationMinutes,DurationSeconds,InitialDelay,LockFirst,IdleDuringMigration,CustomOrder,LimitLongGaps}) control.IsEnabled=available && !running;
-            MaxGapMinutes.IsEnabled=available && !running && LimitLongGaps.IsChecked==true;
-            GamesGrid.IsEnabled=!scanning;
-            SteamPath.IsEnabled=SamPath.IsEnabled=!running && !scanning;
+            AchievementsGrid.IsReadOnly=!CanEditPlan;
+            foreach(var control in new Control[]{DurationHours,DurationMinutes,DurationSeconds,InitialDelay,LockFirst,IdleDuringMigration,CustomOrder,LimitLongGaps}) control.IsEnabled=CanEditPlan;
+            MaxGapMinutes.IsEnabled=CanEditPlan && LimitLongGaps.IsChecked==true;
+            GamesGrid.IsEnabled=!scanning && !preparing;
+            SteamPath.IsEnabled=SamPath.IsEnabled=ValidateSamButton.IsEnabled=BrowseSamButton.IsEnabled=BrowseSteamButton.IsEnabled=!running && !scanning && !querying && !preparing;
+            RestoreOrderButton.IsEnabled=ClearTimingsButton.IsEnabled=RestoreOriginalButton.IsEnabled=CanEditPlan;
+            SavePlanButton.IsEnabled=CanEditPlan && GapLimitValid();
+            LoadPlanButton.IsEnabled=CanEditPlan && planStore.Exists(currentGame);
+            EditingStatus.Text=running?"En ejecución: "+executingGame?.GameName+(ReferenceEquals(currentGame,executingGame)?" · Este plan está bloqueado.":" · Podés preparar este otro juego."):"Editando borrador. Guardar plan conserva los cambios al cerrar.";
             NavScan.IsEnabled=NavLibrary.IsEnabled=NavPlan.IsEnabled=NavExecution.IsEnabled=NavLogs.IsEnabled=true;
         }
         void WindowClosing(object sender,CancelEventArgs e)
         {
-            if(running)
+            if(running || preparing || querying)
             {
                 e.Cancel=true;
-                MessageBox.Show(this,"Hay una migración en curso. Cancelala primero para detener SAM idle de forma segura.","Migración activa",MessageBoxButton.OK,MessageBoxImage.Information);
+                MessageBox.Show(this,"Hay una operación en curso. Si es una migración, cancelala primero; si es una consulta, esperá a que termine.","Migración activa",MessageBoxButton.OK,MessageBoxImage.Information);
                 GoTo("Ejecucion");return;
             }
             scanCancellation?.Cancel();SavePaths();

@@ -1,8 +1,8 @@
 # Achievement Timeline Replay
 
-## Descargar v0.6.2 para Windows x64
+## Descargar v0.6.3 para Windows x64
 
-[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.6.2_Windows_x64.zip)
+[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.6.3_Windows_x64.zip)
 
 Extraer **todo el ZIP** en una carpeta nueva y abrir `AchievementTimelineReplay.Wpf.exe`. No se necesita compilar ni instalar .NET. Mantener las DLL y demás archivos junto al ejecutable. Steam y SamRewritten se seleccionan en la aplicación, como antes; no vienen incluidos.
 
@@ -86,3 +86,18 @@ Pruebas manuales adicionales:
 3. Durante una espera del plan, desplazar la biblioteca, filtrar, seleccionar otro juego y leer sus logros. Volver al juego original: conservar selección, orden y tiempos. La pantalla Ejecución debe conservar el juego original, progreso y cancelación.
 4. Comprobar que se puede seleccionar una fila y desplazarse, pero no editar casillas, tiempos ni orden durante la ejecución.
 5. Extraer el paquete autónomo completo en una carpeta nueva y abrir el .exe directamente, sin ejecutar build-wpf.cmd.
+
+## v0.6.3 — preparar otros juegos y guardar planes
+
+Mientras un juego se ejecuta, se puede consultar Steam y editar selección, orden, duración, tiempos manuales, límite de esperas, espera inicial, reparación e idle de **otros juegos**. El juego activo sigue en modo lectura y no se puede iniciar una segunda migración. Las opciones son independientes para cada juego al navegar.
+
+- **Guardar plan** conserva un plan por cuenta y juego en `%LOCALAPPDATA%\AchievementTimelineReplay\Plans\<cuenta>_<appid>.json`. Guardar de nuevo reemplaza ese plan mediante escritura temporal y reemplazo del archivo. No escribe snapshots ni modifica Steam.
+- **Cargar guardado** recupera el plan después de cerrar/reabrir el programa y escanear. Pide confirmación antes de reemplazar el borrador. Los logros se relacionan por ID: si hay diferencias con el historial actual, avisa, omite los desaparecidos y agrega los nuevos desmarcados. Revisar y consultar Steam antes de ejecutar.
+- **Restaurar original** devuelve selección, orden e intervalos del historial importado, limpiando tiempos manuales y restaurando opciones por defecto. Pide confirmación. No borra el plan guardado; para reemplazarlo con el original hay que pulsar Guardar plan después.
+- El indicador de guardado permite ver si el borrador coincide con el archivo guardado. Las modificaciones se conservan en memoria al navegar, pero necesitan Guardar plan para sobrevivir al cierre.
+
+Los planes guardan intervalos relativos y las fechas originales proceden siempre del historial protegido. No guardan fechas futuras absolutas ni el progreso de una ejecución para reanudarla. Solo se conserva un plan guardado por cuenta/juego en esta versión.
+
+Las consultas de otros juegos se coordinan con los comandos de desbloqueo y restauran SAM idle para el juego activo después de consultar. Una consulta puede demorar brevemente un desbloqueo o la cancelación si coinciden; su proceso tiene un timeout de 15 segundos, además de la restauración de idle. La contabilización real de Steam debe validarse en Windows.
+
+Pruebas adicionales: guardar un plan con orden personalizado y todos los parámetros, cerrar/reabrir, escanear y cargarlo; restaurar el original sin borrar el guardado; preparar/consultar B mientras A está en marcha, volver a A y verificar que conserva su plan. Comprobar también que Cancelar detiene A aunque se esté viendo B. Las pruebas automáticas usan historiales y un CLI SAM simulado; no modifican cuentas reales.
