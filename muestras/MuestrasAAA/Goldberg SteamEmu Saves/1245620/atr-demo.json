@@ -1,0 +1,31 @@
+{
+  "AppId": 1245620,
+  "GameName": "ELDEN RING",
+  "Synthetic": true,
+  "Achievements": {
+    "ATR_DEMO_JSON_1245620_01": {
+      "DisplayName": "Inicio de prueba",
+      "Description": "Logro ficticio de ATR; solo para probar el importador."
+    },
+    "ATR_DEMO_JSON_1245620_02": {
+      "DisplayName": "Exploración de prueba",
+      "Description": "Logro ficticio de ATR; solo para probar el importador."
+    },
+    "ATR_DEMO_JSON_1245620_03": {
+      "DisplayName": "Otra sesión ficticia",
+      "Description": "Logro ficticio de ATR; solo para probar el importador."
+    },
+    "ATR_DEMO_JSON_1245620_04": {
+      "DisplayName": "Final de prueba",
+      "Description": "Logro ficticio de ATR; solo para probar el importador."
+    },
+    "ATR_DEMO_JSON_1245620_05": {
+      "DisplayName": "Pendiente de prueba",
+      "Description": "Logro ficticio de ATR; solo para probar el importador."
+    },
+    "ATR_DEMO_JSON_1245620_06": {
+      "DisplayName": "Segundo pendiente",
+      "Description": "Logro ficticio de ATR; solo para probar el importador."
+    }
+  }
+}

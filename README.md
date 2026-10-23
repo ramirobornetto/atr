@@ -1,8 +1,8 @@
 # Achievement Timeline Replay
 
-## Descargar v0.7.1 para Windows x64
+## Descargar v0.8.0 para Windows x64
 
-[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.7.1_Windows_x64.zip)
+[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.8.0_Windows_x64.zip)
 
 Extraer **todo el ZIP** en una carpeta nueva y abrir `AchievementTimelineReplay.Wpf.exe`. No se necesita compilar ni instalar .NET. Mantener las DLL y demás archivos junto al ejecutable. Steam y SamRewritten se seleccionan en la aplicación, como antes; no vienen incluidos.
 
@@ -144,3 +144,18 @@ La muestra sigue siendo reconocida como sintética al copiarla bajo otro AppID, 
 
 
 Validación de 0.7.1: 83 comprobaciones automáticas pasadas con datos aislados, incluidos contadores reconciliados, inferencia por LUA, nombres públicos por AppID y copias de la muestra. Compilación y publicación autónoma Windows x64 verificadas. La presentación visual de WPF y las consultas reales de nombres requieren comprobación en Windows; las pruebas no modifican cuentas de Steam.
+
+
+## v0.8.0 — CODEX/RUNE, muestras AAA y actualizador automático
+
+- Importación manual y búsqueda en carpetas conocidas de `achievements.ini` compatible con CODEX/RUNE, con estados y fechas explícitos y snapshots/planes separados por archivo.
+- Veinte carpetas AAA sintéticas, cinco para Goldberg, cinco GSE, cinco CODEX y cinco RUNE. Cada una muestra 4 / 6 y bloquea acciones de Steam; incluye nombres sin conexión, catálogo y JSON de referencia para los INI. [ZIP solo de muestras](downloads/ATR_Muestras_AAA_v0.8.0.zip).
+- Clic en la ruta del plan abre el Explorador seleccionando el archivo; si falta, abre su carpeta si todavía existe.
+- Fechas históricas sin definición en el esquema se informan por separado, incluso cuando se recupera parte del historial. No se generan destinos `bit_N` sin ID API. Comprobado con los dos archivos de CS:GO/CS2 enviados por el usuario: 22 fechas sin correspondencia y un logro actual definido. Esos archivos privados no forman parte de la publicación.
+- Origen Steam oficial retirado; sus asignaciones se muestran como Steam. Steamidra y su indicio LUA pasan a SteamIdra/LuaTools, conservando compatibilidad con etiquetas guardadas.
+- Botón **Actualizar ATR**: consulta GitHub, descarga/verifica el ZIP, conserva borradores, cierra, instala y reinicia; incluye copia anterior y restauración ante fallos de instalación. La primera instalación de esta versión sigue requiriendo extraer el ZIP completo.
+
+Instrucciones y límites: [CODEX_RUNE.md](CODEX_RUNE.md) y [ACTUALIZACIONES.md](ACTUALIZACIONES.md). Pendiente validar visualmente WPF, guardados INI reales y una actualización completa entre versiones en Windows; las pruebas automáticas usan archivos aislados y HTTP simulado, sin modificar cuentas de Steam.
+
+
+Verificación de 0.8.0: 188 comprobaciones automáticas pasadas. Se probaron descarga con SHA256, rechazo de ZIPs inválidos, extracción aislada, instalación con preservación de archivos ajenos, rollback tras fallo intermedio y borradores separados de planes explícitos. ATR y el auxiliar se publican para Windows x64 con runtime incluido. El cierre/reinicio real, UAC y Explorer siguen pendientes de prueba en Windows.

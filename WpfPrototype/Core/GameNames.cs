@@ -19,18 +19,19 @@ namespace AchievementTimelineReplay
         }
         public static void Apply(GameEntry game,IReadOnlyDictionary<uint,string> names)
         {
-            if(names.TryGetValue(game.AppId,out var name) && !String.IsNullOrWhiteSpace(name))game.GameName=name+(game.IsDemo?" (muestra Goldberg)":"");
-            else if(game.IsDemo)game.GameName="Muestra Goldberg · AppID "+game.AppId;
+            if(game.IsDemo && !String.IsNullOrWhiteSpace(game.DemoGameName))game.GameName=game.DemoGameName+" (muestra "+game.DemoProvider+")";
+            else if(names.TryGetValue(game.AppId,out var name) && !String.IsNullOrWhiteSpace(name))game.GameName=name+(game.IsDemo?" (muestra "+game.DemoProvider+")":"");
+            else if(game.IsDemo)game.GameName="Muestra "+game.DemoProvider+" · AppID "+game.AppId;
             else if(!String.IsNullOrEmpty(game.HistoryId))game.GameName="AppID "+game.AppId;
         }
         public static void Resolve(IEnumerable<GameEntry> entries,Action<string> log,CancellationToken token)
         {
             var games=entries.ToList();var names=LegacyScanner.LoadNames();
-            var missing=games.Where(g=>!names.ContainsKey(g.AppId)).Select(g=>g.AppId).Distinct().ToList();
+            var missing=games.Where(g=>!names.ContainsKey(g.AppId) && String.IsNullOrWhiteSpace(g.DemoGameName)).Select(g=>g.AppId).Distinct().ToList();
             if(missing.Count>0)
             {
                 using var client=new HttpClient{Timeout=TimeSpan.FromSeconds(10)};
-                client.DefaultRequestHeaders.UserAgent.ParseAdd("AchievementTimelineReplay/0.7.1");
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("AchievementTimelineReplay/0.8.0");
                 bool first=true;
                 foreach(uint id in missing)
                 {

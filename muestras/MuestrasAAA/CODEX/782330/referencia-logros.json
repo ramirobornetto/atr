@@ -1,0 +1,26 @@
+{
+  "ATR_DEMO_CODEX_782330_01": {
+    "earned": true,
+    "earned_time": 1704240000
+  },
+  "ATR_DEMO_CODEX_782330_02": {
+    "earned": true,
+    "earned_time": 1704243600
+  },
+  "ATR_DEMO_CODEX_782330_03": {
+    "earned": true,
+    "earned_time": 1704326400
+  },
+  "ATR_DEMO_CODEX_782330_04": {
+    "earned": true,
+    "earned_time": 1704412800
+  },
+  "ATR_DEMO_CODEX_782330_05": {
+    "earned": false,
+    "earned_time": 0
+  },
+  "ATR_DEMO_CODEX_782330_06": {
+    "earned": false,
+    "earned_time": 0
+  }
+}

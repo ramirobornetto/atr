@@ -1,0 +1,31 @@
+{
+  "AppId": 1817190,
+  "GameName": "Marvel's Spider-Man: Miles Morales",
+  "Synthetic": true,
+  "Achievements": {
+    "ATR_DEMO_CODEX_1817190_01": {
+      "DisplayName": "Inicio de prueba",
+      "Description": "Logro ficticio de ATR; solo para probar el importador."
+    },
+    "ATR_DEMO_CODEX_1817190_02": {
+      "DisplayName": "Exploración de prueba",
+      "Description": "Logro ficticio de ATR; solo para probar el importador."
+    },
+    "ATR_DEMO_CODEX_1817190_03": {
+      "DisplayName": "Otra sesión ficticia",
+      "Description": "Logro ficticio de ATR; solo para probar el importador."
+    },
+    "ATR_DEMO_CODEX_1817190_04": {
+      "DisplayName": "Final de prueba",
+      "Description": "Logro ficticio de ATR; solo para probar el importador."
+    },
+    "ATR_DEMO_CODEX_1817190_05": {
+      "DisplayName": "Pendiente de prueba",
+      "Description": "Logro ficticio de ATR; solo para probar el importador."
+    },
+    "ATR_DEMO_CODEX_1817190_06": {
+      "DisplayName": "Segundo pendiente",
+      "Description": "Logro ficticio de ATR; solo para probar el importador."
+    }
+  }
+}

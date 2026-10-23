@@ -102,35 +102,12 @@ namespace AchievementTimelineReplay
             game.TotalAchievements=all.Count;
             game.Achievements=game.Achievements.OrderBy(a=>a.OriginalUnix).ThenBy(a=>a.ApiId,StringComparer.Ordinal).ToList();
             if(game.IsDemo)game.GameName="Muestra Goldberg · AppID "+appId;
+            DemoData.Apply(game,log);
             OriginDetector.Apply(game,null);
             return game;
         }
         static bool TryGetInt64Safe(this JsonElement element,out long value){value=0;return element.ValueKind==JsonValueKind.Number && element.TryGetInt64(out value);}
-        public static GameEntry Protect(GameEntry game,string snapshotsDirectory)
-        {
-            string directory=Path.Combine(snapshotsDirectory,game.StorageKey);
-            string path=Path.Combine(directory,"snapshot.json");
-            if(File.Exists(path))
-            {
-                var snapshot=JsonSerializer.Deserialize<GoldbergSnapshot>(File.ReadAllText(path));
-                if(snapshot==null || snapshot.Version!=1 || snapshot.AppId!=game.AppId || snapshot.HistoryId!=game.HistoryId || (snapshot.IsDemo!=game.IsDemo && !(game.IsDemo && snapshot.Achievements!=null && snapshot.Achievements.All(a=>a!=null && a.ApiId!=null && a.ApiId.StartsWith("ATR_DEMO_",StringComparison.Ordinal)))) || snapshot.Achievements==null || snapshot.Achievements.Count==0 || snapshot.Achievements.Any(a=>a==null || String.IsNullOrWhiteSpace(a.ApiId) || a.OriginalUnix<=0 || a.OriginalUnix>UInt32.MaxValue) || snapshot.Achievements.Select(a=>a.ApiId).Distinct(StringComparer.OrdinalIgnoreCase).Count()!=snapshot.Achievements.Count)
-                    throw new InvalidDataException("Snapshot Goldberg inválido. No se sobrescribió.");
-                game.Achievements=snapshot.Achievements.Select(a=>new AchievementRecord{ApiId=a.ApiId,DisplayName=a.DisplayName,Description=a.Description,OriginalUnix=a.OriginalUnix}).ToList();
-                game.TotalAchievements=Math.Max(game.TotalAchievements,game.Achievements.Count);
-            }
-            else
-            {
-                if(game.Achievements.Count==0)throw new InvalidDataException("No hay logros desbloqueados con fecha válida para importar.");
-                Directory.CreateDirectory(directory);
-                // Keep original bytes separate from our protected historical representation.
-                File.Copy(game.StatsPath,Path.Combine(directory,"original_achievements.json"),false);
-                if(!String.IsNullOrEmpty(game.SchemaPath))File.Copy(game.SchemaPath,Path.Combine(directory,"original_definitions.json"),false);
-                var snapshot=new GoldbergSnapshot{AppId=game.AppId,HistoryId=game.HistoryId,IsDemo=game.IsDemo,Achievements=game.Achievements.Select(a=>new SnapshotAchievement{ApiId=a.ApiId,DisplayName=a.DisplayName,Description=a.Description,OriginalUnix=a.OriginalUnix}).ToList()};
-                using var stream=new FileStream(path,FileMode.CreateNew,FileAccess.Write,FileShare.None);
-                JsonSerializer.Serialize(stream,snapshot);stream.Flush(true);
-            }
-            game.HasSnapshot=true;return game;
-        }
+        public static GameEntry Protect(GameEntry game,string snapshotsDirectory) => HistorySnapshots.Protect(game,snapshotsDirectory);
         public static List<GameEntry> Scan(string root,string steamRoot,string snapshotsDirectory,Action<string> log,CancellationToken token,ScanSummary summary=null)
         {
             summary??=new ScanSummary();
@@ -159,13 +136,5 @@ namespace AchievementTimelineReplay
             }
             token.ThrowIfCancellationRequested();return result;
         }
-    }
-    internal sealed class GoldbergSnapshot
-    {
-        public int Version {get;set;}=1;
-        public uint AppId {get;set;}
-        public string HistoryId {get;set;}
-        public bool IsDemo {get;set;}
-        public List<SnapshotAchievement> Achievements {get;set;}
     }
 }

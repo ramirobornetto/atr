@@ -1,0 +1,26 @@
+{
+  "ATR_DEMO_JSON_1888930_01": {
+    "earned": true,
+    "earned_time": 1704412800
+  },
+  "ATR_DEMO_JSON_1888930_02": {
+    "earned": true,
+    "earned_time": 1704413400
+  },
+  "ATR_DEMO_JSON_1888930_03": {
+    "earned": true,
+    "earned_time": 1704477600
+  },
+  "ATR_DEMO_JSON_1888930_04": {
+    "earned": true,
+    "earned_time": 1704478200
+  },
+  "ATR_DEMO_JSON_1888930_05": {
+    "earned": false,
+    "earned_time": 0
+  },
+  "ATR_DEMO_JSON_1888930_06": {
+    "earned": false,
+    "earned_time": 0
+  }
+}

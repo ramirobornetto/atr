@@ -1,0 +1,31 @@
+{
+  "AppId": 1680880,
+  "GameName": "Forspoken",
+  "Synthetic": true,
+  "Achievements": {
+    "ATR_DEMO_CODEX_1680880_01": {
+      "DisplayName": "Inicio de prueba",
+      "Description": "Logro ficticio de ATR; solo para probar el importador."
+    },
+    "ATR_DEMO_CODEX_1680880_02": {
+      "DisplayName": "Exploración de prueba",
+      "Description": "Logro ficticio de ATR; solo para probar el importador."
+    },
+    "ATR_DEMO_CODEX_1680880_03": {
+      "DisplayName": "Otra sesión ficticia",
+      "Description": "Logro ficticio de ATR; solo para probar el importador."
+    },
+    "ATR_DEMO_CODEX_1680880_04": {
+      "DisplayName": "Final de prueba",
+      "Description": "Logro ficticio de ATR; solo para probar el importador."
+    },
+    "ATR_DEMO_CODEX_1680880_05": {
+      "DisplayName": "Pendiente de prueba",
+      "Description": "Logro ficticio de ATR; solo para probar el importador."
+    },
+    "ATR_DEMO_CODEX_1680880_06": {
+      "DisplayName": "Segundo pendiente",
+      "Description": "Logro ficticio de ATR; solo para probar el importador."
+    }
+  }
+}

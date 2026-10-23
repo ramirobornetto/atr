@@ -1,0 +1,68 @@
+[
+  {
+    "name": "ATR_DEMO_JSON_1245620_01",
+    "displayName": {
+      "spanish": "Inicio de prueba",
+      "english": "Inicio de prueba"
+    },
+    "description": {
+      "spanish": "Logro ficticio de ATR. No existe en el juego real."
+    },
+    "hidden": 0
+  },
+  {
+    "name": "ATR_DEMO_JSON_1245620_02",
+    "displayName": {
+      "spanish": "Exploración de prueba",
+      "english": "Exploración de prueba"
+    },
+    "description": {
+      "spanish": "Logro ficticio de ATR. No existe en el juego real."
+    },
+    "hidden": 0
+  },
+  {
+    "name": "ATR_DEMO_JSON_1245620_03",
+    "displayName": {
+      "spanish": "Otra sesión ficticia",
+      "english": "Otra sesión ficticia"
+    },
+    "description": {
+      "spanish": "Logro ficticio de ATR. No existe en el juego real."
+    },
+    "hidden": 0
+  },
+  {
+    "name": "ATR_DEMO_JSON_1245620_04",
+    "displayName": {
+      "spanish": "Final de prueba",
+      "english": "Final de prueba"
+    },
+    "description": {
+      "spanish": "Logro ficticio de ATR. No existe en el juego real."
+    },
+    "hidden": 0
+  },
+  {
+    "name": "ATR_DEMO_JSON_1245620_05",
+    "displayName": {
+      "spanish": "Pendiente de prueba",
+      "english": "Pendiente de prueba"
+    },
+    "description": {
+      "spanish": "Logro ficticio de ATR. No existe en el juego real."
+    },
+    "hidden": 0
+  },
+  {
+    "name": "ATR_DEMO_JSON_1245620_06",
+    "displayName": {
+      "spanish": "Segundo pendiente",
+      "english": "Segundo pendiente"
+    },
+    "description": {
+      "spanish": "Logro ficticio de ATR. No existe en el juego real."
+    },
+    "hidden": 0
+  }
+]

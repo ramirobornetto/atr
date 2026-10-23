@@ -42,6 +42,8 @@ static class Program
         {
             SavedPlanChecks.Run(root);
             GoldbergChecks.Run(root);
+            IniChecks.Run(root);
+            UpdateChecks.Run(root);
             var countedGame=new GameEntry{TotalAchievements=40};
             for(int i=0;i<16;i++)countedGame.Achievements.Add(new AchievementRecord{ApiId="ACH_"+i});
             var partialStates=new Dictionary<string,string>();
@@ -138,7 +140,7 @@ static class Program
             Expect(inferred.DetectedOrigin=="Steam","Steam histories get an automatic neutral Steam origin");
             string luaDirectory=Path.Combine(summaryRoot,"config","stplug-in");Directory.CreateDirectory(luaDirectory);File.WriteAllText(Path.Combine(luaDirectory,"42.lua"),"not executed");
             OriginDetector.Apply(inferred,summaryRoot);
-            Expect(inferred.DetectedOrigin=="Steamidra (indicio LUA)" && inferred.OriginEvidence.Contains("no demuestra"),"Matching Lua suggests Steamidra without claiming proven provenance");
+            Expect(inferred.DetectedOrigin=="SteamIdra/LuaTools (indicio LUA)" && inferred.OriginEvidence.Contains("no demuestra"),"Matching Lua suggests Steamidra without claiming proven provenance");
             File.WriteAllText(Path.Combine(luaDirectory,"99.lua"),"not executed");File.Delete(Path.Combine(luaDirectory,"42.lua"));OriginDetector.Apply(inferred,summaryRoot);
             Expect(inferred.DetectedOrigin=="Steam","Unrelated Lua does not classify a game as Steamidra");
             var sourceGame=new GameEntry{AppId=42,GameName="Internal codename",HistoryId="goldberg_fixture",StatsPath="Goldberg/42/achievements.json"};OriginDetector.Apply(sourceGame,summaryRoot);
@@ -148,6 +150,22 @@ static class Program
             GameNames.Apply(sourceGame,new Dictionary<uint,string>());
             Expect(sourceGame.GameName=="AppID 42","Unavailable public names fall back to explicit AppID instead of internal codenames");
             Expect(GameNames.StoreName(2322010,"{\"2322010\":{\"success\":true,\"data\":{\"name\":\"God of War Ragnarok\"}}}")=="God of War Ragnarok" && GameNames.StoreName(499,"{\"499\":{\"success\":false}}")==null,"Store metadata is matched to the requested AppID and unavailable titles stay unknown");
+            string orphanRoot=Path.Combine(root,"orphan-dates"),orphanStats=Path.Combine(orphanRoot,"appcache","stats");Directory.CreateDirectory(orphanStats);
+            string orphanSchema=Path.Combine(orphanStats,"UserGameStatsSchema_700.bin"),orphanFile=Path.Combine(orphanStats,"UserGameStats_1_700.bin");
+            Save(orphanSchema,D("700",D("gamename","Current game","stats",D("2",D("type","ACHIEVEMENTS","bits",D()),"358",D("type","ACHIEVEMENTS","bits",D("0",D("name","CURRENT")))))));
+            Save(orphanFile,D("cache",D("2",D("AchievementTimes",D("4",1495847257,"14",1495849401)),"16",D("AchievementTimes",D("2",1495847450)))));
+            var orphan=HistoryLoader.Load(orphanFile,orphanSchema,1,700);
+            Expect(orphan.UnmatchedHistoricalDates==3 && orphan.Achievements.Count==0,"Historic dates remain detectable after their definitions disappear from current schema");
+            found=scanner.Scan(orphanRoot,"",SamCliMode.Unknown,null,CancellationToken.None);
+            Expect(found.Count==0 && scanner.Summary.UnmappedHistories==1 && scanner.Summary.UnmatchedDates==3 && scanner.Summary.NoDates==0 && scanner.Summary.Classified==scanner.Summary.Reviewed,"Unmapped historic dates have a distinct reconciled scan category");
+            Save(orphanSchema,D("700",D("gamename","Current game","stats",D("2",D("type","ACHIEVEMENTS","bits",D("4",D("name","STILL_DEFINED")))))));
+            var partial=HistoryLoader.Load(orphanFile,orphanSchema,1,700);
+            Expect(partial.UnmatchedHistoricalDates==2 && partial.Achievements.Count==1 && partial.Achievements[0].ApiId=="STILL_DEFINED","Partial schema recovers only matched dates without inventing API names for the remainder");
+            Save(orphanSchema,D("700",D("gamename","Current game","stats",D("2",D("type","ACHIEVEMENTS","bits",D("4",D("display",D())))))));
+            var unnamed=HistoryLoader.Load(orphanFile,orphanSchema,1,700);
+            Expect(unnamed.Achievements.Count==0 && unnamed.UnmatchedHistoricalDates==3,"Definitions without API IDs never produce invented bit_N unlock targets");
+
+
 
         }
         finally {Directory.Delete(root,true);}

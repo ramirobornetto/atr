@@ -1,0 +1,31 @@
+{
+  "AppId": 2050650,
+  "GameName": "Resident Evil 4",
+  "Synthetic": true,
+  "Achievements": {
+    "ATR_DEMO_JSON_2050650_01": {
+      "DisplayName": "Inicio de prueba",
+      "Description": "Logro ficticio de ATR; solo para probar el importador."
+    },
+    "ATR_DEMO_JSON_2050650_02": {
+      "DisplayName": "Exploración de prueba",
+      "Description": "Logro ficticio de ATR; solo para probar el importador."
+    },
+    "ATR_DEMO_JSON_2050650_03": {
+      "DisplayName": "Otra sesión ficticia",
+      "Description": "Logro ficticio de ATR; solo para probar el importador."
+    },
+    "ATR_DEMO_JSON_2050650_04": {
+      "DisplayName": "Final de prueba",
+      "Description": "Logro ficticio de ATR; solo para probar el importador."
+    },
+    "ATR_DEMO_JSON_2050650_05": {
+      "DisplayName": "Pendiente de prueba",
+      "Description": "Logro ficticio de ATR; solo para probar el importador."
+    },
+    "ATR_DEMO_JSON_2050650_06": {
+      "DisplayName": "Segundo pendiente",
+      "Description": "Logro ficticio de ATR; solo para probar el importador."
+    }
+  }
+}

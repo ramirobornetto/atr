@@ -1,0 +1,31 @@
+{
+  "AppId": 750920,
+  "GameName": "Shadow of the Tomb Raider",
+  "Synthetic": true,
+  "Achievements": {
+    "ATR_DEMO_CODEX_750920_01": {
+      "DisplayName": "Inicio de prueba",
+      "Description": "Logro ficticio de ATR; solo para probar el importador."
+    },
+    "ATR_DEMO_CODEX_750920_02": {
+      "DisplayName": "Exploración de prueba",
+      "Description": "Logro ficticio de ATR; solo para probar el importador."
+    },
+    "ATR_DEMO_CODEX_750920_03": {
+      "DisplayName": "Otra sesión ficticia",
+      "Description": "Logro ficticio de ATR; solo para probar el importador."
+    },
+    "ATR_DEMO_CODEX_750920_04": {
+      "DisplayName": "Final de prueba",
+      "Description": "Logro ficticio de ATR; solo para probar el importador."
+    },
+    "ATR_DEMO_CODEX_750920_05": {
+      "DisplayName": "Pendiente de prueba",
+      "Description": "Logro ficticio de ATR; solo para probar el importador."
+    },
+    "ATR_DEMO_CODEX_750920_06": {
+      "DisplayName": "Segundo pendiente",
+      "Description": "Logro ficticio de ATR; solo para probar el importador."
+    }
+  }
+}

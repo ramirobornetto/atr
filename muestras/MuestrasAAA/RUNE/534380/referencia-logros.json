@@ -1,0 +1,26 @@
+{
+  "ATR_DEMO_CODEX_534380_01": {
+    "earned": true,
+    "earned_time": 1704326400
+  },
+  "ATR_DEMO_CODEX_534380_02": {
+    "earned": true,
+    "earned_time": 1704326445
+  },
+  "ATR_DEMO_CODEX_534380_03": {
+    "earned": true,
+    "earned_time": 1704326580
+  },
+  "ATR_DEMO_CODEX_534380_04": {
+    "earned": true,
+    "earned_time": 1704330000
+  },
+  "ATR_DEMO_CODEX_534380_05": {
+    "earned": false,
+    "earned_time": 0
+  },
+  "ATR_DEMO_CODEX_534380_06": {
+    "earned": false,
+    "earned_time": 0
+  }
+}

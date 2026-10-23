@@ -24,11 +24,19 @@ namespace AchievementTimelineReplay
             var entry=JsonSerializer.Deserialize<OriginAssignment>(File.ReadAllText(FilePath(game)));
             if(entry==null || entry.Version!=1 || entry.AccountId!=game.AccountId || entry.AppId!=game.AppId || entry.HistoryId!=game.HistoryId || entry.Method!="manual" || String.IsNullOrWhiteSpace(entry.Label) || entry.Label.Length>120)
                 throw new InvalidDataException("El origen guardado no corresponde a este juego/cuenta o no es válido.");
-            return entry.Label;
+            return Normalize(entry.Label);
+        }
+        static string Normalize(string label)
+        {
+            if(String.Equals(label,"Steam oficial",StringComparison.OrdinalIgnoreCase))return "Steam";
+            if(String.Equals(label,"Steamidra",StringComparison.OrdinalIgnoreCase))return "SteamIdra/LuaTools";
+            if(String.Equals(label,"Steamidra (indicio LUA)",StringComparison.OrdinalIgnoreCase))return "SteamIdra/LuaTools (indicio LUA)";
+            return label;
         }
         public void Save(GameEntry game,string label)
         {
             label=label?.Trim();
+            label=Normalize(label);
             if(String.IsNullOrEmpty(label)){File.Delete(FilePath(game));return;}
             if(label.Length>120)throw new InvalidDataException("El origen admite hasta 120 caracteres.");
             var entry=new OriginAssignment{AccountId=game.AccountId,AppId=game.AppId,HistoryId=game.HistoryId,Label=label};
@@ -48,14 +56,21 @@ namespace AchievementTimelineReplay
         public static void Apply(GameEntry game,string steamRoot)
         {
             if(!String.IsNullOrEmpty(game.HistoryId) && game.HistoryId.StartsWith("goldberg_",StringComparison.Ordinal))
-            {game.DetectedOrigin="Goldberg";game.OriginEvidence="Estado leído con formato Goldberg/GBE: "+game.StatsPath;return;}
+            {game.DetectedOrigin=Array.Exists(Path.GetFullPath(game.StatsPath).Split(new[]{Path.DirectorySeparatorChar,Path.AltDirectorySeparatorChar},StringSplitOptions.RemoveEmptyEntries),part=>String.Equals(part,"GSE Saves",StringComparison.OrdinalIgnoreCase))?"GSE":"Goldberg";game.OriginEvidence="Estado leído con formato Goldberg/GBE: "+game.StatsPath;return;}
+            if(game.HistoryId?.StartsWith("codex_ini_",StringComparison.Ordinal)==true)
+            {
+                var parts=Path.GetFullPath(game.StatsPath).Split(new[]{Path.DirectorySeparatorChar,Path.AltDirectorySeparatorChar},StringSplitOptions.RemoveEmptyEntries);
+                string provider=Array.FindLast(parts,p=>String.Equals(p,"CODEX",StringComparison.OrdinalIgnoreCase) || String.Equals(p,"RUNE",StringComparison.OrdinalIgnoreCase));
+                game.DetectedOrigin=provider?.ToUpperInvariant()??"CODEX/RUNE compatible";
+                game.OriginEvidence="Formato INI compatible con CODEX/RUNE"+(provider==null?"; no se puede distinguir el proveedor por el formato.":"; origen sugerido por el directorio "+provider+". No prueba qué ejecutable lo escribió.");return;
+            }
             game.DetectedOrigin="Steam";
             game.OriginEvidence="Historial leído de Steam/appcache/stats; no acredita licencia ni procedencia de la instalación.";
             if(!String.IsNullOrWhiteSpace(steamRoot))
             {
                 string lua=Path.Combine(steamRoot,"config","stplug-in",game.AppId+".lua");
                 if(File.Exists(lua))
-                {game.DetectedOrigin="Steamidra (indicio LUA)";game.OriginEvidence="Existe "+lua+". Es un indicio de Steamidra; no demuestra que este historial provenga de allí ni que el juego no sea oficial.";}
+                {game.DetectedOrigin="SteamIdra/LuaTools (indicio LUA)";game.OriginEvidence="Existe "+lua+". Es un indicio de SteamIdra/LuaTools; no demuestra que este historial provenga de allí ni que el juego no sea oficial.";}
             }
         }
     }

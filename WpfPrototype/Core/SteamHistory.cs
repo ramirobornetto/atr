@@ -46,6 +46,9 @@ namespace AchievementTimelineReplay {
         public string DetectedOrigin;
         public string OriginEvidence;
         public bool IsDemo;
+        public string DemoGameName;
+        public int UnmatchedHistoricalDates;
+        public string DemoProvider => HistoryId?.StartsWith("codex_ini_",StringComparison.Ordinal)==true?"CODEX/RUNE":DetectedOrigin=="GSE"?"GSE":"Goldberg";
         public string StorageKey => String.IsNullOrEmpty(HistoryId) ? AccountId+"_"+AppId : HistoryId+"_"+AppId;
         public string GameName;
         public string AppType;
@@ -149,7 +152,7 @@ namespace AchievementTimelineReplay {
                 {
                     Dictionary<string, object> bit = bitEntry.Value as Dictionary<string, object>;
 
-                    if (bit == null)
+                    if (bit == null || String.IsNullOrWhiteSpace(GetString(bit,"name","")))
                         continue;
 
                     long ts = GetLong(times, bitEntry.Key, 0);
@@ -158,7 +161,7 @@ namespace AchievementTimelineReplay {
                         continue;
 
                     AchievementRecord a = new AchievementRecord();
-                    a.ApiId = GetString(bit, "name", "bit_" + bitEntry.Key);
+                    a.ApiId = GetString(bit, "name", "");
                     a.DisplayName = GetDisplayText(bit, "name", a.ApiId);
                     a.Description = GetDisplayText(bit, "desc", "");
                     a.OriginalUnix = ts;
@@ -166,6 +169,18 @@ namespace AchievementTimelineReplay {
 
                     game.Achievements.Add(a);
                 }
+            }
+
+            // Dates can survive after Steam removes their corresponding definitions.
+            foreach(var cacheEntry in cache)
+            {
+                var times=GetDictOrNull(cacheEntry.Value as Dictionary<string,object>,"AchievementTimes");
+                if(times==null)continue;
+                var group=GetDictOrNull(schemaStats,cacheEntry.Key);
+                var bits=GetDictOrNull(group,"bits");
+                bool achievements=String.Equals(GetString(group,"type",""),"ACHIEVEMENTS",StringComparison.OrdinalIgnoreCase);
+                foreach(var time in times)
+                    if(GetLong(times,time.Key,0)>0 && (!achievements || String.IsNullOrWhiteSpace(GetString(GetDictOrNull(bits,time.Key),"name",""))))game.UnmatchedHistoricalDates++;
             }
 
             game.Achievements = game.Achievements

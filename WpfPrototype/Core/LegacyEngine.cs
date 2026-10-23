@@ -317,7 +317,17 @@ namespace AchievementTimelineReplay
                 try
                 {
                     var game=HistoryLoader.Load(f,schema,account,app);
-                    if(game?.Achievements==null || game.Achievements.Count==0){Summary.NoDates++;log("Omitido AppID "+app+": sin logros desbloqueados con fecha válida.");continue;}
+                    if(game.UnmatchedHistoricalDates>0)
+                    {
+                        Summary.UnmatchedDates+=game.UnmatchedHistoricalDates;
+                        log("AppID "+app+": "+game.UnmatchedHistoricalDates+" fechas históricas sin correspondencia en el esquema actual; no se añaden al plan.");
+                    }
+                    if(game.Achievements.Count==0)
+                    {
+                        if(game.UnmatchedHistoricalDates>0)Summary.UnmappedHistories++;
+                        else {Summary.NoDates++;log("Omitido AppID "+app+": sin logros desbloqueados con fecha válida.");}
+                        continue;
+                    }
                     game.IsOwned=samNames.ContainsKey(app);
                     if(byApp.ContainsKey(app)){Summary.Duplicates++;log("AppID "+app+": historial duplicado entre cuentas; se conserva un candidato.");}
                     byApp[app]=game;

@@ -81,12 +81,17 @@ namespace AchievementTimelineReplay.Wpf
         CancellationTokenSource scanCancellation;
         CancellationTokenSource replayCancellation;
         bool selectingOrigin;
+        bool checkingUpdates;
+        bool recoverUpdateDrafts;
+        static string UpdateReadyPath => Path.Combine(LegacyTools.DataDirectory,"UpdateDrafts",".ready");
+        readonly PlanStore updateDraftStore=new PlanStore(Path.Combine(LegacyTools.DataDirectory,"UpdateDrafts"));
+        CancellationTokenSource updateCancellation;
         bool querying;
         bool preparing;
         LegacyReplayer activeReplayer;
         readonly OriginStore originStore=new OriginStore(Path.Combine(LegacyTools.DataDirectory,"Origins"));
         readonly PlanStore planStore=new PlanStore(Path.Combine(LegacyTools.DataDirectory,"Plans"));
-        bool CanEditPlan => currentGame!=null && !scanning && !preparing && (!running || !ReferenceEquals(currentGame,executingGame));
+        bool CanEditPlan => currentGame!=null && !scanning && !preparing && !checkingUpdates && (!running || !ReferenceEquals(currentGame,executingGame));
         bool CanQueryPlan => CanEditPlan && !querying;
         bool scanning;
         bool running;
@@ -108,10 +113,11 @@ namespace AchievementTimelineReplay.Wpf
             var settings=LegacyTools.ReadSettings();
             SteamPath.Text=settings.TryGetValue("steam",out var steam) && !String.IsNullOrWhiteSpace(steam) ? steam : LegacyTools.DetectSteam();
             SamPath.Text=settings.TryGetValue("sam",out var sam) && !String.IsNullOrWhiteSpace(sam) ? sam : LegacyTools.DetectSam();
+            recoverUpdateDrafts=File.Exists(UpdateReadyPath);
             initialized=true;
             GoTo("Escaneo");
             UpdateButtons();
-            Log("WPF v0.7.1 iniciada. Motor derivado de v0.5.3. No se ha modificado Steam.");
+            Log("WPF v0.8.0 iniciada. Motor derivado de v0.5.3. No se ha modificado Steam.");
             if(!String.IsNullOrWhiteSpace(SamPath.Text)) _=ValidateSamAsync(false);
         }
         void Log(string s)
@@ -181,11 +187,12 @@ namespace AchievementTimelineReplay.Wpf
         }
         async void ScanClick(object sender,RoutedEventArgs e)
         {
-            if(scanning || running || querying || preparing) return;
+            if(checkingUpdates || scanning || running || querying || preparing) return;
             SavePaths();
             string steam=SteamPath.Text.Trim();
             string cli=SamPath.Text.Trim();
             bool scanGoldberg=ScanGoldbergDefaults.IsChecked==true;
+            bool scanIni=ScanIniDefaults.IsChecked==true;
             if(!Directory.Exists(Path.Combine(steam,"appcache","stats")))
             {
                 MessageBox.Show(this,"No encontré Steam\\appcache\\stats en la carpeta seleccionada.","Escaneo",MessageBoxButton.OK,MessageBoxImage.Warning);return;
@@ -210,18 +217,21 @@ namespace AchievementTimelineReplay.Wpf
             {
                 var scanner=new LegacyScanner(Log);
                 var goldbergSummary=new ScanSummary();
+                var iniSummary=new ScanSummary();
                 var found=await Task.Run(()=>
                 {
                     var all=scanner.Scan(steam,cli,samMode,progress,token);
                     if(scanGoldberg)foreach(var root in GoldbergHistory.DefaultRoots().Where(Directory.Exists))
                         all.AddRange(GoldbergHistory.Scan(root,steam,Path.Combine(LegacyTools.DataDirectory,"Snapshots"),Log,token,goldbergSummary));
+                    if(scanIni)foreach(var root in IniHistory.DefaultRoots().Where(Directory.Exists))
+                        all.AddRange(IniHistory.Scan(root,steam,Path.Combine(LegacyTools.DataDirectory,"Snapshots"),Log,token,iniSummary));
                     GameNames.Resolve(all.Where(g=>!String.IsNullOrEmpty(g.HistoryId)),Log,token);
                     return all.OrderBy(g=>g.GameName,StringComparer.CurrentCultureIgnoreCase).ToList();
                 },token);
                 token.ThrowIfCancellationRequested();
                 foreach(var g in found) games.Add(new GameRow{GameName=g.GameName,AppId=g.AppId,Source=g.SourceLabel,Origin=ReadLibraryOrigin(g),Count=AchievementCounts.Format(g),Snapshot=g.HasSnapshot?"Protegido ✓":"—",Game=g});
                 LibraryCount.Text=games.Count+" juegos";
-                ScanResult.Text="Escaneo terminado: "+games.Count+" historiales aprovechables.\n"+scanner.Summary.Format("Steam")+(scanGoldberg?"\n"+goldbergSummary.Format("Goldberg/GBE"):"");
+                ScanResult.Text="Escaneo terminado: "+games.Count+" historiales aprovechables.\n"+scanner.Summary.Format("Steam")+(scanGoldberg?"\n"+goldbergSummary.Format("Goldberg/GBE"):"")+(scanIni?"\n"+iniSummary.Format("CODEX/RUNE"):"");
                 SetStatus(ScanResult.Text);
                 Log(ScanResult.Text);
                 ScanProgress.IsIndeterminate=false;ScanProgress.Maximum=1;ScanProgress.Value=1;
@@ -241,7 +251,7 @@ namespace AchievementTimelineReplay.Wpf
         }
         async void ImportGoldbergClick(object sender,RoutedEventArgs e)
         {
-            if(scanning || running || querying || preparing)return;
+            if(checkingUpdates || scanning || running || querying || preparing)return;
             var dialog=new OpenFileDialog{Title="Seleccioná el estado Goldberg: <AppID>/achievements.json (no el de steam_settings)",Filter="Estado Goldberg (achievements.json)|achievements.json|JSON (*.json)|*.json"};
             var existing=GoldbergHistory.DefaultRoots().FirstOrDefault(Directory.Exists);
             if(existing!=null)dialog.InitialDirectory=existing;
@@ -283,6 +293,97 @@ namespace AchievementTimelineReplay.Wpf
             catch(Exception ex){Log(ex.ToString());MessageBox.Show(this,ex.Message,"Goldberg",MessageBoxButton.OK,MessageBoxImage.Warning);}
             finally{scanning=false;scanCancellation.Dispose();scanCancellation=null;ScanProgress.IsIndeterminate=false;UpdateButtons();}
         }
+        async void ImportIniClick(object sender,RoutedEventArgs e)
+        {
+            if(checkingUpdates || scanning || running || querying || preparing)return;
+            var dialog=new OpenFileDialog{Title="Seleccioná <AppID>/achievements.ini o <AppID>/remote/achievements.ini",Filter="Estado CODEX/RUNE (achievements.ini)|achievements.ini|INI (*.ini)|*.ini"};
+            var root=IniHistory.DefaultRoots().FirstOrDefault(Directory.Exists);if(root!=null)dialog.InitialDirectory=root;
+            if(dialog.ShowDialog(this)!=true)return;
+            uint appId=IniHistory.AppIdFromPath(dialog.FileName);
+            if(appId==0){MessageBox.Show(this,"Elegí un archivo dentro de la carpeta numérica del AppID, o de su subcarpeta remote.","CODEX/RUNE",MessageBoxButton.OK,MessageBoxImage.Information);return;}
+            string path=dialog.FileName,steam=SteamPath.Text.Trim();
+            scanning=true;scanCancellation=new CancellationTokenSource();var token=scanCancellation.Token;UpdateButtons();ScanProgress.IsIndeterminate=true;
+            SetStatus("Importando CODEX/RUNE…");
+            try
+            {
+                var game=await Task.Run(()=>
+                {
+                    token.ThrowIfCancellationRequested();
+                    string schema=Path.Combine(steam,"appcache","stats","UserGameStatsSchema_"+appId+".bin");
+                    var imported=IniHistory.Load(path,appId,schema,Log);token.ThrowIfCancellationRequested();
+                    var protectedGame=HistorySnapshots.Protect(imported,Path.Combine(LegacyTools.DataDirectory,"Snapshots"));
+                    GameNames.Resolve(new[]{protectedGame},Log,token);return protectedGame;
+                },token);
+                token.ThrowIfCancellationRequested();
+                var row=games.FirstOrDefault(g=>g.Game.StorageKey==game.StorageKey);
+                if(row==null){row=new GameRow{Game=game,GameName=game.GameName,AppId=game.AppId,Source=game.SourceLabel,Origin=ReadLibraryOrigin(game),Count=AchievementCounts.Format(game),Snapshot="Protegido ✓"};games.Add(row);}
+                scanning=false;GamesGrid.SelectedItem=row;GameChanged(GamesGrid,null);
+                ScanResult.Text=game.IsDemo?"Muestra CODEX/RUNE cargada. Las acciones de Steam están bloqueadas.":"INI importado. Solo se añadieron desbloqueos con fecha válida; revisá Logs para omisiones.";
+                LibraryCount.Text=games.Count+" historiales";SetStatus(ScanResult.Text);Log(ScanResult.Text);GoTo("Plan");
+            }
+            catch(OperationCanceledException){SetStatus("Importación INI cancelada.");}
+            catch(Exception ex){Log(ex.ToString());MessageBox.Show(this,ex.Message,"CODEX/RUNE",MessageBoxButton.OK,MessageBoxImage.Warning);}
+            finally{scanning=false;scanCancellation.Dispose();scanCancellation=null;ScanProgress.IsIndeterminate=false;UpdateButtons();}
+        }
+        void SaveUpdateDrafts()
+        {
+            if(currentGame!=null)
+            {
+                if(!CommitPlanEdits() || !GapLimitValid())throw new InvalidDataException("Corregí el plan actual antes de actualizar para poder conservar el borrador.");
+                updateDraftStore.Save(currentGame,PlanStore.Capture(currentGame,order,ReadPlanParameters()));
+            }
+            foreach(var pair in browsedPlans)
+                if(!ReferenceEquals(pair.Key,currentGame))updateDraftStore.Save(pair.Key,PlanStore.Capture(pair.Key,pair.Value.Records,pair.Value.Parameters));
+        }
+        async void CheckUpdatesClick(object sender,RoutedEventArgs e)
+        {
+            if(checkingUpdates || running || scanning || preparing || querying)return;
+            if(currentGame!=null && (!CommitPlanEdits() || !GapLimitValid()))return;
+            checkingUpdates=true;updateCancellation=new CancellationTokenSource();var token=updateCancellation.Token;
+            UpdateButton.Content="Buscando…";UpdateButtons();bool hadReady=File.Exists(UpdateReadyPath),installerStarted=false;
+            try
+            {
+                var info=await UpdateChecker.CheckAsync(token);token.ThrowIfCancellationRequested();
+                var current=typeof(MainWindow).Assembly.GetName().Version;
+                if(!info.IsNewerThan(current))
+                {MessageBox.Show(this,"Ya tenés una versión igual o más nueva que la publicada ("+info.Version+").","ATR · Actualizaciones",MessageBoxButton.OK,MessageBoxImage.Information);return;}
+                string work=Path.Combine(LegacyTools.DataDirectory,"Updates",info.Version+"_"+Guid.NewGuid().ToString("N"));
+                string package=Path.Combine(work,"update.zip");
+                var progress=new Progress<int>(percent=>UpdateButton.Content="Descargando "+percent+" %");
+                await AutomaticUpdate.DownloadAsync(info,package,progress,token);token.ThrowIfCancellationRequested();
+                UpdateButton.Content="Preparando instalación…";
+                SaveUpdateDrafts();SavePaths();Directory.CreateDirectory(Path.GetDirectoryName(UpdateReadyPath));File.WriteAllText(UpdateReadyPath,"1");
+                var start=await Task.Run(()=>AutomaticUpdate.PrepareInstaller(info,package,AppContext.BaseDirectory,work,token),token);token.ThrowIfCancellationRequested();
+                using var installer=Process.Start(start)??throw new IOException("No se pudo iniciar el instalador de actualización.");installerStarted=true;
+                Close();
+            }
+            catch(OperationCanceledException){if(!token.IsCancellationRequested)MessageBox.Show(this,"Se agotó el tiempo de consulta o descarga. Reintentá más tarde.","Actualizaciones",MessageBoxButton.OK,MessageBoxImage.Information);}
+            catch(Exception ex){Log("Actualización no iniciada: "+ex.Message);MessageBox.Show(this,"No se pudo iniciar la actualización. La instalación actual se conserva.\n"+ex.Message,"Actualizaciones",MessageBoxButton.OK,MessageBoxImage.Information);}
+            finally
+            {
+                if(!installerStarted && !hadReady)try{File.Delete(UpdateReadyPath);}catch{}
+                checkingUpdates=false;updateCancellation.Dispose();updateCancellation=null;
+                if(IsLoaded){UpdateButton.Content="Actualizar ATR";UpdateButtons();}
+            }
+        }
+        void OpenHistoryLocation(object sender,MouseButtonEventArgs e)
+        {
+            if(currentGame==null || String.IsNullOrWhiteSpace(currentGame.StatsPath))return;
+            try
+            {
+                string path=Path.GetFullPath(currentGame.StatsPath);
+                var start=new ProcessStartInfo{FileName="explorer.exe",UseShellExecute=false};
+                if(File.Exists(path))start.Arguments="/select,\""+path+"\"";
+                else
+                {
+                    string directory=Path.GetDirectoryName(path);
+                    if(!Directory.Exists(directory))throw new DirectoryNotFoundException("El archivo y su carpeta ya no existen: "+path);
+                    start.ArgumentList.Add(directory);
+                }
+                Process.Start(start);e.Handled=true;
+            }
+            catch(Exception ex){MessageBox.Show(this,ex.Message,"Abrir ubicación",MessageBoxButton.OK,MessageBoxImage.Information);}
+        }
         void CancelScanClick(object sender,RoutedEventArgs e) {scanCancellation?.Cancel();CancelScanButton.IsEnabled=false;ScanResult.Text="Cancelando escaneo…";}
         void LibraryFilterChanged(object sender,TextChangedEventArgs e)
         {
@@ -309,6 +410,18 @@ namespace AchievementTimelineReplay.Wpf
             order.Clear();achievementRows.Clear();
             if(currentGame!=null)
             {
+                if(recoverUpdateDrafts && !browsedPlans.ContainsKey(currentGame) && updateDraftStore.Exists(currentGame))
+                {
+                    try
+                    {
+                        var savedDraft=updateDraftStore.Load(currentGame);var restoredDraft=PlanStore.Restore(currentGame,savedDraft);
+                        browsedPlans[currentGame]=new BrowsedPlan{Records=restoredDraft.Records,Parameters=savedDraft.Parameters};
+                        File.Delete(updateDraftStore.FilePath(currentGame));
+                        if(Directory.GetFiles(Path.GetDirectoryName(UpdateReadyPath),"*.json").Length==0)File.Delete(UpdateReadyPath);
+                        Log("Borrador recuperado después de actualizar: "+currentGame.GameName+". El plan guardado explícitamente se conserva por separado.");
+                    }
+                    catch(Exception ex){Log("No se pudo recuperar el borrador de actualización: "+ex.Message);}
+                }
                 bool saved=browsedPlans.TryGetValue(currentGame,out var previous);
                 if(saved)order.AddRange(previous.Records);
                 else foreach(var a in currentGame.Achievements.OrderBy(x=>x.OriginalUnix))order.Add(a.Clone());
@@ -685,7 +798,7 @@ namespace AchievementTimelineReplay.Wpf
         }
         void OpenSamClick(object sender,RoutedEventArgs e)
         {
-            if(currentGame==null || currentGame.IsDemo)return;
+            if(checkingUpdates || currentGame==null || currentGame.IsDemo)return;
             string cli=SamPath.Text.Trim(),folder=Path.GetDirectoryName(cli),gui=null;
             try {if(Directory.Exists(folder)) gui=Directory.GetFiles(folder,"*.exe").FirstOrDefault(f=>Path.GetFileName(f).Contains("samrewritten",StringComparison.OrdinalIgnoreCase) && !Path.GetFileName(f).Contains("cli",StringComparison.OrdinalIgnoreCase));}catch{}
             if(gui==null) {MessageBox.Show(this,"No encontré la interfaz gráfica de SamRewritten junto al CLI. Abrí SAM y buscá el AppID "+currentGame.AppId,"Abrir SAM",MessageBoxButton.OK,MessageBoxImage.Information);return;}
@@ -694,7 +807,7 @@ namespace AchievementTimelineReplay.Wpf
         }
         async void StartReplayClick(object sender,RoutedEventArgs e)
         {
-            if(running||scanning||querying||preparing||currentGame==null || currentGame.IsDemo || !currentGame.HasLocalHistory || !GapLimitValid())return;
+            if(checkingUpdates||running||scanning||querying||preparing||currentGame==null || currentGame.IsDemo || !currentGame.HasLocalHistory || !GapLimitValid())return;
             if(!CommitPlanEdits())return;
             preparing=true;UpdateButtons();
             try
@@ -776,20 +889,21 @@ namespace AchievementTimelineReplay.Wpf
             if(!initialized)return;
             bool available=currentGame!=null && currentGame.HasLocalHistory;
             bool live=available && !currentGame.IsDemo;
-            ScanButton.IsEnabled=!scanning && !running && !querying && !preparing;
+            ScanButton.IsEnabled=!checkingUpdates && !scanning && !running && !querying && !preparing;
             CancelScanButton.IsEnabled=scanning;
-            ImportGoldbergButton.IsEnabled=GoldbergDefinitions.IsEnabled=ScanGoldbergDefaults.IsEnabled=ScanButton.IsEnabled;
-            StartButton.IsEnabled=live && !running && !scanning && !querying && !preparing && order.Any(x=>x.Included) && GapLimitValid();
+            UpdateButton.IsEnabled=!checkingUpdates && !running && !scanning && !preparing && !querying;
+            ImportIniButton.IsEnabled=ScanIniDefaults.IsEnabled=ImportGoldbergButton.IsEnabled=GoldbergDefinitions.IsEnabled=ScanGoldbergDefaults.IsEnabled=ScanButton.IsEnabled;
+            StartButton.IsEnabled=!checkingUpdates && live && !running && !scanning && !querying && !preparing && order.Any(x=>x.Included) && GapLimitValid();
             CancelReplayButton.IsEnabled=running;
             QueryButton.IsEnabled=live && CanQueryPlan && samMode==SamCliMode.Modern;
-            OpenSamButton.IsEnabled=live && !running && !preparing && !querying && samMode==SamCliMode.Modern;
+            OpenSamButton.IsEnabled=!checkingUpdates && live && !running && !preparing && !querying && samMode==SamCliMode.Modern;
             UpButton.IsEnabled=DownButton.IsEnabled=CanEditPlan && CustomOrder.IsChecked==true;
             AchievementsGrid.IsEnabled=available;
             AchievementsGrid.IsReadOnly=!CanEditPlan;
             foreach(var control in new Control[]{DurationHours,DurationMinutes,DurationSeconds,InitialDelay,LockFirst,IdleDuringMigration,CustomOrder,LimitLongGaps}) control.IsEnabled=CanEditPlan;
             MaxGapMinutes.IsEnabled=CanEditPlan && LimitLongGaps.IsChecked==true;
             GamesGrid.IsEnabled=!scanning && !preparing;
-            SteamPath.IsEnabled=SamPath.IsEnabled=ValidateSamButton.IsEnabled=BrowseSamButton.IsEnabled=BrowseSteamButton.IsEnabled=!running && !scanning && !querying && !preparing;
+            SteamPath.IsEnabled=SamPath.IsEnabled=ValidateSamButton.IsEnabled=BrowseSamButton.IsEnabled=BrowseSteamButton.IsEnabled=!checkingUpdates && !running && !scanning && !querying && !preparing;
             RestoreOrderButton.IsEnabled=ClearTimingsButton.IsEnabled=RestoreOriginalButton.IsEnabled=CanEditPlan;
             OriginChoice.IsEnabled=CanEditPlan;
             SavePlanButton.IsEnabled=CanEditPlan && GapLimitValid();
@@ -805,7 +919,7 @@ namespace AchievementTimelineReplay.Wpf
                 MessageBox.Show(this,"Hay una operación en curso. Si es una migración, cancelala primero; si es una consulta, esperá a que termine.","Migración activa",MessageBoxButton.OK,MessageBoxImage.Information);
                 GoTo("Ejecucion");return;
             }
-            scanCancellation?.Cancel();SavePaths();
+            updateCancellation?.Cancel();scanCancellation?.Cancel();SavePaths();
         }
     }
 }
