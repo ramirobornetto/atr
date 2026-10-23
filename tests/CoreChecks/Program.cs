@@ -41,6 +41,19 @@ static class Program
         try
         {
             SavedPlanChecks.Run(root);
+            var countedGame=new GameEntry{TotalAchievements=40};
+            for(int i=0;i<16;i++)countedGame.Achievements.Add(new AchievementRecord{ApiId="ACH_"+i});
+            var partialStates=new Dictionary<string,string>();
+            for(int i=0;i<16;i++)partialStates["ACH_"+i]="Desbloqueado";
+            Expect(AchievementCounts.Format(countedGame)=="16 / 40","Historical progress uses full schema total");
+            Expect(AchievementCounts.Format(countedGame,partialStates)=="16 / 40","Partial Steam response retains 16 / 40 instead of 16 / 16");
+            var fullStates=new Dictionary<string,string>(partialStates);
+            for(int i=16;i<40;i++)fullStates["ACH_"+i]="Bloqueado";
+            Expect(AchievementCounts.Format(countedGame,fullStates)=="16 / 40","Full Steam response counts only unlocked achievements");
+            for(int i=40;i<45;i++)fullStates["ACH_"+i]="Bloqueado";
+            Expect(AchievementCounts.Format(countedGame,fullStates)=="16 / 45" && AchievementCounts.Format(countedGame,partialStates)=="16 / 45","New larger totals are remembered across later partial responses");
+            Expect(AchievementCounts.Format(countedGame,new Dictionary<string,string>{{"ACH_0","Bloqueado"}})=="0 / 45","A zero-unlock response retains the known total");
+
             var first=new AchievementRecord{ApiId="A",OriginalUnix=100};
             var second=new AchievementRecord{ApiId="B",OriginalUnix=100+18*3600};
             var third=new AchievementRecord{ApiId="C",OriginalUnix=100+18*3600+3*86400};

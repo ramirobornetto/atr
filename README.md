@@ -1,8 +1,8 @@
 # Achievement Timeline Replay
 
-## Descargar v0.6.3 para Windows x64
+## Descargar v0.6.4 para Windows x64
 
-[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.6.3_Windows_x64.zip)
+[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.6.4_Windows_x64.zip)
 
 Extraer **todo el ZIP** en una carpeta nueva y abrir `AchievementTimelineReplay.Wpf.exe`. No se necesita compilar ni instalar .NET. Mantener las DLL y demás archivos junto al ejecutable. Steam y SamRewritten se seleccionan en la aplicación, como antes; no vienen incluidos.
 
@@ -101,3 +101,9 @@ Los planes guardan intervalos relativos y las fechas originales proceden siempre
 Las consultas de otros juegos se coordinan con los comandos de desbloqueo y restauran SAM idle para el juego activo después de consultar. Una consulta puede demorar brevemente un desbloqueo o la cancelación si coinciden; su proceso tiene un timeout de 15 segundos, además de la restauración de idle. La contabilización real de Steam debe validarse en Windows.
 
 Pruebas adicionales: guardar un plan con orden personalizado y todos los parámetros, cerrar/reabrir, escanear y cargarlo; restaurar el original sin borrar el guardado; preparar/consultar B mientras A está en marcha, volver a A y verificar que conserva su plan. Comprobar también que Cancelar detiene A aunque se esté viendo B. Las pruebas automáticas usan historiales y un CLI SAM simulado; no modifican cuentas reales.
+
+## v0.6.4 — total de logros de Biblioteca
+
+La columna Logros conserva el total conocido del juego al consultar Steam. Una respuesta parcial de 16 logros desbloqueados mantiene **16 / 40** si el esquema contiene 40, y no cambia a 16 / 16. Si Steam informa una lista más grande que el esquema local, se recuerda ese total para las siguientes consultas. El cuadro flotante de toda la tabla de Biblioteca se eliminó.
+
+Fuente identifica dónde se leyó el historial (actualmente Steam local), no acredita la licencia ni identifica la herramienta usada para obtener el juego. Los archivos UserGameStats/Schema y la aparición en list-apps no permiten distinguir de forma fiable una instalación oficial de Steamidra. Los importadores futuros identificarán el formato/proveedor cuando existan pruebas suficientes; los formatos compartidos necesitarán una etiqueta genérica.

@@ -101,7 +101,7 @@ namespace AchievementTimelineReplay.Wpf
             initialized=true;
             GoTo("Escaneo");
             UpdateButtons();
-            Log("WPF v0.6.3 iniciada. Motor derivado de v0.5.3. No se ha modificado Steam.");
+            Log("WPF v0.6.4 iniciada. Motor derivado de v0.5.3. No se ha modificado Steam.");
             if(!String.IsNullOrWhiteSpace(SamPath.Text)) _=ValidateSamAsync(false);
         }
         void Log(string s)
@@ -200,7 +200,7 @@ namespace AchievementTimelineReplay.Wpf
                 var scanner=new LegacyScanner(Log);
                 var found=await Task.Run(()=>scanner.Scan(steam,cli,samMode,progress,token),token);
                 token.ThrowIfCancellationRequested();
-                foreach(var g in found) games.Add(new GameRow{GameName=g.GameName,AppId=g.AppId,Source="Steam local",Count=g.Achievements.Count+" / "+Math.Max(g.TotalAchievements,g.Achievements.Count),Snapshot=g.HasSnapshot?"Protegido ✓":"—",Game=g});
+                foreach(var g in found) games.Add(new GameRow{GameName=g.GameName,AppId=g.AppId,Source="Steam local",Count=AchievementCounts.Format(g),Snapshot=g.HasSnapshot?"Protegido ✓":"—",Game=g});
                 LibraryCount.Text=games.Count+" juegos";
                 ScanResult.Text="Escaneo terminado: "+games.Count+" historiales aprovechables.";
                 SetStatus(ScanResult.Text);
@@ -569,7 +569,7 @@ namespace AchievementTimelineReplay.Wpf
                 var states=SamRunner.States(r.StdOut);
                 if(states.Count==0)throw new InvalidDataException("SAM no devolvió estados de logros; se conserva el contador anterior.");
                 var libraryRow=games.FirstOrDefault(g=>ReferenceEquals(g.Game,game));
-                if(libraryRow!=null)libraryRow.Count=states.Values.Count(SamRunner.IsUnlocked)+" / "+states.Count;
+                if(libraryRow!=null)libraryRow.Count=AchievementCounts.Format(game,states);
                 // Si se navegó mientras llegaba la respuesta, actualizar el borrador correcto.
                 var target=ReferenceEquals(currentGame,game)?order:browsedPlans.TryGetValue(game,out var cached)?cached.Records:null;
                 int omitted=target==null?0:SamRunner.ApplySteamStates(target,states,true);
