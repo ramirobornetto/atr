@@ -1,8 +1,8 @@
 # Achievement Timeline Replay
 
-## Descargar v0.7.0 para Windows x64
+## Descargar v0.7.1 para Windows x64
 
-[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.7.0_Windows_x64.zip)
+[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.7.1_Windows_x64.zip)
 
 Extraer **todo el ZIP** en una carpeta nueva y abrir `AchievementTimelineReplay.Wpf.exe`. No se necesita compilar ni instalar .NET. Mantener las DLL y demás archivos junto al ejecutable. Steam y SamRewritten se seleccionan en la aplicación, como antes; no vienen incluidos.
 
@@ -128,3 +128,19 @@ Comprobación manual: elegir origen para A, cambiar a B y comprobar que no se he
 - Muestra sintética incluida: `muestras/Goldberg/480/achievements.json`, cuatro logros con fecha de seis conocidos. Sus acciones de Steam están bloqueadas.
 
 Instrucciones, formato, persistencia y limitaciones: [GOLDBERG.md](GOLDBERG.md). No hace falta tener una emulación para probar la muestra. Compilación WPF y publicación autónoma Windows x64 verificadas; 68 comprobaciones automáticas pasadas, incluyendo 21 de Goldberg y la muestra distribuida. Pendiente prueba visual en Windows y validación con archivos de una instalación real.
+
+
+## v0.7.1 — diagnóstico de escaneo y biblioteca
+
+El resultado del escaneo desglosa Steam y Goldberg/GBE: revisados, recuperados, sin logros con fecha válida, sin esquema, errores de lectura, errores de snapshot, duplicados e IDs inválidos. Las categorías suman los candidatos revisados; los archivos de otras cuentas filtrados previamente se informan aparte. Logs identifica cada descarte. Esto permite investigar diferencias como 272 candidatos / 112 recuperados sin atribuirlas todas a falta de logros.
+
+Biblioteca muestra flechas ascendentes/descendentes en las columnas que ordenan la vista; comienza por nombre ascendente. Se conserva el orden y el redimensionado nativos de WPF. Bajo el nombre del juego, el plan muestra en cursiva la ruta completa del archivo leído, con acceso al texto completo al pasar el cursor.
+
+Origen se completa como Steam o Goldberg por la fuente detectada. Para historiales Steam, un archivo coincidente `Steam/config/stplug-in/<AppID>.lua` produce **Steamidra (indicio LUA)**. No se ejecuta el LUA ni se interpretan IDs internos como procedencia probada; un juego oficial también puede tener uno. La explicación aparece en el plan. Las asignaciones manuales guardadas siempre tienen prioridad; quitarlas vuelve a la detección automática.
+
+Goldberg resuelve nombres mediante la caché de nombres públicos (incluidos los obtenidos con SAM) y consultas a Steam Store por AppID. No usa el `gamename` interno del esquema como título público: puede ser un nombre de desarrollo como Steel Magnolia. Si no hay nombre disponible, muestra AppID y registra el motivo. Las consultas tienen cancelación, timeout y se detienen ante bloqueo o límite HTTP.
+
+La muestra sigue siendo reconocida como sintética al copiarla bajo otro AppID, aunque no se copie `.atr-demo`, porque sus IDs `ATR_DEMO_*` la identifican. Mantiene sus seis logros y no incorpora el total de un esquema real ajeno. Los snapshots sintéticos de 0.7.0 se pueden abrir manteniendo el modo muestra, sin reescribirlos. Las acciones de Steam permanecen bloqueadas. AppID 480 está admitido por el lector y por la búsqueda habitual; cualquier omisión se puede investigar con el nuevo desglose y Logs.
+
+
+Validación de 0.7.1: 83 comprobaciones automáticas pasadas con datos aislados, incluidos contadores reconciliados, inferencia por LUA, nombres públicos por AppID y copias de la muestra. Compilación y publicación autónoma Windows x64 verificadas. La presentación visual de WPF y las consultas reales de nombres requieren comprobación en Windows; las pruebas no modifican cuentas de Steam.

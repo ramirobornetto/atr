@@ -102,6 +102,8 @@ namespace AchievementTimelineReplay.Wpf
             GamesGrid.ItemsSource=games;
             AchievementsGrid.ItemsSource=achievementRows;
             GamesGrid.CanUserSortColumns=true;
+            GamesGrid.Columns[0].SortDirection=ListSortDirection.Ascending;
+            CollectionViewSource.GetDefaultView(games).SortDescriptions.Add(new SortDescription(nameof(GameRow.GameName),ListSortDirection.Ascending));
             AchievementsGrid.CanUserSortColumns=false;
             var settings=LegacyTools.ReadSettings();
             SteamPath.Text=settings.TryGetValue("steam",out var steam) && !String.IsNullOrWhiteSpace(steam) ? steam : LegacyTools.DetectSteam();
@@ -109,7 +111,7 @@ namespace AchievementTimelineReplay.Wpf
             initialized=true;
             GoTo("Escaneo");
             UpdateButtons();
-            Log("WPF v0.7.0 iniciada. Motor derivado de v0.5.3. No se ha modificado Steam.");
+            Log("WPF v0.7.1 iniciada. Motor derivado de v0.5.3. No se ha modificado Steam.");
             if(!String.IsNullOrWhiteSpace(SamPath.Text)) _=ValidateSamAsync(false);
         }
         void Log(string s)
@@ -207,17 +209,19 @@ namespace AchievementTimelineReplay.Wpf
             try
             {
                 var scanner=new LegacyScanner(Log);
+                var goldbergSummary=new ScanSummary();
                 var found=await Task.Run(()=>
                 {
                     var all=scanner.Scan(steam,cli,samMode,progress,token);
                     if(scanGoldberg)foreach(var root in GoldbergHistory.DefaultRoots().Where(Directory.Exists))
-                        all.AddRange(GoldbergHistory.Scan(root,steam,Path.Combine(LegacyTools.DataDirectory,"Snapshots"),Log,token));
+                        all.AddRange(GoldbergHistory.Scan(root,steam,Path.Combine(LegacyTools.DataDirectory,"Snapshots"),Log,token,goldbergSummary));
+                    GameNames.Resolve(all.Where(g=>!String.IsNullOrEmpty(g.HistoryId)),Log,token);
                     return all.OrderBy(g=>g.GameName,StringComparer.CurrentCultureIgnoreCase).ToList();
                 },token);
                 token.ThrowIfCancellationRequested();
                 foreach(var g in found) games.Add(new GameRow{GameName=g.GameName,AppId=g.AppId,Source=g.SourceLabel,Origin=ReadLibraryOrigin(g),Count=AchievementCounts.Format(g),Snapshot=g.HasSnapshot?"Protegido ✓":"—",Game=g});
                 LibraryCount.Text=games.Count+" juegos";
-                ScanResult.Text="Escaneo terminado: "+games.Count+" historiales aprovechables.";
+                ScanResult.Text="Escaneo terminado: "+games.Count+" historiales aprovechables.\n"+scanner.Summary.Format("Steam")+(scanGoldberg?"\n"+goldbergSummary.Format("Goldberg/GBE"):"");
                 SetStatus(ScanResult.Text);
                 Log(ScanResult.Text);
                 ScanProgress.IsIndeterminate=false;ScanProgress.Maximum=1;ScanProgress.Value=1;
@@ -233,7 +237,7 @@ namespace AchievementTimelineReplay.Wpf
                 ScanResult.Text="ERROR: "+ex.Message;Log(ex.ToString());SetStatus(ScanResult.Text);
                 MessageBox.Show(this,ex.Message,"Escaneo",MessageBoxButton.OK,MessageBoxImage.Error);
             }
-            finally {scanning=false;scanCancellation.Dispose();scanCancellation=null;ScanProgress.IsIndeterminate=false;UpdateButtons();}
+            finally {scanning=false;scanCancellation.Dispose();scanCancellation=null;ScanProgress.IsIndeterminate=false;GameChanged(GamesGrid,null);UpdateButtons();}
         }
         async void ImportGoldbergClick(object sender,RoutedEventArgs e)
         {
@@ -263,7 +267,9 @@ namespace AchievementTimelineReplay.Wpf
                     string schema=Path.Combine(steam,"appcache","stats","UserGameStatsSchema_"+appId+".bin");
                     var imported=GoldbergHistory.Load(statePath,appId,definitions,schema,Log);
                     token.ThrowIfCancellationRequested();
-                    return GoldbergHistory.Protect(imported,Path.Combine(LegacyTools.DataDirectory,"Snapshots"));
+                    var protectedGame=GoldbergHistory.Protect(imported,Path.Combine(LegacyTools.DataDirectory,"Snapshots"));
+                    GameNames.Resolve(new[]{protectedGame},Log,token);
+                    return protectedGame;
                 },token);
                 token.ThrowIfCancellationRequested();
                 var row=games.FirstOrDefault(g=>g.Game.StorageKey==game.StorageKey);
@@ -307,6 +313,7 @@ namespace AchievementTimelineReplay.Wpf
                 if(saved)order.AddRange(previous.Records);
                 else foreach(var a in currentGame.Achievements.OrderBy(x=>x.OriginalUnix))order.Add(a.Clone());
                 HeaderGame.Text=currentGame.GameName;
+                PlanHistoryPath.Text=currentGame.StatsPath;
                 HeaderGameInfo.Text=(currentGame.IsDemo?"DEMO · ":"")+"AppID "+currentGame.AppId+" · "+order.Count+" logros · "+(currentGame.HasSnapshot?"Snapshot protegido":"Sin snapshot");
                 if(!running)ExecutionGame.Text=currentGame.GameName;
                 ApplyPlanParameters(saved?previous.Parameters:new PlanParameters{DurationSeconds=LegacyPlanner.OriginalSpan(order)});
@@ -322,7 +329,7 @@ namespace AchievementTimelineReplay.Wpf
             }
             else
             {
-                HeaderGame.Text="Sin juego seleccionado";HeaderGameInfo.Text="Elegí un historial";
+                PlanHistoryPath.Text="";HeaderGame.Text="Sin juego seleccionado";HeaderGameInfo.Text="Elegí un historial";
                 if(!running)ExecutionGame.Text="No hay ningún plan preparado";
                 SelectOrigin("Sin clasificar");OriginStatus.Text="";
             }
@@ -347,7 +354,7 @@ namespace AchievementTimelineReplay.Wpf
             {
                 var origin=originStore.Load(currentGame);
                 SelectOrigin(origin??currentGame.DetectedOrigin??"Sin clasificar");
-                OriginStatus.Text=origin==null?(currentGame.DetectedOrigin==null?"Sin origen asignado.":"Origen detectado por formato Goldberg/GBE; podés corregirlo manualmente."):"Origen manual guardado para esta cuenta y juego.";
+                OriginStatus.Text=origin==null?(currentGame.DetectedOrigin==null?"Sin origen asignado.":currentGame.OriginEvidence??"Origen detectado; podés corregirlo manualmente."):"Origen manual guardado para esta cuenta y juego.";
             }
             catch(Exception ex){SelectOrigin("Sin clasificar");OriginStatus.Text="No se pudo leer el origen: "+ex.Message;}
         }

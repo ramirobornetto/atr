@@ -44,6 +44,7 @@ namespace AchievementTimelineReplay {
         public string HistoryId;
         public string SourceLabel = "UserGameStats (.bin)";
         public string DetectedOrigin;
+        public string OriginEvidence;
         public bool IsDemo;
         public string StorageKey => String.IsNullOrEmpty(HistoryId) ? AccountId+"_"+AppId : HistoryId+"_"+AppId;
         public string GameName;

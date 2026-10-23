@@ -222,6 +222,7 @@ namespace AchievementTimelineReplay
     {
         readonly Action<string> log;
         public LegacyScanner(Action<string> logger) { log=logger; }
+        public ScanSummary Summary {get;private set;}=new ScanSummary();
         static uint RecentAccount(string root)
         {
             try
@@ -240,7 +241,7 @@ namespace AchievementTimelineReplay
             } catch { }
             return 0;
         }
-        static Dictionary<uint,string> LoadNames()
+        internal static Dictionary<uint,string> LoadNames()
         {
             var d=new Dictionary<uint,string>();
             try
@@ -255,7 +256,7 @@ namespace AchievementTimelineReplay
             } catch { }
             return d;
         }
-        static void SaveNames(Dictionary<uint,string> names)
+        internal static void SaveNames(Dictionary<uint,string> names)
         {
             try
             {
@@ -265,6 +266,7 @@ namespace AchievementTimelineReplay
         static void Report(IProgress<ScanStatus> p,string text,int i=0,int n=0,bool ind=false) => p?.Report(new ScanStatus{Message=text,Current=i,Total=n,Indeterminate=ind});
         public List<GameEntry> Scan(string steamRoot,string samPath,SamCliMode samMode,IProgress<ScanStatus> progress,CancellationToken token)
         {
+            Summary=new ScanSummary();
             string statsDir=Path.Combine(steamRoot,"appcache","stats");
             if(!Directory.Exists(statsDir)) throw new DirectoryNotFoundException("No encontré Steam\\appcache\\stats: "+statsDir);
             var samNames=new Dictionary<uint,string>();
@@ -299,26 +301,28 @@ namespace AchievementTimelineReplay
             if(recent != 0)
             {
                 var filtered=stats.Where(f=>{var m=Regex.Match(Path.GetFileName(f),@"^UserGameStats_(\d+)_(\d+)\.bin$",RegexOptions.IgnoreCase);return m.Success && uint.TryParse(m.Groups[1].Value,out var a) && a==recent;}).ToList();
-                if(filtered.Count>0) stats=filtered;
+                if(filtered.Count>0){Summary.OtherAccounts=stats.Count-filtered.Count;stats=filtered;}
             }
             var byApp=new Dictionary<uint,GameEntry>();
             for(int i=0;i<stats.Count;i++)
             {
                 token.ThrowIfCancellationRequested();
+                Summary.Reviewed++;
                 string f=stats[i];
                 var m=Regex.Match(Path.GetFileName(f),@"^UserGameStats_(\d+)_(\d+)\.bin$",RegexOptions.IgnoreCase);
-                if(!m.Success || !uint.TryParse(m.Groups[1].Value,out var account) || !uint.TryParse(m.Groups[2].Value,out var app)) continue;
+                if(!m.Success || !uint.TryParse(m.Groups[1].Value,out var account) || !uint.TryParse(m.Groups[2].Value,out var app)){Summary.InvalidIds++;log("Nombre de historial inválido: "+f);continue;}
                 Report(progress,$"Historiales: {i+1}/{stats.Count} · AppID {app}",i+1,stats.Count);
                 string schema=Path.Combine(statsDir,"UserGameStatsSchema_"+app.ToString(CultureInfo.InvariantCulture)+".bin");
-                if(!File.Exists(schema)) continue;
+                if(!File.Exists(schema)){Summary.NoSchema++;log("Omitido AppID "+app+": falta esquema "+schema);continue;}
                 try
                 {
                     var game=HistoryLoader.Load(f,schema,account,app);
-                    if(game?.Achievements==null || game.Achievements.Count==0) continue;
+                    if(game?.Achievements==null || game.Achievements.Count==0){Summary.NoDates++;log("Omitido AppID "+app+": sin logros desbloqueados con fecha válida.");continue;}
                     game.IsOwned=samNames.ContainsKey(app);
+                    if(byApp.ContainsKey(app)){Summary.Duplicates++;log("AppID "+app+": historial duplicado entre cuentas; se conserva un candidato.");}
                     byApp[app]=game;
                 }
-                catch(Exception ex) { log("Error leyendo AppID "+app+": "+ex.Message); }
+                catch(Exception ex) { Summary.ReadErrors++;log("Error leyendo AppID "+app+": "+ex.Message); }
             }
             token.ThrowIfCancellationRequested();
             var names=LoadNames();
@@ -355,8 +359,8 @@ namespace AchievementTimelineReplay
                 token.ThrowIfCancellationRequested();
                 if(names.TryGetValue(item.AppId,out var publicName) && !String.IsNullOrWhiteSpace(publicName)) item.GameName=publicName;
                 else if(String.IsNullOrWhiteSpace(item.GameName)) item.GameName="AppID "+item.AppId;
-                try {result.Add(LoadOrCreateSnapshot(item));}
-                catch(Exception ex) {log("Historial omitido para proteger sus datos: "+ex.Message);}
+                try {var protectedGame=LoadOrCreateSnapshot(item);OriginDetector.Apply(protectedGame,steamRoot);result.Add(protectedGame);Summary.Recovered++;}
+                catch(Exception ex) {Summary.SnapshotErrors++;log("Historial omitido para proteger sus datos: "+ex.Message);}
                 Report(progress,$"Snapshots: {++ix}/{n} · {item.AppId}",ix,n);
             }
             return result.OrderBy(g=>g.GameName,StringComparer.CurrentCultureIgnoreCase).ToList();

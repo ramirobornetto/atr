@@ -60,6 +60,17 @@ static class GoldbergChecks
         var shipped=GoldbergHistory.Load(Path.Combine(sample,"achievements.json"),480,Path.Combine(sample,"steam_settings","achievements.json"));
         Expect(shipped.IsDemo && shipped.Achievements.Count==4 && shipped.TotalAchievements==6 && shipped.Achievements[0].DisplayName=="Primer paso","shipped demo contains 4 / 6 with localized names and Steam isolation marker");
         Expect(shipped.Achievements[2].OriginalUnix-shipped.Achievements[1].OriginalUnix==64200,"shipped demo contains the documented 17h 50m gap");
+        string copied=Path.Combine(root,"copied-fixture","2322010");Directory.CreateDirectory(copied);Directory.CreateDirectory(Path.Combine(copied,"steam_settings"));
+        File.Copy(Path.Combine(sample,"achievements.json"),Path.Combine(copied,"achievements.json"));File.Copy(Path.Combine(sample,"steam_settings","achievements.json"),Path.Combine(copied,"steam_settings","achievements.json"));
+        string copiedSnapshots=Path.Combine(root,"copied-snapshots");var copiedSummary=new ScanSummary();
+        var copies=GoldbergHistory.Scan(Path.GetDirectoryName(copied),null,copiedSnapshots,warnings.Add,CancellationToken.None,copiedSummary);
+        Expect(copies.Count==1 && copies[0].IsDemo && copies[0].AppId==2322010 && copies[0].TotalAchievements==6,"renaming a copied fixture without its marker retains demo isolation and its six-achievement total");
+        Expect(copiedSummary.Reviewed==1 && copiedSummary.Recovered==1 && copiedSummary.Classified==copiedSummary.Reviewed,"Goldberg scan reports reconciled candidate and recovered counts");
+        var copiedGame=copies[0];string copiedSnapshot=Path.Combine(copiedSnapshots,copiedGame.StorageKey,"snapshot.json");
+        File.WriteAllText(copiedSnapshot,File.ReadAllText(copiedSnapshot).Replace("\"IsDemo\":true","\"IsDemo\":false"));
+        var upgraded=GoldbergHistory.Protect(GoldbergHistory.Load(Path.Combine(copied,"achievements.json"),2322010),copiedSnapshots);
+        Expect(upgraded.IsDemo && upgraded.Achievements.Count==4,"legacy synthetic snapshots remain usable but cannot enable Steam execution");
+
         using var cancelled=new CancellationTokenSource();cancelled.Cancel();
         try{GoldbergHistory.Scan(folder,null,scanSnapshots,warnings.Add,cancelled.Token);throw new Exception("Expected cancel");}catch(OperationCanceledException){Expect(true,"scan cancellation propagates");}
     }

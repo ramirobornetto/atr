@@ -40,3 +40,12 @@ Formato contrastado con el código público de GBE Fork, commit `f7bbd18130d1840
 - [Nombre GSE Saves](https://github.com/Detanup01/gbe_fork/blob/f7bbd18130d184048fcb1784a622ed846dec589b/dll/local_storage.cpp)
 
 Las comprobaciones automáticas usan estados y definiciones sintéticos y un SAM simulado; no modifican cuentas reales. Se verifica compilación WPF y publicación para Windows x64 desde Linux. Falta validación visual de WPF en Windows y contraste con archivos producidos por una instalación real. Esto es soporte inicial para el formato descrito, no una garantía para todos los forks y configuraciones.
+
+
+## Cambios de 0.7.1
+
+Se detectan las muestras copiadas por sus IDs ficticios aunque falte el marcador `.atr-demo`; no se mezclan sus totales con los de esquemas de juegos reales. Si existe un nombre público, se muestra con la indicación «muestra Goldberg». De lo contrario, se conserva «Muestra Goldberg · AppID …».
+
+El título de un juego real se resuelve por caché pública y Steam Store. El `gamename` del esquema se usa únicamente como información interna y ya no como título Goldberg. Un AppID no disponible o una consulta fallida conserva su identificador numérico. La importación funciona aunque el servicio de nombres no esté disponible; puede esperar hasta el timeout de la consulta.
+
+La búsqueda presenta contadores por fuente y motivos de omisión, incluidos errores de snapshots. Los historiales de Steam reciben el origen Steam; un LUA coincidente en config/stplug-in solo indica una posible relación con Steamidra. Las correcciones manuales de origen prevalecen sobre ambas detecciones.

@@ -38,14 +38,15 @@ namespace AchievementTimelineReplay
             log??=_=>{};
             using var state=Read(statePath);
             if(state.RootElement.ValueKind!=JsonValueKind.Object)throw new InvalidDataException("Se esperaba el estado de usuario de Goldberg (objeto JSON), no el array de steam_settings.");
+            bool synthetic=state.RootElement.EnumerateObject().Any() && state.RootElement.EnumerateObject().All(p=>p.Name.StartsWith("ATR_DEMO_",StringComparison.Ordinal));
             var names=new Dictionary<string,(string Name,string Description)>(StringComparer.OrdinalIgnoreCase);
             string gameName="AppID "+appId;
-            if(!String.IsNullOrEmpty(steamSchemaPath) && File.Exists(steamSchemaPath))
+            if(!synthetic && !String.IsNullOrEmpty(steamSchemaPath) && File.Exists(steamSchemaPath))
             {
                 try
                 {
                     var app=BinaryKvReader.ReadFile(steamSchemaPath)[appId.ToString(CultureInfo.InvariantCulture)] as Dictionary<string,object>;
-                    if(app.TryGetValue("gamename",out var title) && title is string name)gameName=name;
+                    // gamename can be an internal codename (e.g. Steel Magnolia), not a public title.
                     if(app.TryGetValue("stats",out var stats) && stats is Dictionary<string,object> groups)
                     foreach(var g in groups.Values.OfType<Dictionary<string,object>>())
                     {
@@ -83,7 +84,7 @@ namespace AchievementTimelineReplay
                     names[id]=(Text(entry,"displayName",id),Text(entry,"description",""));
                 }
             }
-            var game=new GameEntry{AppId=appId,AccountId=0,GameName=gameName,StatsPath=Path.GetFullPath(statePath),SchemaPath=definitionsPath,HasLocalHistory=true,HistoryId=Identity(statePath),SourceLabel="achievements.json (Goldberg/GBE)",DetectedOrigin="Goldberg",IsDemo=File.Exists(Path.Combine(Path.GetDirectoryName(statePath),".atr-demo"))};
+            var game=new GameEntry{AppId=appId,AccountId=0,GameName=gameName,StatsPath=Path.GetFullPath(statePath),SchemaPath=definitionsPath,HasLocalHistory=true,HistoryId=Identity(statePath),SourceLabel="achievements.json (Goldberg/GBE)",DetectedOrigin="Goldberg",IsDemo=synthetic || File.Exists(Path.Combine(Path.GetDirectoryName(statePath),".atr-demo"))};
             var all=new HashSet<string>(names.Keys,StringComparer.OrdinalIgnoreCase);
             var seenState=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach(var property in state.RootElement.EnumerateObject())
@@ -100,7 +101,8 @@ namespace AchievementTimelineReplay
             }
             game.TotalAchievements=all.Count;
             game.Achievements=game.Achievements.OrderBy(a=>a.OriginalUnix).ThenBy(a=>a.ApiId,StringComparer.Ordinal).ToList();
-            if(game.IsDemo)game.GameName="Demostración Goldberg (sin conexión a Steam)";
+            if(game.IsDemo)game.GameName="Muestra Goldberg · AppID "+appId;
+            OriginDetector.Apply(game,null);
             return game;
         }
         static bool TryGetInt64Safe(this JsonElement element,out long value){value=0;return element.ValueKind==JsonValueKind.Number && element.TryGetInt64(out value);}
@@ -111,7 +113,7 @@ namespace AchievementTimelineReplay
             if(File.Exists(path))
             {
                 var snapshot=JsonSerializer.Deserialize<GoldbergSnapshot>(File.ReadAllText(path));
-                if(snapshot==null || snapshot.Version!=1 || snapshot.AppId!=game.AppId || snapshot.HistoryId!=game.HistoryId || snapshot.IsDemo!=game.IsDemo || snapshot.Achievements==null || snapshot.Achievements.Count==0 || snapshot.Achievements.Any(a=>a==null || String.IsNullOrWhiteSpace(a.ApiId) || a.OriginalUnix<=0 || a.OriginalUnix>UInt32.MaxValue) || snapshot.Achievements.Select(a=>a.ApiId).Distinct(StringComparer.OrdinalIgnoreCase).Count()!=snapshot.Achievements.Count)
+                if(snapshot==null || snapshot.Version!=1 || snapshot.AppId!=game.AppId || snapshot.HistoryId!=game.HistoryId || (snapshot.IsDemo!=game.IsDemo && !(game.IsDemo && snapshot.Achievements!=null && snapshot.Achievements.All(a=>a!=null && a.ApiId!=null && a.ApiId.StartsWith("ATR_DEMO_",StringComparison.Ordinal)))) || snapshot.Achievements==null || snapshot.Achievements.Count==0 || snapshot.Achievements.Any(a=>a==null || String.IsNullOrWhiteSpace(a.ApiId) || a.OriginalUnix<=0 || a.OriginalUnix>UInt32.MaxValue) || snapshot.Achievements.Select(a=>a.ApiId).Distinct(StringComparer.OrdinalIgnoreCase).Count()!=snapshot.Achievements.Count)
                     throw new InvalidDataException("Snapshot Goldberg inválido. No se sobrescribió.");
                 game.Achievements=snapshot.Achievements.Select(a=>new AchievementRecord{ApiId=a.ApiId,DisplayName=a.DisplayName,Description=a.Description,OriginalUnix=a.OriginalUnix}).ToList();
                 game.TotalAchievements=Math.Max(game.TotalAchievements,game.Achievements.Count);
@@ -129,8 +131,9 @@ namespace AchievementTimelineReplay
             }
             game.HasSnapshot=true;return game;
         }
-        public static List<GameEntry> Scan(string root,string steamRoot,string snapshotsDirectory,Action<string> log,CancellationToken token)
+        public static List<GameEntry> Scan(string root,string steamRoot,string snapshotsDirectory,Action<string> log,CancellationToken token,ScanSummary summary=null)
         {
+            summary??=new ScanSummary();
             if(!Directory.Exists(root))throw new DirectoryNotFoundException("No existe la carpeta Goldberg: "+root);
             var candidates=new List<string>();
             if(File.Exists(Path.Combine(root,"achievements.json")))candidates.Add(root);
@@ -138,19 +141,21 @@ namespace AchievementTimelineReplay
             var result=new List<GameEntry>();
             foreach(string folder in candidates.Distinct(StringComparer.OrdinalIgnoreCase))
             {
-                token.ThrowIfCancellationRequested();
-                if(!UInt32.TryParse(Path.GetFileName(folder),NumberStyles.None,CultureInfo.InvariantCulture,out uint appId) || appId==0){log("Goldberg: carpeta sin AppID numérico omitida: "+folder);continue;}
+                token.ThrowIfCancellationRequested();summary.Reviewed++;
+                if(!UInt32.TryParse(Path.GetFileName(folder),NumberStyles.None,CultureInfo.InvariantCulture,out uint appId) || appId==0){summary.InvalidIds++;log("Goldberg: carpeta sin AppID numérico omitida: "+folder);continue;}
                 try
                 {
                     string definitions=Path.Combine(folder,"steam_settings","achievements.json");
                     string schema=String.IsNullOrWhiteSpace(steamRoot)?null:Path.Combine(steamRoot,"appcache","stats","UserGameStatsSchema_"+appId+".bin");
                     var game=Load(Path.Combine(folder,"achievements.json"),appId,File.Exists(definitions)?definitions:null,schema,log);
                     token.ThrowIfCancellationRequested();
-                    if(game.Achievements.Count==0){log("Goldberg AppID "+appId+": sin logros con fecha válida.");continue;}
-                    result.Add(Protect(game,snapshotsDirectory));log("Goldberg: importado "+appId+" desde "+folder);
+                    if(game.Achievements.Count==0){summary.NoDates++;log("Goldberg AppID "+appId+": sin logros con fecha válida.");continue;}
+                    try{result.Add(Protect(game,snapshotsDirectory));summary.Recovered++;}
+                    catch(Exception ex){summary.SnapshotErrors++;log("Goldberg AppID "+appId+": error de snapshot: "+ex.Message);continue;}
+                    log("Goldberg: importado "+appId+" desde "+folder);
                 }
                 catch(OperationCanceledException){throw;}
-                catch(Exception ex){log("Goldberg AppID "+appId+" omitido: "+ex.Message);}
+                catch(Exception ex){summary.ReadErrors++;log("Goldberg AppID "+appId+" omitido: "+ex.Message);}
             }
             token.ThrowIfCancellationRequested();return result;
         }

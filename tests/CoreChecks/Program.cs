@@ -99,6 +99,12 @@ static class Program
             Save(stats,D("cache",D("1",D("AchievementTimes",D("0",100,"1",200)),"2",D("AchievementTimes",D("0",300)))));
             g=HistoryLoader.Load(stats,schema,7,42);
             Expect(g.Achievements.Count==3 && g.TotalAchievements==3,"Complete history counts 3 / 3, excluding ordinary stats");
+            string sampleFolder=Path.Combine(AppContext.BaseDirectory,"GoldbergSample","480");
+            var renamedSample=GoldbergHistory.Load(Path.Combine(sampleFolder,"achievements.json"),42,Path.Combine(sampleFolder,"steam_settings","achievements.json"),schema);
+            Expect(renamedSample.IsDemo && renamedSample.TotalAchievements==6,"Synthetic achievements never merge with an unrelated real Steam schema after changing AppID");
+            GameNames.Apply(renamedSample,new Dictionary<uint,string>{{42,"Public title"}});
+            Expect(renamedSample.GameName=="Public title (muestra Goldberg)","Resolved public names keep the demo designation after renaming AppID");
+
             string data=LegacyTools.DataDirectory;
             Expect(Path.GetFullPath(data).StartsWith(root+Path.DirectorySeparatorChar,StringComparison.Ordinal),"Test data directory is isolated");
             File.WriteAllText(LegacyTools.NamesPath,"42\tFixture\n");
@@ -113,6 +119,36 @@ static class Program
             Save(stats,D("cache",D()));
             g=HistoryLoader.Load(stats,schema,7,42);
             Expect(g.Achievements.Count==0 && g.TotalAchievements==3,"Empty history counts 0 / 3 without inventing unlocks");
+            string summaryRoot=Path.Combine(root,"summary-steam"),summaryStats=Path.Combine(summaryRoot,"appcache","stats");Directory.CreateDirectory(summaryStats);
+            foreach(int id in new[]{42,43,45,46})
+                Save(Path.Combine(summaryStats,"UserGameStatsSchema_"+id+".bin"),D(id.ToString(),D("gamename","Internal codename","stats",D("1",D("type","ACHIEVEMENTS","bits",D("0",D("name","FIRST")))))));
+            foreach(string name in new[]{"UserGameStats_17_42.bin","UserGameStats_18_42.bin","UserGameStats_17_46.bin"})Save(Path.Combine(summaryStats,name),D("cache",D("1",D("AchievementTimes",D("0",100)))));
+            Save(Path.Combine(summaryStats,"UserGameStats_17_43.bin"),D("cache",D()));
+            File.WriteAllText(Path.Combine(summaryStats,"UserGameStats_17_44.bin"),"no schema");
+            File.WriteAllText(Path.Combine(summaryStats,"UserGameStats_17_45.bin"),"broken binary");
+            File.WriteAllText(Path.Combine(summaryStats,"UserGameStats_bad_47.bin"),"invalid filename");
+            string brokenSnapshot=Path.Combine(data,"Snapshots","17_46");Directory.CreateDirectory(brokenSnapshot);File.WriteAllText(Path.Combine(brokenSnapshot,"snapshot.json"),"broken");
+            File.WriteAllText(LegacyTools.NamesPath,"42\tPublic title\n46\tSecond title\n");
+            found=scanner.Scan(summaryRoot,"",SamCliMode.Unknown,null,CancellationToken.None);
+            var summary=scanner.Summary;
+            Expect(summary.Reviewed==7 && summary.Recovered==1 && summary.NoDates==1 && summary.NoSchema==1 && summary.ReadErrors==1 && summary.SnapshotErrors==1 && summary.Duplicates==1 && summary.InvalidIds==1,"Scan summary classifies every reviewed candidate by its actual outcome");
+            Expect(summary.Classified==summary.Reviewed && found.Count==summary.Recovered,"Summary categories sum to candidates and recovered count matches the library");
+            Expect(summary.Format("Steam").Contains("7 revisados") && summary.Format("Steam").Contains("1 sin esquema"),"Scan summary exposes omission reasons in the result text");
+            var inferred=new GameEntry{AppId=42,StatsPath=Path.Combine(summaryStats,"UserGameStats_17_42.bin")};OriginDetector.Apply(inferred,summaryRoot);
+            Expect(inferred.DetectedOrigin=="Steam","Steam histories get an automatic neutral Steam origin");
+            string luaDirectory=Path.Combine(summaryRoot,"config","stplug-in");Directory.CreateDirectory(luaDirectory);File.WriteAllText(Path.Combine(luaDirectory,"42.lua"),"not executed");
+            OriginDetector.Apply(inferred,summaryRoot);
+            Expect(inferred.DetectedOrigin=="Steamidra (indicio LUA)" && inferred.OriginEvidence.Contains("no demuestra"),"Matching Lua suggests Steamidra without claiming proven provenance");
+            File.WriteAllText(Path.Combine(luaDirectory,"99.lua"),"not executed");File.Delete(Path.Combine(luaDirectory,"42.lua"));OriginDetector.Apply(inferred,summaryRoot);
+            Expect(inferred.DetectedOrigin=="Steam","Unrelated Lua does not classify a game as Steamidra");
+            var sourceGame=new GameEntry{AppId=42,GameName="Internal codename",HistoryId="goldberg_fixture",StatsPath="Goldberg/42/achievements.json"};OriginDetector.Apply(sourceGame,summaryRoot);
+            Expect(sourceGame.DetectedOrigin=="Goldberg","Goldberg format retains its origin regardless of Steam Lua presence");
+            GameNames.Apply(sourceGame,new Dictionary<uint,string>{{42,"Public title"}});
+            Expect(sourceGame.GameName=="Public title","Goldberg titles use public name cache rather than schema codenames");
+            GameNames.Apply(sourceGame,new Dictionary<uint,string>());
+            Expect(sourceGame.GameName=="AppID 42","Unavailable public names fall back to explicit AppID instead of internal codenames");
+            Expect(GameNames.StoreName(2322010,"{\"2322010\":{\"success\":true,\"data\":{\"name\":\"God of War Ragnarok\"}}}")=="God of War Ragnarok" && GameNames.StoreName(499,"{\"499\":{\"success\":false}}")==null,"Store metadata is matched to the requested AppID and unavailable titles stay unknown");
+
         }
         finally {Directory.Delete(root,true);}
     }

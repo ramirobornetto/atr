@@ -43,4 +43,21 @@ namespace AchievementTimelineReplay
             finally {if(File.Exists(temp))File.Delete(temp);}
         }
     }
+    internal static class OriginDetector
+    {
+        public static void Apply(GameEntry game,string steamRoot)
+        {
+            if(!String.IsNullOrEmpty(game.HistoryId) && game.HistoryId.StartsWith("goldberg_",StringComparison.Ordinal))
+            {game.DetectedOrigin="Goldberg";game.OriginEvidence="Estado leído con formato Goldberg/GBE: "+game.StatsPath;return;}
+            game.DetectedOrigin="Steam";
+            game.OriginEvidence="Historial leído de Steam/appcache/stats; no acredita licencia ni procedencia de la instalación.";
+            if(!String.IsNullOrWhiteSpace(steamRoot))
+            {
+                string lua=Path.Combine(steamRoot,"config","stplug-in",game.AppId+".lua");
+                if(File.Exists(lua))
+                {game.DetectedOrigin="Steamidra (indicio LUA)";game.OriginEvidence="Existe "+lua+". Es un indicio de Steamidra; no demuestra que este historial provenga de allí ni que el juego no sea oficial.";}
+            }
+        }
+    }
+
 }
