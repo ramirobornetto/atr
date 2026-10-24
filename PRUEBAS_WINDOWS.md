@@ -218,3 +218,8 @@ El entorno de desarrollo compila WPF pero no ejecuta una sesión gráfica Window
 
 - Paneles principales más transparentes (40 %); textos y controles sólidos.
 - Separadores vertical y horizontal del Plan: línea fina con glow leve, cursor correcto y ajuste de dimensiones arrastrando dentro de la zona de 6 unidades. Verificar también escalas 125/150 %.
+
+
+## Revisión visual 0.17.3
+
+- Ajustes horizontal y vertical del Plan sin línea ni glow, incluso al pasar el mouse. El cursor cambia y se conserva el arrastre de las dimensiones.

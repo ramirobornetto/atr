@@ -38,7 +38,7 @@ namespace AchievementTimelineReplay
         const string GraphUrl="https://launcher.store.epicgames.com/graphql";
         const string SchemaQuery=@"query Achievement($SandboxId: String!, $Locale: String!) { Achievement { productAchievementsRecordBySandbox(sandboxId: $SandboxId, locale: $Locale) { productId achievements { achievement { name unlockedDisplayName unlockedDescription } } } } }";
         const string PlayerQuery=@"query playerProfileAchievementsByProductId($EpicAccountId: String!, $ProductId: String!) { PlayerProfile { playerProfile(epicAccountId: $EpicAccountId) { productAchievements(productId: $ProductId) { ... on PlayerProductAchievementsResponseSuccess { data { playerAchievements { playerAchievement { achievementName unlocked unlockDate } } } } } } } }";
-        const string LauncherUserAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) EpicGamesLauncher ATR/0.17.2";
+        const string LauncherUserAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) EpicGamesLauncher ATR/0.17.3";
         readonly HttpClient http;
         public Func<CancellationToken,Task<EpicSession>> RenewSession;
         static void Headers(HttpRequestMessage request,EpicSession session)
@@ -69,7 +69,7 @@ namespace AchievementTimelineReplay
         public EpicProfile(HttpMessageHandler handler=null)
         {
             http=handler==null?new HttpClient(new HttpClientHandler{AllowAutoRedirect=false}):new HttpClient(handler);
-            http.Timeout=TimeSpan.FromSeconds(35);http.DefaultRequestHeaders.UserAgent.ParseAdd("ATR/0.17.2");
+            http.Timeout=TimeSpan.FromSeconds(35);http.DefaultRequestHeaders.UserAgent.ParseAdd("ATR/0.17.3");
         }
         internal static string Text(JsonElement e,string key)=>e.ValueKind==JsonValueKind.Object && e.TryGetProperty(key,out var v) && v.ValueKind==JsonValueKind.String?v.GetString():null;
         static JsonElement At(JsonElement e,params string[] keys)
