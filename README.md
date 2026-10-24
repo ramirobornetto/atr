@@ -1,8 +1,8 @@
 # Achievement Timeline Replay
 
-## Descargar v0.16.0 para Windows x64
+## Descargar v0.16.1 para Windows x64
 
-[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.16.0_Windows_x64.zip)
+[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.16.1_Windows_x64.zip)
 
 Extraer **todo el ZIP** en una carpeta nueva y abrir `AchievementTimelineReplay.Wpf.exe`. No se necesita compilar ni instalar .NET. Mantener las DLL y demás archivos junto al ejecutable. Steam y SamRewritten se seleccionan en la aplicación, como antes; no vienen incluidos.
 
@@ -282,3 +282,13 @@ La interfaz usa **Playnite Achievements** en lugar de PA y elimina (perfil) de l
 ## Personalizar la interfaz
 
 Los ajustes visuales comunes están comentados al comienzo de [`WpfPrototype/Appearance.xaml`](WpfPrototype/Appearance.xaml). Ver [la guía de apariencia](APARIENCIA.md) para cambiar medidas, colores y propiedades de un solo control desde Visual Studio.
+
+## v0.16.1 — ajustes de Escaneo y Biblioteca
+
+- Selección de carpeta de SAM Rewritten con resolución automática de `samrewritten-cli.exe`.
+- Rótulos de directorios, botones más breves y ayudas al pasar el mouse.
+- Acciones de Biblioteca junto al encabezado, contador debajo de filtros y búsqueda más compacta.
+- Fuente sin el prefijo «Automático:».
+- Apariencia compartida en `Appearance.xaml`, con altura normal de 34 y búsqueda de Biblioteca de 30; guía en `APARIENCIA.md`.
+
+La mejora de los mensajes sobre cachés vacías y fechas de logros permanece pendiente.
