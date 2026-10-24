@@ -27,3 +27,12 @@ Si hay errores, adjuntar captura de consola y primer error + una captura del ár
 3. En Biblioteca, alternar cada origen, combinar varios con la búsqueda, revisar cantidades y la flecha de orden. Activar un origen sin juegos no escanea ni crea entradas. Las preferencias sobreviven al reinicio. Cambiar manualmente un origen desde el plan debe mover el juego al filtro correspondiente.
 4. Comprobar papelera roja, ayuda «?» y cancelación de la confirmación. Guardar un plan y un origen antes de borrar; confirmar y reiniciar: la lista sigue vacía. Reimportar la misma ruta: snapshot, plan guardado y origen siguen disponibles. Los originales no se modifican.
 5. Durante una ejecución o escaneo la papelera queda deshabilitada. Los filtros de Biblioteca siguen siendo de visualización y no modifican el plan en ejecución.
+
+## Regresión 0.9.0 — PA
+
+1. Cerrar Playnite y actualizar ATR. Comprobar el icono del EXE/ventana/barra de tareas. Escanear solo PA o seleccionar achievement_cache.db con Importar PA; game_custom_data.db y los WAL/SHM existentes deben quedar junto a su base. No se necesita config.json.
+2. Confirmar que Resident Evil elige Manual 1/44 frente al registro Steam 0/44 en las bases de prueba privadas. Probar también un juego con más desbloqueos en Steam que en Manual: debe ganar Steam. Revisar Fuente y el log. Los logros de amigos no deben importarse.
+3. En PA, quitar la fecha de un logro manual manteniéndolo desbloqueado, guardar y cerrar Playnite. Reimportar: debe conservarlo y mostrar Sin fecha, sin 1970 ni esperas gigantes. Si la lista con más desbloqueos tiene menos fechas, debe seguir ganando. Guardar plan, reiniciar y comprobar selección/tiempos/estado sin fecha.
+4. Escanear un archivo Goldberg y el seguimiento Local de ese mismo archivo en PA: si hay evidencia fechada coincidente, debe verse una entrada con el historial más completo. Si faltan todas las fechas, o hay perfiles ambiguos/contradictorios, deben conservarse separados. El AppID solo no basta para fusionar.
+5. Guardar un plan de la fuente directa antes de elegir PA más completo. Cargar el guardado desde la nueva entrada: se recuperan los IDs comunes con selección y tiempos; los nuevos quedan desmarcados. Confirmar que el plan anterior y snapshot original siguen en disco.
+6. Con una instalación portable, importar una vez y repetir escaneo: se recuerda la ruta. Desactivar PA no debe vaciar su catálogo; filtro PA no inicia escaneos. Borrar biblioteca no elimina sus bases ni los planes/snapshots. Las muestras sintéticas siguen sin permitir operaciones Steam.

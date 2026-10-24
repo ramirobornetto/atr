@@ -7,8 +7,15 @@ namespace AchievementTimelineReplay
 {
     internal static class HistorySnapshots
     {
+        public static GameEntry ProtectLatest(GameEntry game,string snapshotsDirectory)
+        {
+            var fresh=game.Achievements.Select(a=>a.Clone()).ToList();
+            Protect(game,snapshotsDirectory);game.Achievements=fresh;game.UsesCurrentSnapshot=true;
+            PlayniteHistory.ProtectCurrent(game,snapshotsDirectory);return game;
+        }
         public static GameEntry Protect(GameEntry game,string snapshotsDirectory)
         {
+            var fresh=game.Achievements.Select(a=>a.Clone()).ToList();
             string directory=Path.Combine(snapshotsDirectory,game.StorageKey);
             string path=Path.Combine(directory,"snapshot.json");
             if(File.Exists(path))
@@ -31,7 +38,10 @@ namespace AchievementTimelineReplay
                 using var stream=new FileStream(path,FileMode.CreateNew,FileAccess.Write,FileShare.None);
                 JsonSerializer.Serialize(stream,snapshot);stream.Flush(true);
             }
-            game.HasSnapshot=true;return game;
+            game.HasSnapshot=true;
+            if(File.Exists(Path.Combine(directory,"source-current.json")))
+            {game.Achievements=fresh;game.UsesCurrentSnapshot=true;PlayniteHistory.ProtectCurrent(game,snapshotsDirectory);}
+            return game;
         }
     }
     internal sealed class HistorySnapshot
@@ -39,6 +49,7 @@ namespace AchievementTimelineReplay
         public int Version {get;set;}=1;
         public uint AppId {get;set;}
         public string HistoryId {get;set;}
+        public uint AccountId {get;set;}
         public bool IsDemo {get;set;}
         public List<SnapshotAchievement> Achievements {get;set;}
     }

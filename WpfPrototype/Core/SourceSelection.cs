@@ -8,8 +8,9 @@ namespace AchievementTimelineReplay
 {
     internal sealed class SourceSelection
     {
-        public static readonly string[] ScanSources={"Steam","SteamIdra/LuaTools","Goldberg","GSE","CODEX","RUNE","CODEX/RUNE compatible"};
+        public static readonly string[] ScanSources={"Steam","SteamIdra/LuaTools","Goldberg","GSE","CODEX","RUNE","CODEX/RUNE compatible","PA"};
         public static readonly string[] LibrarySources=ScanSources.Concat(new[]{"OnlineFix","Otro","Sin clasificar"}).ToArray();
+        public List<string> PAPaths {get;set;}=new List<string>();
         public Dictionary<string,bool> Scan {get;set;}=new Dictionary<string,bool>();
         public Dictionary<string,bool> Visible {get;set;}=new Dictionary<string,bool>();
         public bool Scans(string source) => !Scan.TryGetValue(source,out bool enabled) || enabled;
@@ -19,6 +20,7 @@ namespace AchievementTimelineReplay
         public bool Allows(GameEntry game,string steamRoot)
         {
             // Scan eligibility follows the file's detected format/location, never a manual label.
+            if(PlayniteHistory.IsPA(game))return Scans("PA");
             if(String.IsNullOrEmpty(game.HistoryId))return AllowsSteam(game.AppId,steamRoot);
             OriginDetector.Apply(game,steamRoot);return Scans(game.DetectedOrigin??"CODEX/RUNE compatible");
         }
@@ -28,6 +30,7 @@ namespace AchievementTimelineReplay
             if(new FileInfo(path).Length>32768)throw new InvalidDataException("Preferencias de fuentes demasiado grandes.");
             var value=JsonSerializer.Deserialize<SourceSelection>(File.ReadAllText(path));
             if(value?.Scan==null || value.Visible==null)throw new InvalidDataException("Preferencias de fuentes inválidas.");
+            if(value.PAPaths==null || value.PAPaths.Count>64 || value.PAPaths.Any(p=>String.IsNullOrWhiteSpace(p) || p.Length>32768 || !Path.IsPathFullyQualified(p) || !String.Equals(Path.GetFileName(p),"achievement_cache.db",StringComparison.OrdinalIgnoreCase)))throw new InvalidDataException("Rutas PA inválidas.");
             value.Scan=value.Scan.Where(p=>ScanSources.Contains(p.Key)).ToDictionary(p=>p.Key,p=>p.Value);
             value.Visible=value.Visible.Where(p=>LibrarySources.Contains(p.Key)).ToDictionary(p=>p.Key,p=>p.Value);
             return value;

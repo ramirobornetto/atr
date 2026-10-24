@@ -44,7 +44,8 @@ namespace AchievementTimelineReplay
         readonly string directory;
         public PlanStore(string directory) { this.directory=directory; }
         public string FilePath(GameEntry game) => Path.Combine(directory,game.StorageKey+".json");
-        public bool Exists(GameEntry game) => File.Exists(FilePath(game));
+        string RelatedPath(GameEntry game)=>game.AlternatePlanKey==null?null:Path.Combine(directory,game.AlternatePlanKey+".json");
+        public bool Exists(GameEntry game) => File.Exists(FilePath(game)) || File.Exists(RelatedPath(game));
         public static string Signature(SavedPlan plan) => JsonSerializer.Serialize(new{plan.Parameters,plan.Achievements});
         public static SavedPlan Capture(GameEntry game,IEnumerable<AchievementRecord> order,PlanParameters parameters)
         {
@@ -59,7 +60,7 @@ namespace AchievementTimelineReplay
         }
         static void Validate(SavedPlan plan,GameEntry game)
         {
-            if(plan==null || plan.Version!=1 || plan.AccountId!=game.AccountId || plan.AppId!=game.AppId || plan.HistoryId!=game.HistoryId)
+            if(plan==null || plan.Version!=1 || plan.AppId!=game.AppId || ((plan.AccountId!=game.AccountId || plan.HistoryId!=game.HistoryId) && game.AlternatePlanKey!=(String.IsNullOrEmpty(plan.HistoryId)?plan.AccountId.ToString():plan.HistoryId)+"_"+plan.AppId))
                 throw new InvalidDataException("El plan no corresponde a esta cuenta/juego o usa un formato no compatible.");
             var p=plan.Parameters;
             if(p==null || !double.IsFinite(p.DurationSeconds) || p.DurationSeconds<0 || p.DurationSeconds>35999999 ||
@@ -91,7 +92,7 @@ namespace AchievementTimelineReplay
         }
         public SavedPlan Load(GameEntry game)
         {
-            var plan=JsonSerializer.Deserialize<SavedPlan>(File.ReadAllText(FilePath(game)));
+            var plan=JsonSerializer.Deserialize<SavedPlan>(File.ReadAllText(File.Exists(FilePath(game))?FilePath(game):RelatedPath(game)));
             Validate(plan,game);
             return plan;
         }
@@ -107,13 +108,13 @@ namespace AchievementTimelineReplay
                 var record=source.Clone();record.Included=saved.Included;record.ManualGapSeconds=saved.ManualGapSeconds;
                 result.Records.Add(record);used.Add(saved.ApiId);
             }
-            foreach(var source in game.Achievements.OrderBy(a=>a.OriginalUnix))
+            foreach(var source in game.Achievements.OrderBy(a=>a.OriginalUnix>0?a.OriginalUnix:Int64.MaxValue))
             {
                 if(used.Contains(source.ApiId))continue;
                 var record=source.Clone();record.Included=false;record.ManualGapSeconds=null;
                 result.Records.Add(record);result.Added++;
             }
-            if(!plan.Parameters.CustomOrder)result.Records=result.Records.OrderBy(a=>a.OriginalUnix).ToList();
+            if(!plan.Parameters.CustomOrder)result.Records=result.Records.OrderBy(a=>a.OriginalUnix>0?a.OriginalUnix:Int64.MaxValue).ToList();
             return result;
         }
     }

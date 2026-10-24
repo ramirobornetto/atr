@@ -411,6 +411,8 @@ namespace AchievementTimelineReplay
                             Description=a.TryGetProperty("Description",out var description)?description.GetString():"",
                             OriginalUnix=a.GetProperty("OriginalUnix").GetInt64()
                         });
+                        if(File.Exists(Path.Combine(dir,"source-current.json")))
+                        {current.UsesCurrentSnapshot=true;PlayniteHistory.ProtectCurrent(current,Path.Combine(LegacyTools.DataDirectory,"Snapshots"));return current;}
                         return game;
                     }
                     throw new InvalidDataException("El snapshot no contiene logros.");
@@ -441,8 +443,14 @@ namespace AchievementTimelineReplay
     {
         public static long OriginalSpan(List<AchievementRecord> order)
         {
-            var list=order.Where(a=>a.Included).OrderBy(a=>a.OriginalUnix).ToList();
-            return list.Count<2?0:Math.Max(0,list[list.Count-1].OriginalUnix-list[0].OriginalUnix);
+            var gaps=PlanningGaps(order);return (long)Math.Round(gaps.Sum());
+        }
+        static List<double> PlanningGaps(List<AchievementRecord> order)
+        {
+            var list=order.Where(a=>a.Included).OrderBy(a=>a.OriginalUnix>0?a.OriginalUnix:Int64.MaxValue).ToList();
+            var gaps=new List<double>();
+            for(int i=0;i<list.Count;i++)gaps.Add(i==0?0:list[i].OriginalUnix==0 || list[i-1].OriginalUnix==0?60:Math.Max(0,(double)(list[i].OriginalUnix-list[i-1].OriginalUnix)));
+            return gaps;
         }
         public static Dictionary<AchievementRecord,ScheduleItem> Calculate(List<AchievementRecord> order,double targetSpan,double? maximumAutomaticGapSeconds=null)
         {
@@ -450,9 +458,7 @@ namespace AchievementTimelineReplay
             var result=new Dictionary<AchievementRecord,ScheduleItem>();
             var replayOrder=order.Where(a=>a.Included).ToList();
             if(replayOrder.Count==0) return result;
-            var chronological=replayOrder.OrderBy(a=>a.OriginalUnix).ToList();
-            var originalGaps=new List<double>{0};
-            for(int i=1;i<chronological.Count;i++) originalGaps.Add(Math.Max(0,(double)(chronological[i].OriginalUnix-chronological[i-1].OriginalUnix)));
+            var originalGaps=PlanningGaps(replayOrder);
             double originalSpan=originalGaps.Sum();
             double factor=originalSpan>0 ? targetSpan/originalSpan : 0;
             double cumulative=0;
@@ -477,7 +483,7 @@ namespace AchievementTimelineReplay
         public static Dictionary<AchievementRecord,double> OriginalGaps(List<AchievementRecord> order)
         {
             var result=new Dictionary<AchievementRecord,double>();
-            var chronological=order.Where(a=>a.Included).OrderBy(a=>a.OriginalUnix).ToList();
+            var chronological=order.Where(a=>a.Included && a.OriginalUnix>0).OrderBy(a=>a.OriginalUnix).ToList();
             for(int i=0;i<chronological.Count;i++) result[chronological[i]]=i==0?0:Math.Max(0,(double)(chronological[i].OriginalUnix-chronological[i-1].OriginalUnix));
             return result;
         }

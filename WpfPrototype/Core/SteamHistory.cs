@@ -42,6 +42,12 @@ namespace AchievementTimelineReplay {
         public uint AppId;
         public uint AccountId;
         public string HistoryId;
+        public string PAGroupKey;
+        public string PAProvider;
+        public string PAOrigin;
+        public uint PAAccountId;
+        public bool UsesCurrentSnapshot;
+        public string AlternatePlanKey;
         public string SourceLabel = "UserGameStats (.bin)";
         public string DetectedOrigin;
         public string OriginEvidence;

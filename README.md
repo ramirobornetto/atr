@@ -1,8 +1,8 @@
 # Achievement Timeline Replay
 
-## Descargar v0.8.3 para Windows x64
+## Descargar v0.9.0 para Windows x64
 
-[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.8.3_Windows_x64.zip)
+[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.9.0_Windows_x64.zip)
 
 Extraer **todo el ZIP** en una carpeta nueva y abrir `AchievementTimelineReplay.Wpf.exe`. No se necesita compilar ni instalar .NET. Mantener las DLL y demás archivos junto al ejecutable. Steam y SamRewritten se seleccionan en la aplicación, como antes; no vienen incluidos.
 
@@ -191,3 +191,9 @@ Escaneo permite activar Steam, SteamIdra/LuaTools, Goldberg, GSE, CODEX y RUNE p
 Biblioteca añade interruptores por origen con cantidades, búsqueda combinada y contador «Mostrando X de Y». Estos filtros usan el origen visible/manual y no escanean, importan ni borran. Las preferencias de escaneo y visibilidad se guardan por separado en `source-options.json`.
 
 La papelera roja borra el catálogo y su respaldo tras confirmar. Su «?» explica que conserva archivos de logros, snapshots, planes y orígenes. Se deshabilita mientras hay operaciones activas. Los borradores sin guardar se descartan; las preferencias se mantienen.
+
+## v0.9.0 — PlayniteAchievements e icono
+
+Nuevo lector PA de Steam, Manual con fuente Steam y Local. Detección de la instalación habitual, importación de bases portables y rutas recordadas. Se elige el historial con más desbloqueos y se conservan logros sin fecha o con fecha inválida: «Sin fecha», con intervalos sugeridos editables en el nuevo plan. Las fechas originales no se inventan.
+
+La comparación con archivos directos exige evidencia de historial coincidente y respeta perfiles ambiguos. Los primeros snapshots y planes se conservan; PA y las fuentes directas que pasan a seguimiento actual usan vistas de snapshot separadas. Nuevo icono del ejecutable y ventana proporcionado por el usuario. Ver [PA.md](PA.md) para criterios, formatos y pruebas de Windows.
