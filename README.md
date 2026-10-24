@@ -278,3 +278,7 @@ Escaneo se organiza en dos columnas, con fuentes a la izquierda y botones de imp
 Plan distribuye los controles inferiores en dos columnas, compacta el encabezado y separa la ruta de la tabla. El botón pasa a **Consultar estado en Steam** y la columna a **Estado en Steam**. Correspondencias unifica alturas de campos/botones y compacta los selectores de la tabla. La casilla del encabezado Confirmar permite marcar/desmarcar todas las equivalencias válidas; filas sin destino o con destinos repetidos quedan pendientes.
 
 La interfaz usa **Playnite Achievements** en lugar de PA y elimina (perfil) de las etiquetas. Los filtros GOG, PlayStation y OnlineFix se retiran; sus datos siguen accesibles mediante Otro. Las claves de preferencias, identidades, sesiones y correspondencias se conservan. Se eliminan las leyendas del motor/snapshots de la barra lateral y del pie. La validación de distribución visual requiere Windows; las pruebas automáticas cubren compatibilidad de claves y selección masiva sin conflictos.
+
+## Personalizar la interfaz
+
+Los ajustes visuales comunes están comentados al comienzo de [`WpfPrototype/Appearance.xaml`](WpfPrototype/Appearance.xaml). Ver [la guía de apariencia](APARIENCIA.md) para cambiar medidas, colores y propiedades de un solo control desde Visual Studio.
