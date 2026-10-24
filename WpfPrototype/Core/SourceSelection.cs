@@ -8,12 +8,12 @@ namespace AchievementTimelineReplay
 {
     internal sealed class SourceSelection
     {
-        public static readonly string[] ScanSources={"Steam","SteamIdra/LuaTools","Goldberg","GSE","CODEX","RUNE","CODEX/RUNE compatible","PA","Xbox (perfil)"};
-        public static readonly string[] LibrarySources=ScanSources.Where(s=>s!="Xbox (perfil)").Concat(new[]{"Xbox","Epic","GOG","PlayStation","OnlineFix","Otro","Sin clasificar"}).ToArray();
+        public static readonly string[] ScanSources={"Steam","SteamIdra/LuaTools","Goldberg","GSE","CODEX","RUNE","CODEX/RUNE compatible","PA","Xbox (perfil)","Epic (perfil)"};
+        public static readonly string[] LibrarySources=ScanSources.Where(s=>s!="Xbox (perfil)" && s!="Epic (perfil)").Concat(new[]{"Xbox","Epic","GOG","PlayStation","OnlineFix","Otro","Sin clasificar"}).ToArray();
         public List<string> PAPaths {get;set;}=new List<string>();
         public Dictionary<string,bool> Scan {get;set;}=new Dictionary<string,bool>();
         public Dictionary<string,bool> Visible {get;set;}=new Dictionary<string,bool>();
-        public bool Scans(string source) => Scan.TryGetValue(source,out bool enabled)?enabled:source!="Xbox (perfil)";
+        public bool Scans(string source) => Scan.TryGetValue(source,out bool enabled)?enabled:source!="Xbox (perfil)" && source!="Epic (perfil)";
         public bool Shows(string source) => !Visible.TryGetValue(LibraryCategory(source),out bool enabled) || enabled;
         public static string DisplayOrigin(string source)=>source=="Xbox"?"Xbox Live":source=="Xbox → Steam"?"Xbox Live → Steam":source;
         public static string LibraryCategory(string source) => source=="Xbox Live"?"Xbox":LibrarySources.Contains(source)?source:source!=null && source.EndsWith(" → Steam",StringComparison.Ordinal)?LibraryCategory(source.Substring(0,source.Length-8)):"Otro";
@@ -21,6 +21,7 @@ namespace AchievementTimelineReplay
         public bool Allows(GameEntry game,string steamRoot)
         {
             // Scan eligibility follows the file's detected format/location, never a manual label.
+            if(EpicProfile.IsEpic(game) || (PlatformMapping.IsMapped(game) && game.MappedSourceKey?.StartsWith("epic_",StringComparison.Ordinal)==true))return Scans("Epic (perfil)");
             if(XboxProfile.IsXbox(game))return Scans("Xbox (perfil)");
             if(PlatformMapping.IsMapped(game) && game.MappedSourceKey?.StartsWith("xbox_",StringComparison.Ordinal)==true)return Scans("Xbox (perfil)");
             if(PlayniteHistory.IsPA(game) || PlatformMapping.IsMapped(game))return Scans("PA");

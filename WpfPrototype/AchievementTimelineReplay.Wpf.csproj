@@ -5,7 +5,7 @@
     <UseWPF>true</UseWPF>
     <ApplicationIcon>Assets/atr.ico</ApplicationIcon>
     <Nullable>disable</Nullable>
-    <Version>0.13.1</Version>
+    <Version>0.14.0</Version>
     <AssemblyName>AchievementTimelineReplay.Wpf</AssemblyName>
   </PropertyGroup>
   <ItemGroup><Resource Include="Assets/atr.ico" /></ItemGroup>

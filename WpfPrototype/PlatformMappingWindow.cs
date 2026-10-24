@@ -18,7 +18,6 @@ namespace AchievementTimelineReplay.Wpf
         public string SourceCode=>Source.ApiId;
         public string TargetCode=>target?.ApiId??"";
         public string Description=>Source.Description;
-        public string Date=>Source.OriginalUnix>0?LegacyTools.UnixToLocal(Source.OriginalUnix).ToString("dd/MM/yyyy HH:mm:ss"):"Sin fecha";
         SteamDefinition target;bool confirmed;
         public bool ExactSuggestion;
         public bool NoEquivalent;
@@ -42,6 +41,7 @@ namespace AchievementTimelineReplay.Wpf
         readonly TextBlock info=new TextBlock{TextWrapping=TextWrapping.Wrap,Margin=new Thickness(8)};
         readonly CheckBox edition=new CheckBox{Content="Confirmo que el AppID corresponde al juego y edición correctos en Steam",Margin=new Thickness(8)};
         readonly ObservableCollection<MappingRow> rows=new ObservableCollection<MappingRow>();
+        readonly DataGridTemplateColumn targetColumn=new DataGridTemplateColumn{Header="Equivalente Steam",Width=new DataGridLength(3,DataGridLengthUnitType.Star),MinWidth=160};
         readonly DataGrid grid=new DataGrid{AutoGenerateColumns=false,CanUserAddRows=false,Margin=new Thickness(8),SelectionUnit=DataGridSelectionUnit.FullRow};
         readonly Button fetch=new Button{Content="Cargar logros Steam"},save=new Button{Content="Guardar correspondencias"},prepare=new Button{Content="Preparar plan Steam"};
         readonly Dictionary<uint,MappingFile> drafts=new Dictionary<uint,MappingFile>();
@@ -60,23 +60,24 @@ namespace AchievementTimelineReplay.Wpf
             language.Items.Add(new ComboBoxItem{Content="Español",Tag="spanish"});language.Items.Add(new ComboBoxItem{Content="English",Tag="english"});language.SelectedIndex=System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName=="es"?0:1;
             var input=new WrapPanel();input.Children.Add(new TextBlock{Text="AppID Steam:",VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(8)});input.Children.Add(appId);input.Children.Add(new TextBlock{Text="Idioma:",VerticalAlignment=VerticalAlignment.Center});input.Children.Add(language);input.Children.Add(fetch);header.Children.Add(input);header.Children.Add(info);header.Children.Add(edition);
             var footer=new WrapPanel{HorizontalAlignment=HorizontalAlignment.Right};DockPanel.SetDock(footer,Dock.Bottom);footer.Children.Add(confirmExact);footer.Children.Add(confirmSelected);footer.Children.Add(save);footer.Children.Add(prepare);var cancel=new Button{Content="Cerrar"};cancel.Click+=(s,e)=>Close();footer.Children.Add(cancel);layout.Children.Add(footer);layout.Children.Add(grid);
-            grid.Columns.Add(new DataGridTextColumn{Header="Logro de origen",Binding=new Binding(nameof(MappingRow.Name)),Width=new DataGridLength(2,DataGridLengthUnitType.Star),IsReadOnly=true});
-            grid.Columns.Add(new DataGridTextColumn{Header="Descripción de origen",Binding=new Binding(nameof(MappingRow.Description)),Width=new DataGridLength(2,DataGridLengthUnitType.Star),IsReadOnly=true});
-            grid.Columns.Add(new DataGridTextColumn{Header="Fecha",Binding=new Binding(nameof(MappingRow.Date)),Width=145,IsReadOnly=true});
-            grid.Columns.Add(new DataGridTemplateColumn{Header="Equivalente Steam",Width=new DataGridLength(3,DataGridLengthUnitType.Star)});
-            grid.Columns.Add(new DataGridTemplateColumn{Header="Confirmar",Width=85});
-            var check=new FrameworkElementFactory(typeof(CheckBox));check.SetBinding(CheckBox.IsCheckedProperty,new Binding(nameof(MappingRow.Confirmed)){Mode=BindingMode.TwoWay,UpdateSourceTrigger=UpdateSourceTrigger.PropertyChanged});check.SetValue(CheckBox.HorizontalAlignmentProperty,HorizontalAlignment.Center);((DataGridTemplateColumn)grid.Columns[4]).CellTemplate=new DataTemplate{VisualTree=check};
-            grid.Columns.Add(new DataGridTextColumn{Header="Estado",Binding=new Binding(nameof(MappingRow.Status)),Width=115,IsReadOnly=true});grid.Columns.Insert(4,new DataGridTextColumn{Header="Descripción Steam",Binding=new Binding(nameof(MappingRow.TargetDescription)),Width=new DataGridLength(2,DataGridLengthUnitType.Star),IsReadOnly=true});grid.Columns.Add(new DataGridTextColumn{Header="Motivo de la sugerencia",Binding=new Binding(nameof(MappingRow.MatchReason)),Width=200,IsReadOnly=true});grid.ItemsSource=rows;
-            foreach(var column in new[]{(Index:0,Path:nameof(MappingRow.Name)),(Index:1,Path:nameof(MappingRow.Description)),(Index:4,Path:nameof(MappingRow.TargetDescription)),(Index:7,Path:nameof(MappingRow.MatchReason))})
+            DataGridTextColumn TextColumn(string header,string path,DataGridLength width)
             {
                 var style=new Style(typeof(TextBlock),(Style)Application.Current.FindResource(typeof(TextBlock)));
                 style.Setters.Add(new Setter(TextBlock.TextTrimmingProperty,TextTrimming.CharacterEllipsis));
-                style.Setters.Add(new Setter(FrameworkElement.ToolTipProperty,new Binding(column.Path)));
-                ((DataGridTextColumn)grid.Columns[column.Index]).ElementStyle=style;
+                style.Setters.Add(new Setter(FrameworkElement.ToolTipProperty,new Binding(path)));
+                return new DataGridTextColumn{Header=header,Binding=new Binding(path),Width=width,IsReadOnly=true,ElementStyle=style};
             }
-            grid.Columns.Insert(1,new DataGridTextColumn{Header="Código de origen",Binding=new Binding(nameof(MappingRow.SourceCode)),Width=150,IsReadOnly=true});
-            grid.Columns.Insert(5,new DataGridTextColumn{Header="Código Steam",Binding=new Binding(nameof(MappingRow.TargetCode)),Width=160,IsReadOnly=true});
-            foreach(var column in grid.Columns.Where(c=>c.Header is string label && (label=="Logro de origen" || label=="Descripción de origen" || label=="Descripción Steam" || label=="Equivalente Steam")))column.MinWidth=160;
+            grid.Columns.Add(TextColumn("Logro de origen",nameof(MappingRow.Name),new DataGridLength(2,DataGridLengthUnitType.Star)));
+            grid.Columns.Add(TextColumn("Código de origen",nameof(MappingRow.SourceCode),150));
+            grid.Columns.Add(TextColumn("Descripción de origen",nameof(MappingRow.Description),new DataGridLength(2,DataGridLengthUnitType.Star)));
+            grid.Columns.Add(targetColumn);
+            grid.Columns.Add(TextColumn("Código Steam",nameof(MappingRow.TargetCode),160));
+            grid.Columns.Add(TextColumn("Descripción Steam",nameof(MappingRow.TargetDescription),new DataGridLength(2,DataGridLengthUnitType.Star)));
+            var check=new FrameworkElementFactory(typeof(CheckBox));check.SetBinding(CheckBox.IsCheckedProperty,new Binding(nameof(MappingRow.Confirmed)){Mode=BindingMode.TwoWay,UpdateSourceTrigger=UpdateSourceTrigger.PropertyChanged});check.SetValue(CheckBox.HorizontalAlignmentProperty,HorizontalAlignment.Center);
+            grid.Columns.Add(new DataGridTemplateColumn{Header="Confirmar",Width=85,CellTemplate=new DataTemplate{VisualTree=check}});
+            grid.Columns.Add(TextColumn("Estado",nameof(MappingRow.Status),115));
+            grid.Columns.Add(TextColumn("Motivo de la sugerencia",nameof(MappingRow.MatchReason),200));grid.ItemsSource=rows;
+            foreach(var column in grid.Columns.Where(c=>c.Width.IsStar))column.MinWidth=160;
             fetch.Click+=async(s,e)=>await Fetch();save.Click+=(s,e)=>Save(false);prepare.Click+=(s,e)=>Save(true);Closing+=(s,e)=>{if(busy)e.Cancel=true;};
             appId.TextChanged+=(s,e)=>{if(loadedId!=0){RememberDraft();loadedId=0;edition.IsChecked=false;save.IsEnabled=prepare.IsEnabled=confirmExact.IsEnabled=confirmSelected.IsEnabled=false;rows.Clear();info.Text="Cambió el AppID: cargá nuevamente los logros del destino.";}};
             searchButton.Click+=async(s,e)=>await Search();
@@ -132,8 +133,8 @@ namespace AchievementTimelineReplay.Wpf
                     row.ExactSuggestion=suggestion.Exact && row.Target==suggestion.Target;row.MatchReason=old?.NoEquivalent==true?"Marcado sin equivalente":previous!=null?"Correspondencia guardada":suggestion.Reason;
                     row.Confirmed=old?.Confirmed==true && row.Target!=null && row.Target.ApiId==old.TargetId;rows.Add(row);
                 }
-                var combo=new FrameworkElementFactory(typeof(ComboBox));combo.SetValue(ComboBox.ItemsSourceProperty,new[]{new SteamDefinition{Name="— Sin equivalente —"}}.Concat(definitions).ToList());combo.SetValue(ComboBox.IsTextSearchEnabledProperty,true);combo.SetBinding(ComboBox.SelectedItemProperty,new Binding(nameof(MappingRow.Target)){Mode=BindingMode.TwoWay,UpdateSourceTrigger=UpdateSourceTrigger.PropertyChanged});combo.SetValue(ComboBox.ForegroundProperty,System.Windows.Media.Brushes.Black);combo.SetValue(ComboBox.BackgroundProperty,System.Windows.Media.Brushes.White);
-                ((DataGridTemplateColumn)grid.Columns[4]).CellTemplate=new DataTemplate{VisualTree=combo};
+                var combo=new FrameworkElementFactory(typeof(ComboBox));combo.SetValue(ComboBox.ItemsSourceProperty,new[]{new SteamDefinition{Name="— Sin equivalente —"}}.Concat(definitions.OrderBy(d=>d.Name,StringComparer.CurrentCultureIgnoreCase).ThenBy(d=>d.ApiId,StringComparer.OrdinalIgnoreCase)).ToList());combo.SetValue(ComboBox.IsTextSearchEnabledProperty,true);combo.SetBinding(ComboBox.SelectedItemProperty,new Binding(nameof(MappingRow.Target)){Mode=BindingMode.TwoWay,UpdateSourceTrigger=UpdateSourceTrigger.PropertyChanged});combo.SetValue(ComboBox.ForegroundProperty,System.Windows.Media.Brushes.Black);combo.SetValue(ComboBox.BackgroundProperty,System.Windows.Media.Brushes.White);
+                targetColumn.CellTemplate=new DataTemplate{VisualTree=combo};
                 string title=searchResults.SelectedItem is SteamGameMatch match && match.AppId==id?match.Name:targetName(id);loadedTargetName=title;
                 info.Text="Destino: "+title+" · AppID "+id+" · "+definitions.Count+" logros · "+rows.Count(r=>r.Target!=null)+"/"+rows.Count+" sugerencias"+localizationNote+". Revisá edición, DLC y requisitos antes de confirmar.";save.IsEnabled=prepare.IsEnabled=confirmExact.IsEnabled=confirmSelected.IsEnabled=true;
             }

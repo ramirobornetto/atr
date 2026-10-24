@@ -11,7 +11,7 @@ namespace AchievementTimelineReplay
         public List<GameEntry> Sources=new List<GameEntry>();
         public GameEntry Selected;
         public bool Manual;
-        public static string Label(GameEntry game)=>String.IsNullOrEmpty(game.HistoryId)?"Steam directo":XboxProfile.IsXbox(game)?"Xbox Live (perfil)":PlayniteHistory.IsPA(game)?"PA / "+game.PAProvider:PlatformMapping.IsMapped(game)?(game.MappedSourceKey?.StartsWith("xbox_",StringComparison.Ordinal)==true?"Xbox Live":"PA / "+game.MappedFromPlatform)+" → Steam":game.DetectedOrigin??game.SourceLabel;
+        public static string Label(GameEntry game)=>String.IsNullOrEmpty(game.HistoryId)?"Steam directo":XboxProfile.IsXbox(game)?"Xbox Live (perfil)":EpicProfile.IsEpic(game)?"Epic Games (perfil)":PlayniteHistory.IsPA(game)?"PA / "+game.PAProvider:PlatformMapping.IsMapped(game)?PlatformMapping.SourceName(game.MappedSourceKey,game.MappedFromPlatform)+" → Steam":game.DetectedOrigin??game.SourceLabel;
         public string Summary => (Manual?"Manual: ":"Automático: ")+Label(Selected)+" · "+Sources.Count+" fuentes";
         public string Details => String.Join(Environment.NewLine,Sources.Select(g=>g.SourceLabel+": "+g.Achievements.Count+"/"+g.TotalAchievements+(g.SourceMissing?" · archivo faltante":"")))+Environment.NewLine+"Elegida: "+Selected.SourceLabel+". Automático prioriza desbloqueos, después fechas válidas y archivo directo.";
     }
@@ -23,7 +23,7 @@ namespace AchievementTimelineReplay
             uint first=a.AccountId!=0?a.AccountId:a.PAAccountId,second=b.AccountId!=0?b.AccountId:b.PAAccountId;
             if(first!=0 && second!=0 && first!=second)return false;
             if(PlatformMapping.IsMapped(a) && PlatformMapping.IsMapped(b) && a.MappedFromPlatform==b.MappedFromPlatform && !String.IsNullOrEmpty(a.ProfileKey) && !String.IsNullOrEmpty(b.ProfileKey) && a.ProfileKey!=b.ProfileKey)return false;
-            if((XboxProfile.IsXbox(a) || PlayniteHistory.IsPA(a)) && (XboxProfile.IsXbox(b) || PlayniteHistory.IsPA(b)) && (a.Platform!="Steam" || a.PAProvider==b.PAProvider) && !String.IsNullOrEmpty(a.ProfileKey) && !String.IsNullOrEmpty(b.ProfileKey) && a.ProfileKey!=b.ProfileKey)return false;
+            if((XboxProfile.IsXbox(a) || EpicProfile.IsEpic(a) || PlayniteHistory.IsPA(a)) && (XboxProfile.IsXbox(b) || EpicProfile.IsEpic(b) || PlayniteHistory.IsPA(b)) && (a.Platform!="Steam" || a.PAProvider==b.PAProvider) && !String.IsNullOrEmpty(a.ProfileKey) && !String.IsNullOrEmpty(b.ProfileKey) && a.ProfileKey!=b.ProfileKey)return false;
             return true;
         }
         public static bool Same(GameEntry a,GameEntry b)
@@ -32,7 +32,7 @@ namespace AchievementTimelineReplay
             if(a.StorageKey==b.StorageKey)return true;
             uint accountA=a.AccountId!=0?a.AccountId:a.PAAccountId,accountB=b.AccountId!=0?b.AccountId:b.PAAccountId;
             if(a.SteamTarget && accountA!=0 && accountA==accountB && (String.IsNullOrEmpty(a.HistoryId) || PlayniteHistory.IsPA(a)) && (String.IsNullOrEmpty(b.HistoryId) || PlayniteHistory.IsPA(b)))return true;
-            if(!a.SteamTarget && (PlayniteHistory.IsPA(a) || XboxProfile.IsXbox(a)) && (PlayniteHistory.IsPA(b) || XboxProfile.IsXbox(b)) && !String.IsNullOrEmpty(a.ProfileKey) && a.ProfileKey==b.ProfileKey)return true;
+            if(!a.SteamTarget && (PlayniteHistory.IsPA(a) || XboxProfile.IsXbox(a) || EpicProfile.IsEpic(a)) && (PlayniteHistory.IsPA(b) || XboxProfile.IsXbox(b) || EpicProfile.IsEpic(b)) && !String.IsNullOrEmpty(a.ProfileKey) && a.ProfileKey==b.ProfileKey)return true;
             if(PlatformMapping.IsMapped(a) || PlatformMapping.IsMapped(b))return true;
             if(PlayniteHistory.IsPA(a) && PlayniteHistory.IsPA(b) && String.Equals(a.StatsPath,b.StatsPath,StringComparison.OrdinalIgnoreCase) && a.PAGroupKey?.Split('|')[0]==b.PAGroupKey?.Split('|')[0])return true;
             var left=a.Achievements.Where(x=>x.OriginalUnix>0).ToDictionary(x=>x.ApiId,StringComparer.OrdinalIgnoreCase);

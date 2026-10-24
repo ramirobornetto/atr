@@ -88,7 +88,7 @@ namespace AchievementTimelineReplay
         public MigrationRunStore(string directory){this.directory=directory;}
         string Folder(GameEntry game)
         {
-            if(!Regex.IsMatch(game.StorageKey,@"^(?:(?:goldberg|codex_ini|pa|mapped|xbox)_[A-F0-9]{24}|[0-9]+)_[0-9]+$"))throw new InvalidDataException("Identidad de migración inválida.");
+            if(!Regex.IsMatch(game.StorageKey,@"^(?:(?:goldberg|codex_ini|pa|mapped|xbox|epic)_[A-F0-9]{24}|[0-9]+)_[0-9]+$"))throw new InvalidDataException("Identidad de migración inválida.");
             return Path.Combine(directory,game.StorageKey);
         }
         public string LatestPath(GameEntry game)=>Path.Combine(Folder(game),"latest.json");

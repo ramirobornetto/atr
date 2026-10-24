@@ -1,8 +1,8 @@
 # Achievement Timeline Replay
 
-## Descargar v0.13.1 para Windows x64
+## Descargar v0.14.0 para Windows x64
 
-[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.13.1_Windows_x64.zip)
+[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.14.0_Windows_x64.zip)
 
 Extraer **todo el ZIP** en una carpeta nueva y abrir `AchievementTimelineReplay.Wpf.exe`. No se necesita compilar ni instalar .NET. Mantener las DLL y demás archivos junto al ejecutable. Steam y SamRewritten se seleccionan en la aplicación, como antes; no vienen incluidos.
 
@@ -244,3 +244,12 @@ La barra de escaneo ahora avanza por fuentes activadas, consolidación y guardad
 ## v0.13.1 — búsqueda de esquema Steam desde Xbox
 
 Se corrige la búsqueda de definiciones para correspondencias: el JSON de un historial Xbox ya no se intenta abrir como base PA. Solo se consultan cachés achievement_cache.db de PA conocidas, detectadas o configuradas. Un esquema local ilegible o una caché corrupta se registran y permiten probar otras fuentes antes de SAM. Un error de conexión/licencia de SAM sigue siendo un error independiente; no se infiere su causa a partir del mensaje genérico.
+
+
+## v0.14.0 — Epic directo y tabla de correspondencias
+
+Los logros del desplegable de Steam se ordenan alfabéticamente por nombre. Se elimina la columna Fecha únicamente de esa ventana; las fechas originales siguen en Plan y en los snapshots. Las casillas de confirmación y las correspondencias guardadas se conservan.
+
+Nuevo **Conectar Epic…** y fuente independiente **Epic (perfil)**, desactivada inicialmente. Inicio de sesión en el navegador oficial, código temporal y sesión protegida con Windows; lectura paginada de biblioteca, catálogo de logros y desbloqueos de la cuenta. Solo incluye títulos con desbloqueos, también sin fecha; mantiene perfiles separados y permite preparar correspondencias Steam. No modifica Epic ni lee las sesiones de otras aplicaciones.
+
+La conexión utiliza un flujo compatible con el launcher, no requiere Entra y debe validarse con una cuenta real. No garantiza todos los logros EOS. Instrucciones y límites: [EPIC.md](EPIC.md). Las pruebas de servicios remotos usan respuestas simuladas.

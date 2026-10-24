@@ -76,7 +76,7 @@ namespace AchievementTimelineReplay
             try
             {
                 Marshal.Copy(bytes,0,input.Data,bytes.Length);
-                bool ok=encrypt?CryptProtectData(ref input,"ATR Xbox",IntPtr.Zero,IntPtr.Zero,IntPtr.Zero,1,out output):CryptUnprotectData(ref input,IntPtr.Zero,IntPtr.Zero,IntPtr.Zero,IntPtr.Zero,1,out output);
+                bool ok=encrypt?CryptProtectData(ref input,"ATR sesión",IntPtr.Zero,IntPtr.Zero,IntPtr.Zero,1,out output):CryptUnprotectData(ref input,IntPtr.Zero,IntPtr.Zero,IntPtr.Zero,IntPtr.Zero,1,out output);
                 if(!ok)throw new InvalidOperationException("Windows no pudo "+(encrypt?"proteger":"leer")+" la sesión Xbox. Volvé a conectar desde este usuario de Windows.");
                 var result=new byte[output.Size];Marshal.Copy(output.Data,result,0,result.Length);return result;
             }

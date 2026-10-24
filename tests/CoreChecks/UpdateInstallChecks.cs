@@ -44,8 +44,8 @@ static class UpdateInstallChecks
         RejectArchive(Package(root,"profile.zip",z=>Add(z,"Snapshots/overwrite.json")),Path.Combine(root,"bad-profile"),"package cannot replace user snapshot directories");
         RejectArchive(Package(root,"library.zip",z=>Add(z,"Library/catalog.json")),Path.Combine(root,"bad-library"),"update package cannot replace persisted user library index");
 
-        foreach(string reserved in new[]{"Mappings/record.json","Xbox/session.dat","Runs/latest.json","history-choices.json","source-options.json"})
-            RejectArchive(Package(root,"protected-"+Path.GetFileName(reserved)+".zip",z=>Add(z,reserved)),Path.Combine(root,"protected-"+Path.GetFileName(reserved)),"update package preserves authored mappings and source preferences: "+reserved);
+        foreach(string reserved in new[]{"Mappings/record.json","Xbox/session.dat","Epic/session.dat","Runs/latest.json","history-choices.json","source-options.json"})
+            RejectArchive(Package(root,"protected-"+reserved.Replace('/','-')+".zip",z=>Add(z,reserved)),Path.Combine(root,"protected-"+reserved.Replace('/','-')),"update package preserves authored mappings and source preferences: "+reserved);
         RejectArchive(Package(root,"duplicate.zip",z=>Add(z,"atr.updater.DLL")),Path.Combine(root,"bad-duplicate"),"case-colliding archive entries are rejected on every platform");
         RejectArchive(Package(root,"symlink.zip",z=>{var link=z.CreateEntry("link");link.ExternalAttributes=unchecked((int)0xA1FF0000);}),Path.Combine(root,"bad-symlink"),"ZIP symbolic links are rejected");
         string target=Path.Combine(root,"application");Directory.CreateDirectory(target);

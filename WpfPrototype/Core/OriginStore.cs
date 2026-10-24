@@ -55,7 +55,8 @@ namespace AchievementTimelineReplay
     {
         public static void Apply(GameEntry game,string steamRoot)
         {
-            if(PlatformMapping.IsMapped(game)){game.DetectedOrigin=game.MappedFromPlatform;game.OriginEvidence="Plan Steam preparado con correspondencias confirmadas desde "+(game.MappedSourceKey?.StartsWith("xbox_",StringComparison.Ordinal)==true?"Xbox Live":("PA / "+game.MappedFromPlatform))+".";return;}
+            if(PlatformMapping.IsMapped(game)){game.DetectedOrigin=game.MappedFromPlatform;game.OriginEvidence="Plan Steam preparado con correspondencias confirmadas desde "+PlatformMapping.SourceName(game.MappedSourceKey,game.MappedFromPlatform)+".";return;}
+            if(EpicProfile.IsEpic(game)){game.DetectedOrigin="Epic";game.OriginEvidence="Historial consultado directamente en Epic Games y conservado en una copia local de ATR.";return;}
             if(XboxProfile.IsXbox(game)){game.DetectedOrigin="Xbox";game.OriginEvidence="Historial consultado directamente en Xbox Live y conservado en una copia local de ATR.";return;}
             if(PlayniteHistory.IsPA(game))
             {game.DetectedOrigin=game.Platform!="Steam"?game.Platform:game.PAOrigin??"PA";game.OriginEvidence="Historial leído de PlayniteAchievements · proveedor "+game.PAProvider+". La caché no identifica por sí sola el emulador que lo escribió.";return;}

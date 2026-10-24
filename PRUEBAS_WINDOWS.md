@@ -107,3 +107,16 @@ Las pruebas automáticas usan SAM simulado y no sustituyen estas verificaciones 
 - Probar con PA cerrado y también sin cachés PA: debe consultar SAM si no hay definiciones locales.
 - Una caché PA corrupta o un esquema local ilegible se registran, pero no bloquean otras cachés ni la consulta SAM.
 - Si SAM rechaza el destino, mostrar su propio error. No afirmar automáticamente que falta una licencia.
+
+
+## v0.14.0 — desplegable y Epic
+
+1. Abrir correspondencias de Brotato: desplegable de Steam ordenado por nombre en el idioma elegido, con Sin equivalente primero. No debe haber columna Fecha; los códigos, descripciones, casillas y decisiones guardadas deben seguir funcionando. Las fechas del Plan no cambian.
+2. Conectar Epic con los botones del navegador y un código temporal propio. Comprobar la cuenta conectada, código vencido/inválido, cancelación y desconexión. No debe pedir Entra ni recibir la contraseña de Epic en ATR.
+3. Activar solo Epic (perfil): comparar los desbloqueos con Epic y PA en uno o más títulos compatibles. Conservar fechas ausentes y omitir juegos con cero desbloqueos o sin producto de logros disponible. Comprobar nombres legibles y DLC/alias del mismo producto.
+4. Reabrir sin conexión: biblioteca, snapshots y planes disponibles. Reescanear con sesión vencida o error de privacidad debe conservar el historial anterior y mostrar el error en Logs, sin sustituirlo por un cero ficticio.
+5. Conectar otro perfil: conservar entradas separadas. No agrupar juegos solo por nombres similares ni mezclar con Steam. PA sigue teniendo una sola opción de escaneo; Epic directo tiene la suya.
+6. Preparar correspondencias Epic → Steam y revisar antes de ejecutar. Solo las confirmadas pasan al plan. Probar recuperación de una migración desde ese plan con el flujo de v0.13.
+7. Actualizar ATR: preservar Epic/session.dat, copias de logros, snapshots, planes e informes. Desconectar solo elimina la sesión de ATR.
+
+Pendiente de validación manual real: inicio de sesión y respuestas de Epic en Windows. Las pruebas automatizadas cubren respuestas simuladas, no una cuenta real.
