@@ -84,3 +84,18 @@ La barra de progreso global de las demás fuentes sigue siendo un pendiente anot
 ## v0.12.2 — Xbox Live solo juegos con desbloqueos
 
 Actualizar y abrir la biblioteca guardada: deben desaparecer también los títulos Xbox Live 0/35, 0/175 y 0/200. Reescanear: conservar Cuphead 7/42 y todos los títulos con al menos un desbloqueo, incluidos los que no tengan fecha válida. Omitir juegos sin desbloqueos e indicar el motivo en Logs. Esta regla es solo para Xbox directo; los archivos, snapshots, planes y otras fuentes se conservan.
+
+
+## v0.13.0 — flujo completo de migración
+
+1. Preparar un historial Goldberg/GSE o CODEX/RUNE para un juego correcto: iniciar y comprobar el resumen (nombre, AppID, fuente, ruta, cuenta detectada, seleccionados, omitidos, pendientes y duración). Volver al plan no debe escribir logros.
+2. Incluir un logro ya desbloqueado en Steam: debe figurar como Ya desbloqueado y no ejecutarse. Si todos están desbloqueados, se guarda Sin cambios. Seleccionar un código ausente debe impedir confirmar.
+3. Cambiar el estado de un logro desde otra interfaz mientras el resumen está abierto: al confirmar, la nueva consulta debe actualizar el resumen y pedir otra revisión si cambió el conjunto de acciones.
+4. Ejecutar unos pocos logros con intervalos breves. Cancelar después del primero: el informe debe distinguir aplicado, pendientes y error si lo hubiera. Copiar informe debe incluir nombres y códigos. No debe etiquetar como aplicado confirmado si la lectura final falla.
+5. Cerrar ATR tras cancelar y reabrir. Seleccionar el mismo historial, Reanudar última migración y cargar el plan. Se conserva orden/tiempos, se desactiva reparación y al iniciar se consultan los estados actuales para omitir lo aplicado. Probar también terminar forzadamente ATR en una muestra controlada; ningún logro real se revierte.
+6. Cambiar de cuenta Steam: no reanudar un informe ligado a una cuenta conocida distinta. Probar guardado sin permisos: no iniciar escrituras si no puede guardarse el plan/diario previo.
+7. Durante una migración, preparar otro juego y consultarlo con el comportamiento existente; confirmar que no cambie el plan activo ni el informe del proceso. Reanudar queda deshabilitado mientras hay una migración activa.
+8. Escanear Steam junto con Goldberg/GSE, CODEX/RUNE, PA y/o Xbox Live. La barra debe indicar etapa actual y permanecer por debajo de 100 % hasta guardar el catálogo. Cancelar en una etapa posterior a Steam no debe dejar una barra de éxito completa.
+9. Actualizar ATR y verificar que Runs, planes, snapshots y sesiones sigan presentes. La integración Epic directa se probará en una actualización posterior.
+
+Las pruebas automáticas usan SAM simulado y no sustituyen estas verificaciones de WPF/Steam en Windows.

@@ -229,7 +229,8 @@ namespace AchievementTimelineReplay
             {
                 if(!item.TryGetProperty("id",out var id)) continue;
                 var api=id.GetString(); if(String.IsNullOrEmpty(api)) continue;
-                bool achieved=item.TryGetProperty("is_achieved",out var v) && v.ValueKind==JsonValueKind.True;
+                if(!item.TryGetProperty("is_achieved",out var v) || (v.ValueKind!=JsonValueKind.True && v.ValueKind!=JsonValueKind.False))continue;
+                bool achieved=v.ValueKind==JsonValueKind.True;
                 string state=achieved ? "Desbloqueado" : "Bloqueado";
                 if(achieved && item.TryGetProperty("unlock_time",out var ts))
                 {
@@ -513,6 +514,7 @@ namespace AchievementTimelineReplay
         public Action<string> Log;
         public Action<string> Status;
         public Action<int,int,string> Progress;
+        public Action<AchievementRecord,string> Achievement;
     }
     internal sealed class LegacyReplayer
     {
@@ -591,6 +593,7 @@ namespace AchievementTimelineReplay
             {
                 lock(samGate)
                 {
+                cancellation.ThrowIfCancellationRequested();
                 replayActive=true;replayCli=cli;replayApp=appId;replayMode=mode;replayIdle=idle;replayCancellation=cancellation;
                 if(lockFirst)
                 {
@@ -632,9 +635,15 @@ namespace AchievementTimelineReplay
                     cancellation.ThrowIfCancellationRequested();
                     if(idleFailure!=null)throw idleFailure;
                     Status("Desbloqueando: "+item.Achievement.DisplayName);
-                    var r=SamRunner.Set(cli,mode,appId,new List<string>{item.Achievement.ApiId},true);
-                    Log("UNLOCK "+item.Achievement.ApiId+": "+r.StdOut+" "+r.StdErr);
-                    Check(r,"desbloquear "+item.Achievement.ApiId);
+                    ev.Achievement?.Invoke(item.Achievement,"En curso");
+                    try
+                    {
+                        var r=SamRunner.Set(cli,mode,appId,new List<string>{item.Achievement.ApiId},true);
+                        Log("UNLOCK "+item.Achievement.ApiId+": "+r.StdOut+" "+r.StdErr);
+                        Check(r,"desbloquear "+item.Achievement.ApiId);
+                    }
+                    catch{ev.Achievement?.Invoke(item.Achievement,"Fallido");throw;}
+                    ev.Achievement?.Invoke(item.Achievement,"Aplicado sin verificar");
                     if(i<plan.Count-1 && idle && mode==SamCliMode.Modern)
                     {
                         StopIdle(idleProcess,Log,false);

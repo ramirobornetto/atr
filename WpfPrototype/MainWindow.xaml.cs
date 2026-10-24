@@ -60,6 +60,7 @@ namespace AchievementTimelineReplay.Wpf
         public string TargetOffset { get; set; }
         public string TargetTime { get; set; }
         public string SteamState => Record.SteamState;
+        internal void RefreshSteamState()=>OnPropertyChanged(nameof(SteamState));
         public bool Included
         {
             get => Record.Included;
@@ -112,6 +113,8 @@ namespace AchievementTimelineReplay.Wpf
         static string SourceOptionsPath => Path.Combine(LegacyTools.DataDirectory,"source-options.json");
         DateTimeOffset? lastLibraryScan;
         string lastLibrarySummary="";
+        readonly MigrationRunStore migrationRuns=new MigrationRunStore(Path.Combine(LegacyTools.DataDirectory,"Runs"));
+        MigrationRun shownRun;
         readonly PlanStore planStore=new PlanStore(Path.Combine(LegacyTools.DataDirectory,"Plans"));
         bool CanEditPlan => currentGame!=null && currentGame.HasLocalHistory && !scanning && !preparing && !checkingUpdates && (!running || !ReferenceEquals(currentGame,executingGame));
         bool CanQueryPlan => CanEditPlan && !querying && (!running || currentGame.AppId!=executingGame?.AppId);
@@ -144,7 +147,7 @@ namespace AchievementTimelineReplay.Wpf
             ApplyLibraryFilter();
             GoTo("Escaneo");
             UpdateButtons();
-            Log("WPF v0.12.2 iniciada. Motor derivado de v0.5.3. No se ha modificado Steam.");
+            Log("WPF v0.13.0 iniciada. Motor derivado de v0.5.3. No se ha modificado Steam.");
             LoadSavedLibrary();
             if(!String.IsNullOrWhiteSpace(SamPath.Text)) _=ValidateSamAsync(false);
         }
@@ -396,17 +399,24 @@ namespace AchievementTimelineReplay.Wpf
             scanCancellation=new CancellationTokenSource();
             var token=scanCancellation.Token;
             ScanProgress.IsIndeterminate=true;
+            ScanProgress.Value=0;
             ScanResult.Text="Iniciando escaneo…";
             UpdateButtons();
             SetStatus("Escaneando historiales locales…");
             Log("=== Inicio de escaneo ===");
+            bool scanProgressFinished=false;
             var progress=new Progress<ScanStatus>(p=>
             {
+                if(scanProgressFinished)return;
                 ScanProgress.IsIndeterminate=p.Indeterminate || p.Total==0;
                 if(p.Total>0) {ScanProgress.Maximum=p.Total;ScanProgress.Value=Math.Min(p.Current,p.Total);}
                 ScanResult.Text=p.Message;
                 SetStatus(p.Message);
             });
+            var phaseNames=new List<string>();
+            if(scanSteam)phaseNames.Add("Steam");if(scanGoldberg)phaseNames.Add("Goldberg / GSE");if(scanIni)phaseNames.Add("CODEX / RUNE");if(scanPA)phaseNames.Add("PA");if(selection.Scans("Xbox (perfil)"))phaseNames.Add("Xbox Live");
+            phaseNames.Add("Consolidación");phaseNames.Add("Guardar biblioteca");
+            var phases=new ScanPhases(phaseNames,progress);
             try
             {
                 var scanner=new LegacyScanner(Log);
@@ -414,13 +424,23 @@ namespace AchievementTimelineReplay.Wpf
                 var iniSummary=new ScanSummary();
                 var found=await Task.Run(()=>
                 {
-                    var all=scanSteam?scanner.Scan(steam,cli,samMode,progress,token,id=>selection.AllowsSteam(id,steam)):new List<GameEntry>();
-                    if(scanGoldberg)foreach(var root in GoldbergHistory.DefaultRoots().Where(root=>Directory.Exists(root) && selection.Scans(Path.GetFileName(root)=="GSE Saves"?"GSE":"Goldberg")))
-                        all.AddRange(GoldbergHistory.Scan(root,steam,Path.Combine(LegacyTools.DataDirectory,"Snapshots"),Log,token,goldbergSummary));
-                    if(scanIni)foreach(var root in IniHistory.DefaultRoots().Where(root=>Directory.Exists(root) && selection.Scans(Path.GetFileName(root).ToUpperInvariant())))
-                        all.AddRange(IniHistory.Scan(root,steam,Path.Combine(LegacyTools.DataDirectory,"Snapshots"),Log,token,iniSummary));
+                    var all=new List<GameEntry>();
+                    if(scanSteam){phases.Begin("Steam");all.AddRange(scanner.Scan(steam,cli,samMode,new ImmediateProgress<ScanStatus>(phases.Report),token,id=>selection.AllowsSteam(id,steam)));}
+                    if(scanGoldberg)
+                    {
+                        phases.Begin("Goldberg / GSE");
+                        foreach(var root in GoldbergHistory.DefaultRoots().Where(root=>Directory.Exists(root) && selection.Scans(Path.GetFileName(root)=="GSE Saves"?"GSE":"Goldberg")))
+                            all.AddRange(GoldbergHistory.Scan(root,steam,Path.Combine(LegacyTools.DataDirectory,"Snapshots"),Log,token,goldbergSummary));
+                    }
+                    if(scanIni)
+                    {
+                        phases.Begin("CODEX / RUNE");
+                        foreach(var root in IniHistory.DefaultRoots().Where(root=>Directory.Exists(root) && selection.Scans(Path.GetFileName(root).ToUpperInvariant())))
+                            all.AddRange(IniHistory.Scan(root,steam,Path.Combine(LegacyTools.DataDirectory,"Snapshots"),Log,token,iniSummary));
+                    }
                     if(scanPA)
                     {
+                        phases.Begin("PA");
                         var paths=PlayniteHistory.FindDatabases().Concat(selection.PAPaths).Concat(knownGames.Where(PlayniteHistory.IsPA).Select(g=>g.StatsPath)).Distinct(StringComparer.OrdinalIgnoreCase).Where(File.Exists);
                         foreach(var path in paths)
                         {
@@ -441,7 +461,7 @@ namespace AchievementTimelineReplay.Wpf
                     }
                     if(selection.Scans("Xbox (perfil)"))
                     {
-                        ((IProgress<ScanStatus>)progress).Report(new ScanStatus{Indeterminate=true,Message="Consultando perfil Xbox…"});
+                        phases.Begin("Xbox Live");
                         try
                         {
                             using var api=new XboxProfile();var connection=new XboxConnection(Path.Combine(LegacyTools.DataDirectory,"Xbox"));
@@ -450,7 +470,7 @@ namespace AchievementTimelineReplay.Wpf
                             foreach(var title in titles)
                             {
                                 token.ThrowIfCancellationRequested();
-                                ((IProgress<ScanStatus>)progress).Report(new ScanStatus{Indeterminate=true,Message="Xbox: "+(++completed)+"/"+titles.Count+" · "+title.Name});
+                                phases.Report(new ScanStatus{Current=++completed,Total=titles.Count,Message="Xbox: "+completed+"/"+titles.Count+" · "+title.Name});
                                 try
                                 {
                                     var history=api.HistoryAsync(session,title,Path.Combine(LegacyTools.DataDirectory,"Xbox","Histories"),token).GetAwaiter().GetResult();
@@ -465,6 +485,7 @@ namespace AchievementTimelineReplay.Wpf
                         catch(OperationCanceledException){throw;}
                         catch(Exception ex){Log("Xbox: "+ex.Message+" Los historiales guardados se conservan.");}
                     }
+                    phases.Begin("Consolidación");
                     // Compare PA against current native progress, preserving its first snapshot separately.
                     foreach(var direct in all.Where(g=>!PlayniteHistory.IsPA(g) && !XboxProfile.IsXbox(g) && !PlatformMapping.IsMapped(g) && !g.UsesCurrentSnapshot).ToList())
                     {
@@ -520,6 +541,7 @@ namespace AchievementTimelineReplay.Wpf
                     return all.DistinctBy(g=>g.StorageKey).OrderBy(g=>g.GameName,StringComparer.CurrentCultureIgnoreCase).ToList();
                 },token);
                 token.ThrowIfCancellationRequested();
+                phases.Begin("Guardar biblioteca");
                 rebuildingGroups=true;games.Clear();rebuildingGroups=false;allHistories.Clear();achievementRows.Clear();order.Clear();browsedPlans.Clear();savedSignatures.Clear();currentGame=null;
                 foreach(var g in found)
                 {
@@ -532,8 +554,10 @@ namespace AchievementTimelineReplay.Wpf
                 ScanResult.Text="Actualización terminada: "+games.Count+" juegos/perfiles · "+allHistories.Count+" fuentes ("+found.Count(g=>g.RetainedFromCatalog)+" conservados del catálogo).\n"+(scanSteam?scanner.Summary.Format("Steam"):"Steam/BIN: desactivado o appcache/stats no disponible")+(scanGoldberg?"\n"+goldbergSummary.Format("Goldberg/GBE"):"")+(scanIni?"\n"+iniSummary.Format("CODEX/RUNE"):"")+(selection.Scans("Xbox (perfil)")?"\nXbox Live (perfil): "+found.Count(XboxProfile.IsXbox)+" historiales en biblioteca; revisá Logs para consultas fallidas.":"")+(scanPA?"\nPA: "+found.Count(PlayniteHistory.IsPA)+" historiales elegidos en biblioteca. Los desbloqueos sin fecha se conservan; el log detalla los proveedores.":"");
                 SetStatus(ScanResult.Text);
                 Log(ScanResult.Text);
-                ScanProgress.IsIndeterminate=false;ScanProgress.Maximum=1;ScanProgress.Value=1;
-                lastLibraryScan=DateTimeOffset.UtcNow;lastLibrarySummary=ScanResult.Text;PersistLibrary();
+                lastLibraryScan=DateTimeOffset.UtcNow;lastLibrarySummary=ScanResult.Text;
+                bool persisted=PersistLibrary();scanProgressFinished=true;
+                ScanProgress.IsIndeterminate=false;ScanProgress.Maximum=1000;if(persisted){phases.Complete();ScanProgress.Value=1000;}
+                else {ScanResult.Text+="\nNo se pudo guardar el catálogo. Revisá Logs.";SetStatus(ScanResult.Text);}
                 GoTo("Biblioteca");
                 GamesGrid.SelectedItem=GamesGrid.Items.OfType<GameRow>().FirstOrDefault(r=>r.Group.Sources.Any(g=>g.StorageKey==previousSelection || g.AlternatePlanKey==previousSelection))??GamesGrid.Items.OfType<GameRow>().FirstOrDefault();
             }
@@ -546,7 +570,7 @@ namespace AchievementTimelineReplay.Wpf
                 ScanResult.Text="ERROR: "+ex.Message;Log(ex.ToString());SetStatus(ScanResult.Text);
                 MessageBox.Show(this,ex.Message,"Escaneo",MessageBoxButton.OK,MessageBoxImage.Error);
             }
-            finally {scanning=false;scanCancellation.Dispose();scanCancellation=null;ScanProgress.IsIndeterminate=false;GameChanged(GamesGrid,null);UpdateButtons();}
+            finally {scanProgressFinished=true;scanning=false;scanCancellation.Dispose();scanCancellation=null;ScanProgress.IsIndeterminate=false;GameChanged(GamesGrid,null);UpdateButtons();}
         }
         async void ImportGoldbergClick(object sender,RoutedEventArgs e)
         {
@@ -833,6 +857,7 @@ namespace AchievementTimelineReplay.Wpf
                 ApplyPlanParameters(saved?previous.Parameters:new PlanParameters{DurationSeconds=LegacyPlanner.OriginalSpan(order)});
                 Log("Cargado "+currentGame.GameName+" ["+currentGame.AppId+"]: "+order.Count+" logros.");
                 RefreshPlan();
+                if(!running && currentGame.SteamTarget && migrationRuns.Exists(currentGame))try{ShowMigrationReport(migrationRuns.Load(currentGame));}catch(Exception ex){Log("Informe anterior no disponible: "+ex.Message);}
                 LoadOrigin();PopulateHistoryChoices();shownBaseline=PlanStore.Signature(PlanStore.Capture(currentGame,order,ReadPlanParameters()));
 
                 if(saved && previous.Selected!=null)
@@ -1210,6 +1235,35 @@ namespace AchievementTimelineReplay.Wpf
             try {Process.Start(new ProcessStartInfo{FileName=gui,Arguments="--auto-open="+currentGame.AppId,UseShellExecute=true});}
             catch(Exception ex){MessageBox.Show(this,ex.Message,"SAM",MessageBoxButton.OK,MessageBoxImage.Warning);}
         }
+        void ShowMigrationReport(MigrationRun report)
+        {
+            shownRun=report;ReportTitle.Text="Última migración: "+report.Plan.GameName+" · AppID "+report.Plan.AppId;
+            ReportSummary.Text=report.Outcome+" · "+report.Summary+(String.IsNullOrEmpty(report.Note)?"":"\n"+report.Note);
+            MigrationResults.ItemsSource=null;MigrationResults.ItemsSource=report.Items;
+            CopyReportButton.IsEnabled=true;
+        }
+        void CopyMigrationReport(object sender,RoutedEventArgs e)
+        {
+            if(shownRun!=null){Clipboard.SetText(shownRun.Report());SetStatus("Informe copiado.");}
+        }
+        void ResumeMigrationClick(object sender,RoutedEventArgs e)
+        {
+            if(running || !CanEditPlan || !currentGame.SteamTarget || querying || !CommitPlanEdits())return;
+            try
+            {
+                if(samMode!=SamCliMode.Modern)throw new InvalidOperationException("Para reanudar con verificación usá el CLI moderno de SAM.");
+                var report=migrationRuns.Load(currentGame);
+                uint account=LegacyScanner.RecentAccount(SteamPath.Text.Trim());
+                if(report.SteamAccount!=0 && report.SteamAccount!=account)throw new InvalidOperationException("La última migración corresponde a otra cuenta Steam, o no se pudo identificar la cuenta actual. Iniciá sesión con la cuenta original antes de reanudar.");
+                if(MessageBox.Show(this,"Se cargará el plan de la última migración de este historial. Steam se consultará nuevamente y se omitirán los logros ya desbloqueados. El modo reparación se desactivará para no volver a bloquearlos. Los planes guardados explícitamente se conservan. ¿Cargar y revisar?","Reanudar migración",MessageBoxButton.YesNo,MessageBoxImage.Question)!=MessageBoxResult.Yes)return;
+                var restored=PlanStore.Restore(currentGame,report.Plan);
+                if(restored.Missing>0)throw new InvalidDataException("Faltan "+restored.Missing+" logros del plan original en el historial actual. Actualizá la biblioteca antes de reanudar.");
+                report.Plan.Parameters.Repair=false;order.Clear();order.AddRange(restored.Records);
+                ApplyPlanParameters(report.Plan.Parameters);RefreshPlan();ShowMigrationReport(report);GoTo("Ejecucion");
+                SetStatus("Plan recuperado. Iniciar migración consultará Steam y mostrará los pendientes antes de ejecutar.");
+            }
+            catch(Exception ex){MessageBox.Show(this,ex.Message,"Reanudar migración",MessageBoxButton.OK,MessageBoxImage.Information);}
+        }
         async void StartReplayClick(object sender,RoutedEventArgs e)
         {
             if(checkingUpdates||running||scanning||querying||preparing||currentGame==null || currentGame.IsDemo || !currentGame.SteamTarget || !currentGame.HasLocalHistory || !GapLimitValid())return;
@@ -1217,74 +1271,88 @@ namespace AchievementTimelineReplay.Wpf
             if(currentGame.RequiresAccountRefresh || !currentGame.HasSnapshot || !currentGame.HasLocalHistory)
             {MessageBox.Show(this,"Actualizá la biblioteca antes de ejecutar: falta un snapshot válido o cambió la cuenta Steam.","Biblioteca",MessageBoxButton.OK,MessageBoxImage.Information);UpdateButtons();return;}
             if(!CommitPlanEdits())return;
-            preparing=true;UpdateButtons();
+            var game=currentGame;preparing=true;UpdateButtons();
             try
             {
-                var selected=order.Where(x=>x.Included).ToList();
-                if(selected.Count==0) {MessageBox.Show(this,"No hay logros seleccionados.","Migración",MessageBoxButton.OK,MessageBoxImage.Warning);return;}
-                if(!await ValidateSamAsync(false)) {MessageBox.Show(this,"Seleccioná y validá el ejecutable CLI de SamRewritten.","SAM",MessageBoxButton.OK,MessageBoxImage.Warning);return;}
-                if(Process.GetProcessesByName("steam").Length==0) {MessageBox.Show(this,"Steam no parece estar abierto. Abrilo e iniciá sesión.","Steam",MessageBoxButton.OK,MessageBoxImage.Warning);return;}
-                var schedule=LegacyPlanner.Calculate(order,TargetDuration(),AutomaticGapLimit());
-                if(schedule.Count==0)return;
-                var plan=schedule.Values.OrderBy(x=>x.OffsetSeconds).ToList();
-                double last=schedule.Values.Max(x=>x.OffsetSeconds);
-                string summary="Juego: "+currentGame.GameName+" ["+currentGame.AppId+"]\nLogros: "+selected.Count+"\nHistorial calendario original: "+LegacyTools.FormatSpan(LegacyPlanner.OriginalSpan(order))+"\nDuración automática elegida: "+LegacyTools.FormatSpan((long)TargetDuration())+"\nDuración efectiva: "+LegacyTools.FormatSpan((long)Math.Round(last))+"\nLímite por espera automática: "+(AutomaticGapLimit() is double limit?LegacyTools.FormatSpan((long)Math.Round(limit)):"desactivado")+"\nOrden: "+(CustomOrder.IsChecked==true?"personalizado":"original")+"\nBloquear antes: "+(LockFirst.IsChecked==true?"sí":"no")+"\nRegistrar tiempo de juego: "+(IdleDuringMigration.IsChecked==true?"sí":"no")+"\n\nEsto modificará los logros de Steam. ¿Continuar?";
-                if(MessageBox.Show(this,summary,"Confirmar migración",MessageBoxButton.YesNo,MessageBoxImage.Warning)!=MessageBoxResult.Yes)return;
-                string cli=SamPath.Text.Trim();uint appId=currentGame.AppId;SamCliMode mode=samMode;
-                bool locked=LockFirst.IsChecked==true, idle=IdleDuringMigration.IsChecked==true;
-                int delay=InitialSeconds();
-                string name=currentGame.GameName;
-                SetStatus("Verificando logros con SAM…");
-                var verify=await Task.Run(()=>SamRunner.List(cli,mode,appId));
-                if(currentGame==null || currentGame.AppId!=appId) {SetStatus("El juego seleccionado cambió durante la validación. Prepará el plan de nuevo.");return;}
-                if(SamRunner.Failed(verify)) {MessageBox.Show(this,"SAM no pudo leer los logros:\n"+verify.StdErr+"\n"+verify.StdOut,"SAM",MessageBoxButton.OK,MessageBoxImage.Error);return;}
-                // En modo normal, volver a comprobar antes de ejecutar: el estado pudo cambiar
-                // desde la última consulta. Si cambió el plan, pedir que se revise de nuevo.
-                if(mode==SamCliMode.Modern)
+                if(!order.Any(a=>a.Included)){MessageBox.Show(this,"No hay logros seleccionados.","Migración",MessageBoxButton.OK,MessageBoxImage.Information);return;}
+                if(!await ValidateSamAsync(false))throw new InvalidOperationException("Seleccioná y validá el ejecutable CLI de SamRewritten.");
+                if(Process.GetProcessesByName("steam").Length==0)throw new InvalidOperationException("Steam no parece estar abierto. Abrilo e iniciá sesión.");
+                string cli=SamPath.Text.Trim();uint appId=game.AppId;var mode=samMode;
+                var parameters=ReadPlanParameters();uint account=LegacyScanner.RecentAccount(SteamPath.Text.Trim());
+                async Task<Dictionary<string,string>> ReadStates()
                 {
-                    try
-                    {
-                        var latest=SamRunner.States(verify.StdOut);
-                        SamRunner.ValidateSelectedIds(order,latest);
-                        int omitted=locked?0:SamRunner.ApplySteamStates(order,latest,true);
-                        if(omitted>0)
-                        {
-                            RefreshPlan();GoTo("Plan");
-                            SetStatus(omitted+" logros ya desbloqueados fueron desmarcados. Revisá el plan e iniciá nuevamente.");
-                            Log(GlobalStatus.Text);
-                            return;
-                        }
-                    }
-                    catch(Exception ex)
-                    {
-                        MessageBox.Show(this,"No se pudo verificar el esquema/estado actual de los logros. No se inició la migración.\n"+ex.Message,"Steam",MessageBoxButton.OK,MessageBoxImage.Warning);
-                        return;
-                    }
+                    var response=await Task.Run(()=>SamRunner.List(cli,mode,appId));
+                    if(SamRunner.Failed(response))throw new InvalidOperationException("SAM no pudo leer el destino: "+response.StdErr+" "+response.StdOut);
+                    return mode==SamCliMode.Modern?SamRunner.States(response.StdOut):null;
                 }
-                ExecutionGame.Text=name;
-                executingGame=currentGame;activeSchedule=schedule;
-                preparing=false;
-                running=true;replayCancellation=new CancellationTokenSource();
+                SetStatus("Consultando Steam para preparar el resumen…");
+                var states=await ReadStates();MigrationPreview preview;
+                while(true)
+                {
+                    if(!ReferenceEquals(currentGame,game))throw new InvalidOperationException("Cambió el historial seleccionado. Revisá el plan de nuevo.");
+                    preview=MigrationPreview.Build(order,parameters,states);
+                    if(states!=null){SamRunner.ApplySteamStates(order,states,false);foreach(var view in achievementRows)view.RefreshSteamState();}
+                    var review=new MigrationReviewWindow(game,preview,parameters,account){Owner=this};
+                    if(review.ShowDialog()!=true){GoTo("Plan");return;}
+                    if(preview.Missing>0)return;
+                    if(preview.Schedule.Count==0)break;
+                    if(mode!=SamCliMode.Modern)break;
+                    var latest=await ReadStates();var rechecked=MigrationPreview.Build(order,parameters,latest);
+                    if(preview.PendingIdentity==rechecked.PendingIdentity){states=latest;break;}
+                    states=latest;SetStatus("Cambió el estado de Steam mientras revisabas. Se actualizó el resumen.");
+                }
+                if(account!=0 && LegacyScanner.RecentAccount(SteamPath.Text.Trim())!=account)throw new InvalidOperationException("Cambió la cuenta Steam durante la revisión. Volvé a preparar la migración.");
+                var run=new MigrationRun{SourceKey=game.StorageKey,SourceLabel=HistoryGroup.Label(game),SourcePath=game.StatsPath,SteamAccount=account,Plan=PlanStore.Capture(game,order,parameters),Items=preview.Items,Outcome=preview.Schedule.Count==0?"Sin cambios":"En curso"};
+                migrationRuns.Save(game,run);ShowMigrationReport(run);
+                if(preview.Schedule.Count==0){Log(run.Report());GoTo("Ejecucion");SetStatus("Todos los logros seleccionados ya están desbloqueados. Informe guardado sin realizar cambios.");return;}
+                var schedule=preview.Schedule;var plan=schedule.Values.OrderBy(i=>i.OffsetSeconds).ToList();
+                ExecutionGame.Text=game.GameName;ExecutionSummary.Text=plan.Count+" por aplicar · "+preview.Already+" ya desbloqueados omitidos · AppID "+appId;
+                executingGame=game;activeSchedule=schedule;preparing=false;running=true;replayCancellation=new CancellationTokenSource();
                 ReplayProgress.Maximum=plan.Count;ReplayProgress.Value=0;ReplayProgressText.Text="0 / "+plan.Count+" logros";
-                GoTo("Ejecucion");UpdateButtons();
-                Log("=== Inicio de migración: "+name+" ===");
+                GoTo("Ejecucion");UpdateButtons();Log("=== Inicio de migración: "+game.GameName+" · AppID "+appId+" ===");
                 var replayer=new LegacyReplayer(new ReplayEvents
                 {
                     Log=Log,
-                    Status=s=>Dispatcher.BeginInvoke(new Action(()=>{ReplayStatus.Text=s;SetStatus(s);})),
+                    Achievement=(achievement,state)=>{run.Action(achievement.ApiId,state);migrationRuns.Save(game,run);},
+                    Status=status=>Dispatcher.BeginInvoke(new Action(()=>{ReplayStatus.Text=status;SetStatus(status);})),
                     Progress=(done,total,title)=>Dispatcher.BeginInvoke(new Action(()=>{ReplayProgress.Maximum=total;ReplayProgress.Value=done;ReplayProgressText.Text=done+" / "+total+" logros · Último: "+title;}))
                 });
                 try
                 {
                     activeReplayer=replayer;
-                    await replayer.Run(plan,cli,mode,appId,name,locked,idle,delay,replayCancellation.Token);
-                    ReplayStatus.Text="Migración completada.";SetStatus("Migración completada.");
+                    await replayer.Run(plan,cli,mode,appId,game.GameName,parameters.Repair,parameters.Idle,parameters.InitialDelaySeconds,replayCancellation.Token);
+                    run.Outcome="Finalizada";
                 }
-                catch(OperationCanceledException){Log("=== Migración cancelada por el usuario ===");ReplayStatus.Text="Cancelado.";SetStatus("Migración cancelada.");}
-                catch(Exception ex){Log("ERROR: "+ex);ReplayStatus.Text="ERROR: "+ex.Message;SetStatus("Migración detenida: "+ex.Message);MessageBox.Show(this,ex.Message,"Error de migración",MessageBoxButton.OK,MessageBoxImage.Error);}
-                finally {running=false;activeReplayer=null;executingGame=null;activeSchedule=null;replayCancellation.Dispose();replayCancellation=null;UpdateButtons();}
+                catch(OperationCanceledException){run.Outcome="Cancelada";Log("=== Migración cancelada por el usuario ===");}
+                catch(Exception ex){run.Outcome="Detenida por error";run.Note=ex.Message;Log("ERROR: "+ex);}
+                finally
+                {
+                    try
+                    {
+                        if(mode==SamCliMode.Modern)
+                        {
+                            SetStatus("Verificando el resultado final en Steam…");
+                            var result=await Task.Run(()=>replayer.QueryOtherGame(cli,appId));
+                            if(SamRunner.Failed(result))throw new InvalidOperationException("SAM rechazó la consulta final.");
+                            var finalStates=SamRunner.States(result.StdOut);if(finalStates.Count==0)throw new InvalidDataException("SAM devolvió una consulta final vacía.");
+                            run.Reconcile(finalStates);
+                            var target=ReferenceEquals(currentGame,game)?order:browsedPlans.TryGetValue(game,out var draft)?draft.Records:null;
+                            if(target!=null)SamRunner.ApplySteamStates(target,finalStates,false);
+                            if(ReferenceEquals(currentGame,game))foreach(var view in achievementRows)view.RefreshSteamState();
+                            var row=games.FirstOrDefault(r=>ReferenceEquals(r.Game,game));if(row!=null)row.Count=AchievementCounts.Format(game,finalStates);
+                        }
+                    }
+                    catch(Exception ex){run.Note=(run.Note??"")+"\nNo se pudo verificar todo el resultado final: "+ex.Message+" Al reanudar se consultará Steam nuevamente.";}
+                    if(run.Outcome=="Finalizada" && run.Items.Any(i=>i.Status=="Fallido"))run.Outcome="Finalizada con errores";
+                    else if(run.Outcome=="Finalizada" && run.Items.Any(i=>i.Status=="Aplicado sin verificar" || i.Status=="En curso"))run.Outcome="Finalizada sin verificación completa";
+                    foreach(var item in run.Items.Where(i=>i.Status=="En curso")){item.Status="Sin verificar";item.Detail="La operación se interrumpió; consultar Steam antes de repetir.";}
+                    try{migrationRuns.Save(game,run);}catch(Exception ex){run.Note+="\nNo se pudo guardar el informe: "+ex.Message;Log(run.Note);}
+                    ShowMigrationReport(run);Log(run.Report());ReplayStatus.Text=run.Outcome;SetStatus(run.Outcome+" · "+run.Summary);
+                    running=false;activeReplayer=null;executingGame=null;activeSchedule=null;replayCancellation.Dispose();replayCancellation=null;UpdateButtons();
+                }
             }
-            finally {preparing=false;UpdateButtons();}
+            catch(Exception ex){Log("No se inició la migración: "+ex.Message);MessageBox.Show(this,ex.Message,"Migración",MessageBoxButton.OK,MessageBoxImage.Warning);}
+            finally{preparing=false;UpdateButtons();}
         }
         void CancelReplayClick(object sender,RoutedEventArgs e)
         {
@@ -1309,6 +1377,7 @@ namespace AchievementTimelineReplay.Wpf
             FindDefinitionsButton.IsEnabled=CanEditPlan && !querying;
             StartButton.IsEnabled=!checkingUpdates && live && !running && !scanning && !querying && !preparing && order.Any(x=>x.Included) && GapLimitValid();
             CancelReplayButton.IsEnabled=running;
+            ResumeMigrationButton.IsEnabled=!running && CanEditPlan && currentGame.SteamTarget && !querying && migrationRuns.Exists(currentGame);
             QueryButton.IsEnabled=live && CanQueryPlan && samMode==SamCliMode.Modern;
             OpenSamButton.IsEnabled=!checkingUpdates && live && !running && !preparing && !querying && samMode==SamCliMode.Modern;
             UpButton.IsEnabled=DownButton.IsEnabled=CanEditPlan && CustomOrder.IsChecked==true;

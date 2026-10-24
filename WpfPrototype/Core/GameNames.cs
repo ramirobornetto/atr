@@ -31,7 +31,7 @@ namespace AchievementTimelineReplay
             if(missing.Count>0)
             {
                 using var client=new HttpClient{Timeout=TimeSpan.FromSeconds(10)};
-                client.DefaultRequestHeaders.UserAgent.ParseAdd("AchievementTimelineReplay/0.12.2");
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("AchievementTimelineReplay/0.13.0");
                 bool first=true;
                 foreach(uint id in missing)
                 {

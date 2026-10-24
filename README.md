@@ -1,8 +1,8 @@
 # Achievement Timeline Replay
 
-## Descargar v0.12.2 para Windows x64
+## Descargar v0.13.0 para Windows x64
 
-[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.12.2_Windows_x64.zip)
+[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.13.0_Windows_x64.zip)
 
 Extraer **todo el ZIP** en una carpeta nueva y abrir `AchievementTimelineReplay.Wpf.exe`. No se necesita compilar ni instalar .NET. Mantener las DLL y demás archivos junto al ejecutable. Steam y SamRewritten se seleccionan en la aplicación, como antes; no vienen incluidos.
 
@@ -230,3 +230,12 @@ La etiqueta visible pasa a **Xbox Live** y los planes convertidos a **Xbox Live 
 ## v0.12.2 — Xbox Live solo con desbloqueos
 
 Por preferencia del usuario, Xbox Live directo ahora incluye únicamente juegos con al menos un logro desbloqueado. Se omiten tanto 0/0 como 0/35 y similares, también al cargar el catálogo guardado. Los desbloqueos sin fecha válida cuentan y se conservan. No se borran archivos ni planes y esta regla no cambia las otras fuentes. Reemplaza el criterio de v0.12.1 que admitía títulos sin desbloqueos si tenían catálogo.
+
+
+## v0.13.0 — revisión, reanudación e informes
+
+Antes de ejecutar se consulta Steam y se muestra un resumen con juego/AppID, fuente, archivo, cuenta detectada, seleccionados, ya desbloqueados, pendientes y códigos ausentes. El CLI moderno vuelve a consultar después de confirmar; si cambian las acciones previstas se revisa el resumen otra vez.
+
+Las ejecuciones conservan el plan y registran cada intento en Runs. **Reanudar última migración…** recupera el plan, desactiva reparación y consulta Steam antes de aplicar pendientes. El informe final muestra nombres/códigos, aplicados confirmados, omitidos, fallidos, pendientes y operaciones sin verificar; se puede copiar. Los planes guardados explícitamente se conservan.
+
+La barra de escaneo ahora avanza por fuentes activadas, consolidación y guardado, y no se llena al terminar solo Steam. Detalles y límites: [MIGRACIONES.md](MIGRACIONES.md). Epic directo queda fuera de esta actualización.
