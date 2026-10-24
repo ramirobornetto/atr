@@ -20,7 +20,9 @@ namespace AchievementTimelineReplay.Wpf
         CancellationTokenSource cancellation;
         public EpicConnectionWindow(EpicConnection connection)
         {
-            this.connection=connection;Title="Conectar Epic Games · ATR";Width=680;Height=490;MinWidth=520;MinHeight=400;WindowStartupLocation=WindowStartupLocation.CenterOwner;
+            this.connection=connection;
+            disconnect.Style=(Style)Application.Current.FindResource("DangerButton");cancel.Style=(Style)Application.Current.FindResource("DangerButton");
+            Title="Conectar Epic Games · ATR";Width=680;Height=490;MinWidth=520;MinHeight=400;WindowStartupLocation=WindowStartupLocation.CenterOwner;
             Background=(System.Windows.Media.Brush)Application.Current.FindResource("Bg");Foreground=System.Windows.Media.Brushes.White;
             var panel=new StackPanel{Margin=new Thickness(20)};Content=new ScrollViewer{Content=panel,VerticalScrollBarVisibility=ScrollBarVisibility.Auto};
             panel.Children.Add(new TextBlock{Text="Epic Games · perfil y logros",FontSize=22,Margin=new Thickness(8)});

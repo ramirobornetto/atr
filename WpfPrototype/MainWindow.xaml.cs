@@ -148,7 +148,7 @@ namespace AchievementTimelineReplay.Wpf
             ApplyLibraryFilter();
             GoTo("Escaneo");
             UpdateButtons();
-            Log("WPF v0.16.4 iniciada. Motor derivado de v0.5.3. No se ha modificado Steam.");
+            Log("WPF v0.17.0 iniciada. Motor derivado de v0.5.3. No se ha modificado Steam.");
             LoadSavedLibrary();
             if(!String.IsNullOrWhiteSpace(SamPath.Text)) _=ValidateSamAsync(false);
         }
@@ -183,8 +183,7 @@ namespace AchievementTimelineReplay.Wpf
             foreach(var b in new[]{NavScan,NavLibrary,NavPlan,NavExecution,NavLogs})
             {
                 bool selected=Convert.ToString(b.Tag)==screen;
-                b.Background=new SolidColorBrush(selected ? Color.FromRgb(17,84,102) : Colors.Transparent);
-                b.BorderBrush=new SolidColorBrush(selected ? Color.FromRgb(32,205,213) : Colors.Transparent);
+                b.SetValue(System.Windows.Controls.Primitives.Selector.IsSelectedProperty,selected);
                 b.ClearValue(Control.ForegroundProperty);
             }
         }

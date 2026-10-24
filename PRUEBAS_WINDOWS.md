@@ -183,3 +183,15 @@ El entorno de desarrollo compila WPF pero no ejecuta una sesión gráfica Window
 - Campos de tiempos de alto 24: comprobar edición, valores largos y separación de Espera inicial.
 - Reparación y registro de tiempo, cada uno en su renglón debajo de Espera inicial, con sus ayudas.
 - Logo centrado de 144 × 144 y navegación accesible a tamaño mínimo de ventana y escalas 100/125/150 %.
+
+
+## Revisión visual y de interacción 0.17.0
+
+- Fondo desenfocado visible en las cinco pestañas. Textos legibles sobre zonas claras y oscuras, sin transparencia en el propio texto.
+- Navegación: iconos de 22, letra 15 solo en pestañas; franja cian sigue a la pestaña activa. Probar clic y Tab/Enter.
+- Botones normales y filtros: glow cian al entrar, salida suave al retirar el mouse. Borrar, quitar, limpiar, cancelar y desconectar: glow rojo. Controles desactivados siguen sin ejecutar acciones.
+- Goldberg/Codex-Rune/Playnite Achievements con igual ancho entre sí; Epic/Xbox con su propio ancho común.
+- Desplegables: abrir/cerrar con mouse y Alt+Abajo/Escape; elegir con teclado, rueda y mouse; comprobar desplazamiento en listas largas y selección visible en correspondencias.
+- Casillas: marcar/desmarcar con clic y Espacio; encabezado de Confirmar con estado parcial cuando corresponde; selección de filas no reemplaza la confirmación.
+- Conectar Epic y Xbox: ayudas, botones y selectores legibles en ventanas secundarias; no es necesario ejecutar una migración para revisar estos estilos.
+- Revisar ventana mínima y escalas 100/125/150 %, particularmente los textos largos de origen y los filtros.

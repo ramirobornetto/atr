@@ -51,3 +51,12 @@ El mismo criterio funciona para `Width` (ancho), `Background` (fondo), `Foregrou
 - `App.xaml`: carga el archivo de apariencia; normalmente no necesitás modificarlo.
 
 Hacé un cambio a la vez y conservá una copia del proyecto. Este archivo queda incorporado al compilar: editarlo junto a un ejecutable ya publicado no cambia ese ejecutable. Para probar cambios usá el proyecto abierto en Visual Studio.
+
+
+## Apariencia neón (0.17.0)
+
+El fondo está incorporado como `WpfPrototype/Assets/atr-background.png`, con desenfoque suave ya aplicado. Se adapta a la ventana conservando las proporciones y recortando los bordes si hace falta. `BackgroundShade` controla la capa oscura sobre la imagen.
+
+Los colores con ocho dígitos usan `#AARRGGBB`: el primer par indica opacidad (`00` invisible, `FF` opaco). `Panel` e `Inset` usan este formato para que el paisaje se vea a través de sus fondos. No se aplica opacidad a todo el panel, de modo que el texto sigue siendo sólido.
+
+Las plantillas de `Button`, `DangerButton`, `NavButton`, `ComboBox`, `ComboBoxItem` y `CheckBox` están en `Appearance.xaml`. Los efectos y gradientes se editan allí. Las letras e iconos de la navegación tienen tamaños específicos (15 y 22), independientes del resto de botones. La navegación activa utiliza `Selector.IsSelected`; no se debe reemplazar su estado por un cambio manual de fondo desde el código.

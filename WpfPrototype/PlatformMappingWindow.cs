@@ -34,7 +34,7 @@ namespace AchievementTimelineReplay.Wpf
         readonly GameEntry source;readonly string directory;readonly Func<uint,Task<List<SteamDefinition>>> load;
         readonly Func<uint,string> targetName;readonly Func<string,Task<List<SteamGameMatch>>> search;
         readonly TextBox searchText=new TextBox{Width=270,MaxLength=200,Margin=new Thickness(8)};
-        readonly ComboBox searchResults=new ComboBox{Width=430,Margin=new Thickness(8),Foreground=System.Windows.Media.Brushes.Black,Background=System.Windows.Media.Brushes.White};
+        readonly ComboBox searchResults=new ComboBox{Width=430,Margin=new Thickness(8)};
         readonly Button searchButton=new Button{Content="Buscar juego en Steam"},confirmExact=new Button{Content="Confirmar coincidencias exactas"},confirmSelected=new Button{Content="Confirmar seleccionadas"};
         readonly ComboBox language=new ComboBox{Width=125,Margin=new Thickness(8)};
         readonly TextBox appId=new TextBox{Width=130,Margin=new Thickness(8)};
@@ -156,7 +156,7 @@ namespace AchievementTimelineReplay.Wpf
                     row.ExactSuggestion=suggestion.Exact && row.Target==suggestion.Target;row.MatchReason=old?.NoEquivalent==true?"Marcado sin equivalente":previous!=null?"Correspondencia guardada":suggestion.Reason;
                     row.Confirmed=old?.Confirmed==true && row.Target!=null && row.Target.ApiId==old.TargetId;row.PropertyChanged+=(s,e)=>{if(e.PropertyName==nameof(MappingRow.Target) || e.PropertyName==nameof(MappingRow.Confirmed))UpdateConfirmAll();};rows.Add(row);
                 }
-                var combo=new FrameworkElementFactory(typeof(ComboBox));combo.SetValue(ComboBox.ItemsSourceProperty,new[]{new SteamDefinition{Name="— Sin equivalente —"}}.Concat(definitions.OrderBy(d=>d.Name,StringComparer.CurrentCultureIgnoreCase).ThenBy(d=>d.ApiId,StringComparer.OrdinalIgnoreCase)).ToList());combo.SetValue(ComboBox.IsTextSearchEnabledProperty,true);combo.SetBinding(ComboBox.SelectedItemProperty,new Binding(nameof(MappingRow.Target)){Mode=BindingMode.TwoWay,UpdateSourceTrigger=UpdateSourceTrigger.PropertyChanged});combo.SetValue(ComboBox.ForegroundProperty,System.Windows.Media.Brushes.Black);combo.SetValue(ComboBox.BackgroundProperty,System.Windows.Media.Brushes.White);
+                var combo=new FrameworkElementFactory(typeof(ComboBox));combo.SetValue(ComboBox.ItemsSourceProperty,new[]{new SteamDefinition{Name="— Sin equivalente —"}}.Concat(definitions.OrderBy(d=>d.Name,StringComparer.CurrentCultureIgnoreCase).ThenBy(d=>d.ApiId,StringComparer.OrdinalIgnoreCase)).ToList());combo.SetValue(ComboBox.IsTextSearchEnabledProperty,true);combo.SetBinding(ComboBox.SelectedItemProperty,new Binding(nameof(MappingRow.Target)){Mode=BindingMode.TwoWay,UpdateSourceTrigger=UpdateSourceTrigger.PropertyChanged});
                 combo.SetResourceReference(FrameworkElement.HeightProperty,"TableControlHeight");combo.SetValue(FrameworkElement.MinHeightProperty,0d);combo.SetValue(FrameworkElement.VerticalAlignmentProperty,VerticalAlignment.Center);combo.SetValue(Control.PaddingProperty,new Thickness(5,0,5,0));combo.SetValue(FrameworkElement.MarginProperty,new Thickness(0));
                 targetColumn.CellTemplate=new DataTemplate{VisualTree=combo};
                 string title=searchResults.SelectedItem is SteamGameMatch match && match.AppId==id?match.Name:targetName(id);loadedTargetName=title;

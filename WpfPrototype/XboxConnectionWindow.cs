@@ -19,7 +19,9 @@ namespace AchievementTimelineReplay.Wpf
         CancellationTokenSource cancellation;string verification;
         public XboxConnectionWindow(XboxConnection connection)
         {
-            this.connection=connection;Title="Conectar Xbox · ATR";Width=620;Height=620;MinHeight=500;MinWidth=500;WindowStartupLocation=WindowStartupLocation.CenterOwner;
+            this.connection=connection;
+            logout.Style=(Style)Application.Current.FindResource("DangerButton");cancel.Style=(Style)Application.Current.FindResource("DangerButton");
+            Title="Conectar Xbox · ATR";Width=620;Height=620;MinHeight=500;MinWidth=500;WindowStartupLocation=WindowStartupLocation.CenterOwner;
             Background=(System.Windows.Media.Brush)Application.Current.FindResource("Bg");Foreground=System.Windows.Media.Brushes.White;
             var panel=new StackPanel{Margin=new Thickness(20)};Content=new ScrollViewer{Content=panel,VerticalScrollBarVisibility=ScrollBarVisibility.Auto};
             panel.Children.Add(new TextBlock{Text="Xbox · perfil y logros",FontSize=22,Margin=new Thickness(8)});

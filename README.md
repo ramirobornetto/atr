@@ -1,8 +1,8 @@
 # Achievement Timeline Replay
 
-## Descargar v0.16.4 para Windows x64
+## Descargar v0.17.0 para Windows x64
 
-[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.16.4_Windows_x64.zip)
+[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.17.0_Windows_x64.zip)
 
 Extraer **todo el ZIP** en una carpeta nueva y abrir `AchievementTimelineReplay.Wpf.exe`. No se necesita compilar ni instalar .NET. Mantener las DLL y demás archivos junto al ejecutable. Steam y SamRewritten se seleccionan en la aplicación, como antes; no vienen incluidos.
 
@@ -317,3 +317,14 @@ La mejora de los mensajes sobre cachés vacías y fechas de logros permanece pen
 - Campos de tiempos de alto 24 y menor ancho; espacio entre Espera inicial y su campo.
 - Modo reparación y Registrar tiempo de juego en renglones propios debajo de Espera inicial.
 - Logo lateral centrado y ampliado a 144 × 144.
+
+## v0.17.0 — apariencia neón y paneles translúcidos
+
+- Fondo de paisaje desenfocado, oscurecimiento suave y paneles oscuros semitransparentes sin reducir la opacidad de textos ni controles.
+- Navegación lateral con iconos vectoriales más grandes, letra 15 y franja luminosa en la pestaña activa.
+- Botones redondeados con transición de glow cian al pasar el mouse; acciones de borrar, quitar, limpiar, cancelar y desconectar con glow rojo.
+- Desplegables oscuros con bordes redondeados y selección resaltada, incluidos los de correspondencias.
+- Casillas delineadas con marca clara y estado parcial en los encabezados de selección múltiple.
+- Importaciones con ancho compartido por columna; Epic y Xbox comparten su propio ancho.
+
+Las funciones de importación, correspondencias y migración mantienen su comportamiento. La distribución y los efectos requieren revisión visual en Windows.
