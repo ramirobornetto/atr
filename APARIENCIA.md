@@ -70,3 +70,5 @@ Desde 0.17.2, `Panel` usa `#99080808`: 60 % opaco y 40 % transparente. `Inset` c
 Desde 0.17.3 los separadores son completamente transparentes: se mantiene una zona de agarre de 6 unidades, sin línea ni glow. El cursor indica dónde se puede ajustar la tabla.
 
 Desde 0.17.4, `Panel` usa `#73080808` (aproximadamente 55 % transparente) e `Inset` usa `#8C040404` (aproximadamente 45 % transparente). Los paneles anidados superponen sus fondos.
+
+Desde 0.17.6, los paneles no tienen borde gris. `BackgroundShade` usa `#86000000`, reduciendo aproximadamente un 10 % la contribución de la imagen respecto del valor anterior `#78000000`. Las transparencias de `Panel` e `Inset` se conservan.

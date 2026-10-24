@@ -44,7 +44,7 @@ namespace AchievementTimelineReplay
         {
             http=handler==null?new HttpClient(new HttpClientHandler{AllowAutoRedirect=false}):new HttpClient(handler);
             http.Timeout=TimeSpan.FromSeconds(35);
-            http.DefaultRequestHeaders.UserAgent.ParseAdd("ATR/0.17.5");
+            http.DefaultRequestHeaders.UserAgent.ParseAdd("ATR/0.17.6");
         }
         internal static string Text(JsonElement e,string key)
         {

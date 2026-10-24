@@ -234,3 +234,10 @@ El entorno de desarrollo compila WPF pero no ejecuta una sesión gráfica Window
 
 - Cada búsqueda de actualización debe usar una consulta nueva al manifiesto, con cabeceras que eviten caché. Comprobar en Windows que detecte una publicación posterior.
 - La consulta cambia; la validación del paquete no cambia. Las instalaciones antiguas pueden necesitar reintentar o actualizar manualmente para recibir esta corrección.
+
+
+## Revisión visual 0.17.6
+
+- Paneles principales e interiores sin contorno gris; misma transparencia y fondo. Los botones, casillas y selección conservan sus bordes funcionales.
+- DESCRIPCION.md y TUTORIAL.md presentes en el ZIP y accesibles desde los enlaces del README.
+- Fondo un 10 % más oscuro aproximadamente; revisar legibilidad y conservación de transparencias 55/45.

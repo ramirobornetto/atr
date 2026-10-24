@@ -22,7 +22,7 @@
   <Thickness x:Key="ControlMargin">3,2,3,2</Thickness>
   <Thickness x:Key="SourcePathMargin">0,8,0,14</Thickness>
   <!-- Oscurecimiento del fondo (primer par hexadecimal = opacidad). -->
-  <SolidColorBrush x:Key="BackgroundShade" Color="#78000000" />
+  <SolidColorBrush x:Key="BackgroundShade" Color="#86000000" />
   <!-- Paleta general. Los colores especiales de avisos y estados se conservan por separado. -->
   <SolidColorBrush x:Key="ButtonBackground" Color="#9E252B2E" />
   <SolidColorBrush x:Key="ButtonForeground" Color="#F1FAFE" />

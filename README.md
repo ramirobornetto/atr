@@ -1,12 +1,17 @@
 # Achievement Timeline Replay
 
-## Descargar v0.17.5 para Windows x64
+## Descargar v0.17.6 para Windows x64
 
-[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.17.5_Windows_x64.zip)
+[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.17.6_Windows_x64.zip)
 
 Extraer **todo el ZIP** en una carpeta nueva y abrir `AchievementTimelineReplay.Wpf.exe`. No se necesita compilar ni instalar .NET. Mantener las DLL y demás archivos junto al ejecutable. Steam y SamRewritten se seleccionan en la aplicación, como antes; no vienen incluidos.
 
 Aplicación Windows para revisar y reproducir historiales locales de logros de Steam mediante SamRewritten.
+
+## Descripción y tutorial
+
+- [Descripción y características de ATR](DESCRIPCION.md).
+- [Tutorial de uso paso a paso](TUTORIAL.md).
 
 ## Compilar y abrir en Windows
 
@@ -361,3 +366,9 @@ Las funciones de importación, correspondencias y migración mantienen su compor
 - Se conserva la validación estricta del origen, versión, nombre del ZIP, tamaño y SHA-256.
 - Incluye los bloques principales al 55 % de transparencia y los interiores al 45 % de la 0.17.4.
 - Si una instalación anterior aún informa una versión vieja como última publicada, reintentar o instalar esta versión desde el ZIP: el cambio de consulta entra en efecto después de actualizar.
+
+## v0.17.6 — paneles sin borde y documentación de uso
+
+- Se elimina el borde gris de los paneles principales e interiores; se conservan los contornos funcionales de controles y selección.
+- Se incluyen DESCRIPCION.md y TUTORIAL.md, con presentación de la aplicación y guía desde la configuración hasta la ejecución y recuperación.
+- Fondo aproximadamente un 10 % más oscuro respecto de la versión anterior, ajustando la capa negra sin modificar transparencias de paneles ni contenido.
