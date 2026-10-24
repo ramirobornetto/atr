@@ -64,6 +64,17 @@ static class LibraryChecks
         Check(loaded.Games.Count==3 && loaded.Warnings.Any(w=>w.Contains("duplicada")),"duplicate cached histories do not create duplicate library rows");
         File.WriteAllText(store.FilePath,valid);
         try{store.Save(new[]{new GameEntry{AppId=0,GameName="Bad",StatsPath=stats}},root,scan,"");throw new Exception("Expected invalid save rejection");}catch(InvalidDataException){Check(File.ReadAllText(store.FilePath)==valid,"invalid catalog save cannot replace the previous library");}
+        gold.Achievements[0].DisplayName="Nombre agregado después de importar";gold.Achievements[0].Description="Descripción nueva";
+        string frozen=File.ReadAllText(store.SnapshotPath(gold));
+        store.Save(all,root,scan,"Labels");
+        var named=store.Load().Games.Single(g=>g.StorageKey==gold.StorageKey);
+        Check(named.Achievements[0].DisplayName==gold.Achievements[0].DisplayName && named.Achievements[0].Description==gold.Achievements[0].Description && File.ReadAllText(store.SnapshotPath(gold))==frozen,"new definition labels survive restart without modifying the original snapshot");
+        Check(LibraryStore.ShouldRetainAfterScan(gold),"an existing source survives refresh when its reader cannot reimport it");
+        Directory.Move(goldDir,goldDir+"-missing");
+        Check(!LibraryStore.ShouldRetainAfterScan(gold),"deleted source folders are removed after a successful full refresh");
+        store.Save(all.Where(g=>LibraryStore.ShouldRetainAfterScan(g)),root,scan,"Removed missing files");
+        Check(store.Load().Games.All(g=>g.StorageKey!=gold.StorageKey) && File.ReadAllText(store.SnapshotPath(gold))==frozen,"removed entries stay absent after restart and their protected snapshots remain intact");
+        Directory.Move(goldDir+"-missing",goldDir);
         Check(Directory.GetFiles(Path.GetDirectoryName(store.FilePath),"*.tmp").Length==0,"atomic library saves leave no temporary index files");
         var current=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase){{"known","Bloqueado"}};
         SamRunner.ValidateSelectedIds(restoredSteam.Achievements,current);Check(true,"fresh Steam verification accepts known cached API IDs case-insensitively");

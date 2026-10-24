@@ -10,7 +10,7 @@ La biblioteca muestra cuándo se actualizó el catálogo, la fecha del último e
 
 **Actualizar biblioteca** revisa las carpetas habituales habilitadas y las fuentes locales recordadas. No es una vigilancia permanente ni una búsqueda incremental de todo el disco. La carga al inicio usa el catálogo; el refresco explícito vuelve a leer las fuentes disponibles. También funciona con fuentes locales aunque Steam/appcache/stats no esté disponible.
 
-Los archivos desaparecidos o los historiales que ya no se pueden reimportar permanecen identificados como guardados. Un archivo original ausente no borra su copia protegida: se puede revisar ese historial. Un snapshot inexistente o ilegible deja la fila marcada, sin habilitar la ejecución. Cambiar una ruta implica otra identidad para los formatos locales; la referencia anterior puede quitarse.
+Desde 0.8.2, un archivo desaparecido se muestra como «Archivo no encontrado» al abrir el catálogo, pero su entrada se quita tras completar un reescaneo exitoso. Se conservan sus planes, origen y snapshots; al volver a importar la misma ruta se pueden recuperar. Los archivos que todavía existen pero no se pudieron reimportar permanecen identificados como guardados para no perderlos por un error de lectura. Un snapshot inexistente o ilegible deja la fila marcada, sin habilitar la ejecución. Cambiar una ruta implica otra identidad para los formatos locales; la referencia anterior puede quitarse.
 
 **Quitar de biblioteca** elimina únicamente la referencia del catálogo. No elimina el archivo original, el snapshot, la etiqueta de origen ni el plan guardado. Si el archivo sigue en una ruta de búsqueda conocida, puede reaparecer al actualizar. No es una lista de exclusiones permanentes.
 

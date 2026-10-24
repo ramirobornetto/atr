@@ -1,8 +1,8 @@
 # Achievement Timeline Replay
 
-## Descargar v0.8.1 para Windows x64
+## Descargar v0.8.2 para Windows x64
 
-[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.8.1_Windows_x64.zip)
+[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.8.2_Windows_x64.zip)
 
 Extraer **todo el ZIP** en una carpeta nueva y abrir `AchievementTimelineReplay.Wpf.exe`. No se necesita compilar ni instalar .NET. Mantener las DLL y demás archivos junto al ejecutable. Steam y SamRewritten se seleccionan en la aplicación, como antes; no vienen incluidos.
 
@@ -177,3 +177,9 @@ Después de instalar esta versión por primera vez, escanear o importar una vez 
 
 
 Verificación de 0.8.1: 212 comprobaciones automáticas pasadas, incluyendo catálogo persistente, fuentes ausentes, snapshots dañados, recuperación de copia anterior, cambio de cuenta y validación de IDs actuales. WPF y el auxiliar se publican para Windows x64. El arranque visual y una actualización real entre versiones siguen requiriendo comprobación en Windows.
+
+## v0.8.2 — refresco de biblioteca y nombres
+
+Un reescaneo completado quita de la biblioteca las fuentes cuyo archivo ya no existe, conservando planes, orígenes y snapshots. Cancelar o fallar el escaneo mantiene la biblioteca anterior. Los errores de lectura de archivos existentes conservan su entrada marcada.
+
+Goldberg/GSE busca nombres automáticamente; se elimina la casilla previa a la importación. Si faltan nombres, el plan ofrece «Buscar archivo de definición…» con ayuda «?». La selección manual se valida por IDs y no cambia fechas ni parámetros del plan. Las etiquetas se guardan en el catálogo sin modificar los snapshots originales.

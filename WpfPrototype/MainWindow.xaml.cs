@@ -305,8 +305,22 @@ namespace AchievementTimelineReplay.Wpf
                         }
                         catch(Exception ex){Log("No se pudo reimportar la fuente recordada "+known.StatsPath+": "+ex.Message);}
                     }
+                    foreach(var refreshed in all.Where(g=>g.HistoryId?.StartsWith("goldberg_",StringComparison.Ordinal)==true))
+                    {
+                        var known=knownGames.FirstOrDefault(g=>g.StorageKey==refreshed.StorageKey);
+                        if(known==null)continue;
+                        if(GoldbergHistory.NeedsDefinitions(refreshed) && File.Exists(known.SchemaPath))
+                            try{GoldbergHistory.ApplyDefinitions(refreshed,known.SchemaPath);}catch(Exception ex){Log("Definición recordada no disponible: "+ex.Message);}
+                        var labels=known.Achievements.ToDictionary(a=>a.ApiId,StringComparer.OrdinalIgnoreCase);
+                        foreach(var achievement in refreshed.Achievements)
+                            if(labels.TryGetValue(achievement.ApiId,out var label))
+                            {
+                                if(achievement.DisplayName==achievement.ApiId || String.IsNullOrWhiteSpace(achievement.DisplayName))achievement.DisplayName=label.DisplayName;
+                                if(String.IsNullOrEmpty(achievement.Description))achievement.Description=label.Description;
+                            }
+                    }
                     foreach(var known in knownGames)
-                        if(seen.Add(known.StorageKey)){known.RetainedFromCatalog=true;all.Add(known);}
+                        if(LibraryStore.ShouldRetainAfterScan(known) && seen.Add(known.StorageKey)){known.RetainedFromCatalog=true;all.Add(known);}
                     GameNames.Resolve(all.Where(g=>!String.IsNullOrEmpty(g.HistoryId)),Log,token);
                     return all.OrderBy(g=>g.GameName,StringComparer.CurrentCultureIgnoreCase).ToList();
                 },token);
@@ -350,11 +364,6 @@ namespace AchievementTimelineReplay.Wpf
             {MessageBox.Show(this,"El archivo de estado debe estar dentro de una carpeta con el AppID del juego como nombre. No selecciones la definición de steam_settings.","Goldberg",MessageBoxButton.OK,MessageBoxImage.Information);return;}
             string definitions=Path.Combine(folder,"steam_settings","achievements.json");
             if(!File.Exists(definitions))definitions=null;
-            if(GoldbergDefinitions.IsChecked==true)
-            {
-                var metadata=new OpenFileDialog{Title="Opcional: elegí steam_settings/achievements.json; Cancelar importa sin esa definición",Filter="Definición Goldberg (*.json)|*.json"};
-                if(metadata.ShowDialog(this)==true)definitions=metadata.FileName;
-            }
             string statePath=dialog.FileName,steam=SteamPath.Text.Trim();
             scanning=true;scanCancellation=new CancellationTokenSource();var token=scanCancellation.Token;UpdateButtons();
             ScanProgress.IsIndeterminate=true;SetStatus("Importando Goldberg…");
@@ -380,6 +389,23 @@ namespace AchievementTimelineReplay.Wpf
             catch(OperationCanceledException){SetStatus("Importación Goldberg cancelada.");}
             catch(Exception ex){Log(ex.ToString());MessageBox.Show(this,ex.Message,"Goldberg",MessageBoxButton.OK,MessageBoxImage.Warning);}
             finally{scanning=false;scanCancellation.Dispose();scanCancellation=null;ScanProgress.IsIndeterminate=false;UpdateButtons();}
+        }
+        void FindDefinitionsClick(object sender,RoutedEventArgs e)
+        {
+            if(!CanEditPlan || querying || !GoldbergHistory.NeedsDefinitions(currentGame) || !CommitPlanEdits())return;
+            var dialog=new OpenFileDialog{Title="Elegí steam_settings/achievements.json del mismo juego",Filter="Definición Goldberg (achievements.json)|achievements.json|JSON (*.json)|*.json"};
+            if(dialog.ShowDialog(this)!=true)return;
+            try
+            {
+                GoldbergHistory.ApplyDefinitions(currentGame,dialog.FileName);
+                var metadata=currentGame.Achievements.ToDictionary(a=>a.ApiId,StringComparer.OrdinalIgnoreCase);
+                foreach(var record in order)
+                    if(metadata.TryGetValue(record.ApiId,out var source)){record.DisplayName=source.DisplayName;record.Description=source.Description;}
+                var row=games.First(r=>ReferenceEquals(r.Game,currentGame));row.Count=AchievementCounts.Format(currentGame);
+                RefreshPlan();PersistLibrary();UpdateButtons();
+                SetStatus(GoldbergHistory.NeedsDefinitions(currentGame)?"Definición cargada. Algunos IDs siguen sin nombre en ese archivo.":"Nombres y descripciones cargados; el orden y los tiempos del plan se conservaron.");
+            }
+            catch(Exception ex){MessageBox.Show(this,ex.Message,"Definición de nombres",MessageBoxButton.OK,MessageBoxImage.Information);}
         }
         async void ImportIniClick(object sender,RoutedEventArgs e)
         {
@@ -985,7 +1011,9 @@ namespace AchievementTimelineReplay.Wpf
             RefreshLibraryButton.IsEnabled=ScanButton.IsEnabled;
             RemoveLibraryButton.IsEnabled=ScanButton.IsEnabled && currentGame!=null;
             UpdateButton.IsEnabled=!checkingUpdates && !running && !scanning && !preparing && !querying;
-            ImportIniButton.IsEnabled=ScanIniDefaults.IsEnabled=ImportGoldbergButton.IsEnabled=GoldbergDefinitions.IsEnabled=ScanGoldbergDefaults.IsEnabled=ScanButton.IsEnabled;
+            ImportIniButton.IsEnabled=ScanIniDefaults.IsEnabled=ImportGoldbergButton.IsEnabled=ScanGoldbergDefaults.IsEnabled=ScanButton.IsEnabled;
+            DefinitionTools.Visibility=available && GoldbergHistory.NeedsDefinitions(currentGame)?Visibility.Visible:Visibility.Collapsed;
+            FindDefinitionsButton.IsEnabled=CanEditPlan && !querying;
             StartButton.IsEnabled=!checkingUpdates && live && !running && !scanning && !querying && !preparing && order.Any(x=>x.Included) && GapLimitValid();
             CancelReplayButton.IsEnabled=running;
             QueryButton.IsEnabled=live && CanQueryPlan && samMode==SamCliMode.Modern;

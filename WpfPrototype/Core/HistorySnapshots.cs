@@ -16,7 +16,8 @@ namespace AchievementTimelineReplay
                 var snapshot=JsonSerializer.Deserialize<HistorySnapshot>(File.ReadAllText(path));
                 if(snapshot==null || snapshot.Version!=1 || snapshot.AppId!=game.AppId || snapshot.HistoryId!=game.HistoryId || (snapshot.IsDemo!=game.IsDemo && !(game.IsDemo && snapshot.Achievements!=null && snapshot.Achievements.All(a=>a!=null && a.ApiId!=null && a.ApiId.StartsWith("ATR_DEMO_",StringComparison.Ordinal)))) || snapshot.Achievements==null || snapshot.Achievements.Count==0 || snapshot.Achievements.Any(a=>a==null || String.IsNullOrWhiteSpace(a.ApiId) || a.OriginalUnix<=0 || a.OriginalUnix>UInt32.MaxValue) || snapshot.Achievements.Select(a=>a.ApiId).Distinct(StringComparer.OrdinalIgnoreCase).Count()!=snapshot.Achievements.Count)
                     throw new InvalidDataException("Snapshot local inválido. No se sobrescribió.");
-                game.Achievements=snapshot.Achievements.Select(a=>new AchievementRecord{ApiId=a.ApiId,DisplayName=a.DisplayName,Description=a.Description,OriginalUnix=a.OriginalUnix}).ToList();
+                var metadata=game.Achievements.ToDictionary(a=>a.ApiId,StringComparer.OrdinalIgnoreCase);
+                game.Achievements=snapshot.Achievements.Select(a=>new AchievementRecord{ApiId=a.ApiId,DisplayName=metadata.TryGetValue(a.ApiId,out var fresh) && fresh.DisplayName!=fresh.ApiId?fresh.DisplayName:a.DisplayName,Description=metadata.TryGetValue(a.ApiId,out var detail) && !String.IsNullOrEmpty(detail.Description)?detail.Description:a.Description,OriginalUnix=a.OriginalUnix}).ToList();
                 game.TotalAchievements=Math.Max(game.TotalAchievements,game.Achievements.Count);
             }
             else

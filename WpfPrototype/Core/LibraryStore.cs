@@ -19,6 +19,12 @@ namespace AchievementTimelineReplay
         public string DemoGameName {get;set;}
         public bool IsDemo {get;set;}
         public bool RetainedFromCatalog {get;set;}
+        public Dictionary<string,LibraryLabel> Labels {get;set;}
+    }
+    internal sealed class LibraryLabel
+    {
+        public string Name {get;set;}
+        public string Description {get;set;}
     }
     internal sealed class LibraryCatalog
     {
@@ -40,6 +46,7 @@ namespace AchievementTimelineReplay
     {
         readonly string directory,snapshots;
         public LibraryStore(string directory,string snapshots){this.directory=directory;this.snapshots=snapshots;}
+        public static bool ShouldRetainAfterScan(GameEntry game) => File.Exists(game.StatsPath);
         public static bool NeedsAccountRefresh(GameEntry game,uint activeAccount) => String.IsNullOrEmpty(game.HistoryId) && activeAccount!=0 && game.AccountId!=activeAccount;
         public string FilePath => Path.Combine(directory,"catalog.json");
         public string BackupPath => Path.Combine(directory,"catalog.previous.json");
@@ -55,6 +62,7 @@ namespace AchievementTimelineReplay
         {
             if(entry==null || entry.AppId==0 || String.IsNullOrWhiteSpace(entry.GameName) || entry.GameName.Length>1000 || String.IsNullOrWhiteSpace(entry.StatsPath) || entry.StatsPath.Length>32768 || (entry.SchemaPath?.Length??0)>32768 || !Path.IsPathFullyQualified(entry.StatsPath) || entry.TotalAchievements<0 || entry.TotalAchievements>100000 || (!String.IsNullOrEmpty(entry.SchemaPath) && !Path.IsPathFullyQualified(entry.SchemaPath)) || (entry.DemoGameName?.Length??0)>200)
                 throw new InvalidDataException("Entrada de biblioteca inválida.");
+            if(entry.Labels!=null && (entry.Labels.Count>50000 || entry.Labels.Any(p=>String.IsNullOrWhiteSpace(p.Key) || p.Key.Length>512 || p.Value==null || (p.Value.Name?.Length??0)>10000 || (p.Value.Description?.Length??0)>50000)))throw new InvalidDataException("Metadatos de biblioteca inválidos.");
             string id=entry.HistoryId;
             if(!String.IsNullOrEmpty(id))
             {
@@ -113,7 +121,13 @@ namespace AchievementTimelineReplay
                 GameEntry game;
                 try{game=Model(entry);if(!seen.Add(game.StorageKey))throw new InvalidDataException("Entrada duplicada.");}
                 catch(Exception ex){result.Warnings.Add("Entrada de biblioteca omitida: "+ex.Message);continue;}
-                try{LoadSnapshot(game);}
+                try
+                {
+                    LoadSnapshot(game);
+                    if(entry.Labels!=null)
+                        foreach(var achievement in game.Achievements)
+                            if(entry.Labels.TryGetValue(achievement.ApiId,out var label)){achievement.DisplayName=label.Name??achievement.ApiId;achievement.Description=label.Description??"";}
+                }
                 catch(Exception ex){game.CatalogIssue="Sin snapshot válido";result.Warnings.Add("AppID "+game.AppId+": "+ex.Message);}
                 game.SourceMissing=!File.Exists(game.StatsPath);OriginDetector.Apply(game,result.Catalog.SteamRoot);
                 result.Games.Add(game);
@@ -126,6 +140,8 @@ namespace AchievementTimelineReplay
             foreach(var game in games.GroupBy(g=>g.StorageKey,StringComparer.OrdinalIgnoreCase).Select(g=>g.First()))
             {
                 var entry=new LibraryEntry{AppId=game.AppId,AccountId=game.AccountId,HistoryId=game.HistoryId,GameName=game.GameName,StatsPath=Path.GetFullPath(game.StatsPath),SchemaPath=String.IsNullOrEmpty(game.SchemaPath)?null:Path.GetFullPath(game.SchemaPath),TotalAchievements=game.TotalAchievements,IsDemo=game.IsDemo,DemoGameName=game.DemoGameName,RetainedFromCatalog=game.RetainedFromCatalog};
+                if(game.HistoryId?.StartsWith("goldberg_",StringComparison.Ordinal)==true && game.HasLocalHistory)
+                    entry.Labels=game.Achievements.ToDictionary(a=>a.ApiId,a=>new LibraryLabel{Name=a.DisplayName,Description=a.Description});
                 Model(entry);catalog.Entries.Add(entry);
             }
             Directory.CreateDirectory(directory);string temp=FilePath+"."+Guid.NewGuid().ToString("N")+".tmp";

@@ -26,6 +26,16 @@ static class GoldbergChecks
         string snapshots=Path.Combine(root,"goldberg-snapshots");GoldbergHistory.Protect(game,snapshots);
         string snapshot=Path.Combine(snapshots,game.StorageKey,"snapshot.json");string protectedJson=File.ReadAllText(snapshot);
         Expect(File.ReadAllText(state)==original && File.ReadAllText(Path.Combine(snapshots,game.StorageKey,"original_achievements.json"))==original,"source is unchanged and original bytes are backed up");
+        var withoutNames=GoldbergHistory.Load(state,480);
+        Expect(GoldbergHistory.NeedsDefinitions(withoutNames),"missing names offer manual definition selection");
+        withoutNames.Achievements[0].Included=false;withoutNames.Achievements[0].ManualGapSeconds=73;
+        GoldbergHistory.ApplyDefinitions(withoutNames,defs);
+        Expect(withoutNames.Achievements[0].DisplayName=="Primero" && !withoutNames.Achievements[0].Included && withoutNames.Achievements[0].ManualGapSeconds==73 && withoutNames.Achievements[0].OriginalUnix==1704067200,"manual definitions enrich labels without changing selection or times");
+        string wrong=Path.Combine(folder,"wrong.json");File.WriteAllText(wrong,"[{\"name\":\"OTHER\",\"displayName\":\"Other\"}]");
+        try{GoldbergHistory.ApplyDefinitions(withoutNames,wrong);throw new Exception("Expected unrelated definition rejection");}catch(InvalidDataException){Expect(withoutNames.SchemaPath==defs && withoutNames.Achievements[0].DisplayName=="Primero","unrelated definition is rejected before changing metadata");}
+        File.WriteAllText(wrong,"[{\"name\":\"FIRST\",\"displayName\":\"Nuevo nombre\"}]");
+        var enriched=GoldbergHistory.Protect(GoldbergHistory.Load(state,480,wrong),snapshots);
+        Expect(enriched.Achievements[0].DisplayName=="Nuevo nombre" && File.ReadAllText(snapshot)==protectedJson,"reimport refreshes labels while leaving original snapshot bytes unchanged");
         File.WriteAllText(state,"{\"REPLACED\":{\"earned\":true,\"earned_time\":1704200000}}");
         var reloaded=GoldbergHistory.Protect(GoldbergHistory.Load(state,480,defs),snapshots);
         Expect(reloaded.Achievements.Count==2 && reloaded.Achievements[0].ApiId=="FIRST" && File.ReadAllText(snapshot)==protectedJson,"later source edits never replace protected history");

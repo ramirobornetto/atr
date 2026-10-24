@@ -17,7 +17,7 @@ Para guardados de una ubicación personalizada, usar **Importar Goldberg…** y 
 Los dos archivos llamados `achievements.json` tienen funciones distintas:
 
 - **Estado**: objeto con claves API y valores `earned` booleano / `earned_time` Unix en segundos. Solo los logros con `earned: true` y fecha válida entran al plan.
-- **Definición**: array con `name`, `displayName`, `description`, etc., normalmente en `steam_settings` de la instalación del juego. No acredita ningún desbloqueo. Marcar **Elegir también definición de nombres** antes de importar para seleccionarla. Cancelar ese segundo diálogo continúa sin ella.
+- **Definición**: array con `name`, `displayName`, `description`, etc., normalmente en `steam_settings` de la instalación del juego. No acredita ningún desbloqueo. ATR busca automáticamente la definición junto al historial y los nombres en el esquema local de Steam. Si quedan IDs sin nombre, el plan muestra **Buscar archivo de definición…**, con un **?** que explica ambos archivos. Seleccionar una definición completa nombres y descripciones sin cambiar fechas, selección, orden o tiempos manuales. Cancelar conserva el estado actual; una definición sin IDs coincidentes se rechaza. Los nombres se conservan en el catálogo al reiniciar, sin reescribir el snapshot original.
 
 Sin definición, ATR usa el esquema local de Steam si está disponible. Si tampoco existe, muestra los IDs API; no inventa nombres ni fechas. El total cuenta IDs distintos conocidos por el estado o la definición; puede ser incompleto si ambos archivos lo son. Un desbloqueo sin fecha válida se omite y se explica en Logs. No se convierten milisegundos o cadenas de texto por conjetura. Los empates de fecha se ordenan por ID API.
 

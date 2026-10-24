@@ -32,6 +32,32 @@ namespace AchievementTimelineReplay
                 if(v.TryGetProperty(lang,out var s) && s.ValueKind==JsonValueKind.String && !String.IsNullOrWhiteSpace(s.GetString()))return s.GetString();
             return v.EnumerateObject().Where(p=>p.Value.ValueKind==JsonValueKind.String).Select(p=>p.Value.GetString()).FirstOrDefault(s=>!String.IsNullOrWhiteSpace(s))??fallback;
         }
+        static Dictionary<string,(string Name,string Description)> ReadDefinitions(string path)
+        {
+            var names=new Dictionary<string,(string Name,string Description)>(StringComparer.OrdinalIgnoreCase);
+            using var definitions=Read(path);
+            if(definitions.RootElement.ValueKind!=JsonValueKind.Array)throw new InvalidDataException("La definición Goldberg debe ser un array JSON de steam_settings.");
+            var seen=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach(var entry in definitions.RootElement.EnumerateArray())
+            {
+                if(entry.ValueKind!=JsonValueKind.Object || !entry.TryGetProperty("name",out var n) || n.ValueKind!=JsonValueKind.String || String.IsNullOrWhiteSpace(n.GetString()))throw new InvalidDataException("Definición sin nombre API válido.");
+                string id=n.GetString();
+                if(!seen.Add(id))throw new InvalidDataException("Definición duplicada: "+id);
+                names[id]=(Text(entry,"displayName",id),Text(entry,"description",""));
+            }
+            return names;
+        }
+        public static bool NeedsDefinitions(GameEntry game) => game!=null && game.HistoryId?.StartsWith("goldberg_",StringComparison.Ordinal)==true && game.Achievements.Any(a=>String.IsNullOrWhiteSpace(a.DisplayName) || a.DisplayName==a.ApiId);
+        public static void ApplyDefinitions(GameEntry game,string path)
+        {
+            var names=ReadDefinitions(path);
+            if(!game.Achievements.Any(a=>names.ContainsKey(a.ApiId)))throw new InvalidDataException("La definición no contiene ninguno de los IDs de este historial. Elegí la del mismo juego.");
+            foreach(var achievement in game.Achievements)
+                if(names.TryGetValue(achievement.ApiId,out var metadata))
+                {achievement.DisplayName=metadata.Name;achievement.Description=metadata.Description;}
+            game.SchemaPath=Path.GetFullPath(path);
+            game.TotalAchievements=Math.Max(game.TotalAchievements,names.Keys.Union(game.Achievements.Select(a=>a.ApiId),StringComparer.OrdinalIgnoreCase).Count());
+        }
         public static GameEntry Load(string statePath,uint appId,string definitionsPath=null,string steamSchemaPath=null,Action<string> log=null)
         {
             if(appId==0)throw new InvalidDataException("Se necesita un AppID válido.");
@@ -73,16 +99,7 @@ namespace AchievementTimelineReplay
             }
             if(!String.IsNullOrEmpty(definitionsPath))
             {
-                using var definitions=Read(definitionsPath);
-                if(definitions.RootElement.ValueKind!=JsonValueKind.Array)throw new InvalidDataException("La definición Goldberg debe ser un array JSON de steam_settings.");
-                var seen=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                foreach(var entry in definitions.RootElement.EnumerateArray())
-                {
-                    if(entry.ValueKind!=JsonValueKind.Object || !entry.TryGetProperty("name",out var n) || n.ValueKind!=JsonValueKind.String || String.IsNullOrWhiteSpace(n.GetString()))throw new InvalidDataException("Definición sin nombre API válido.");
-                    string id=n.GetString();
-                    if(!seen.Add(id))throw new InvalidDataException("Definición duplicada: "+id);
-                    names[id]=(Text(entry,"displayName",id),Text(entry,"description",""));
-                }
+                foreach(var pair in ReadDefinitions(definitionsPath))names[pair.Key]=pair.Value;
             }
             var game=new GameEntry{AppId=appId,AccountId=0,GameName=gameName,StatsPath=Path.GetFullPath(statePath),SchemaPath=definitionsPath,HasLocalHistory=true,HistoryId=Identity(statePath),SourceLabel="achievements.json (Goldberg/GBE)",DetectedOrigin="Goldberg",IsDemo=synthetic || File.Exists(Path.Combine(Path.GetDirectoryName(statePath),".atr-demo"))};
             var all=new HashSet<string>(names.Keys,StringComparer.OrdinalIgnoreCase);
