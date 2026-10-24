@@ -1,6 +1,6 @@
 {
-  "Version": "0.17.0",
-  "DownloadUrl": "https://github.com/ramirobornetto/atr/raw/refs/heads/main/downloads/ATR_v0.17.0_Windows_x64.zip",
-  "Sha256": "dbf13aa325746cd0e0a96d157aa08cfda511a85ac0cdd066241afd7840c4abb7",
-  "SizeBytes": 73045161
+  "Version": "0.17.1",
+  "DownloadUrl": "https://github.com/ramirobornetto/atr/raw/refs/heads/main/downloads/ATR_v0.17.1_Windows_x64.zip",
+  "Sha256": "b9903ab29cd85f7507b15af563a536efb676fa5b383a2aad34961c88805b0df9",
+  "SizeBytes": 73049904
 }

@@ -1,8 +1,8 @@
 # Achievement Timeline Replay
 
-## Descargar v0.17.0 para Windows x64
+## Descargar v0.17.1 para Windows x64
 
-[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.17.0_Windows_x64.zip)
+[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.17.1_Windows_x64.zip)
 
 Extraer **todo el ZIP** en una carpeta nueva y abrir `AchievementTimelineReplay.Wpf.exe`. No se necesita compilar ni instalar .NET. Mantener las DLL y demás archivos junto al ejecutable. Steam y SamRewritten se seleccionan en la aplicación, como antes; no vienen incluidos.
 
@@ -328,3 +328,16 @@ La mejora de los mensajes sobre cachés vacías y fechas de logros permanece pen
 - Importaciones con ancho compartido por columna; Epic y Xbox comparten su propio ancho.
 
 Las funciones de importación, correspondencias y migración mantienen su comportamiento. La distribución y los efectos requieren revisión visual en Windows.
+
+## v0.17.1 — cristal negro y tablas más suaves
+
+- Contorno luminoso completo y uniforme en la pestaña activa, en lugar de una franja más intensa a la izquierda.
+- Navegación con iconos de 20 y letra 14 para que entren los rótulos completos.
+- Paneles negros translúcidos y oscurecimiento neutro del fondo, sin tinte azul añadido.
+- Todas las tablas con filas negras/grises transparentes de contraste sutil, sin rejilla ni borde exterior claro.
+- Contenido de las celdas centrado verticalmente, incluidos textos y controles de correspondencias.
+
+- Escaneo: fuentes ordenadas de arriba abajo por columna; Xbox Live y Epic cierran la segunda columna.
+- Acciones rojas: gradiente de rojo intenso a rojo oscuro, sin extremo blanco/rosado claro y con texto blanco.
+- Fila seleccionada con contorno cian y glow, manteniendo textos y controles sin desenfoque.
+- Plan: fila flotante que acompaña al cursor, reordenamiento inmediato de las demás filas y desplazamiento automático en los bordes. Escape o soltar fuera del Plan restaura el orden y el modo previos. Los tiempos se recalculan al soltar, conservando fechas, selección y esperas manuales.

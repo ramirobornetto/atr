@@ -59,4 +59,7 @@ El fondo está incorporado como `WpfPrototype/Assets/atr-background.png`, con de
 
 Los colores con ocho dígitos usan `#AARRGGBB`: el primer par indica opacidad (`00` invisible, `FF` opaco). `Panel` e `Inset` usan este formato para que el paisaje se vea a través de sus fondos. No se aplica opacidad a todo el panel, de modo que el texto sigue siendo sólido.
 
-Las plantillas de `Button`, `DangerButton`, `NavButton`, `ComboBox`, `ComboBoxItem` y `CheckBox` están en `Appearance.xaml`. Los efectos y gradientes se editan allí. Las letras e iconos de la navegación tienen tamaños específicos (15 y 22), independientes del resto de botones. La navegación activa utiliza `Selector.IsSelected`; no se debe reemplazar su estado por un cambio manual de fondo desde el código.
+Las plantillas de `Button`, `DangerButton`, `NavButton`, `ComboBox`, `ComboBoxItem` y `CheckBox` están en `Appearance.xaml`. Los efectos y gradientes se editan allí. Las letras e iconos de la navegación tienen tamaños específicos (14 y 20), independientes del resto de botones. La navegación activa utiliza `Selector.IsSelected`; no se debe reemplazar su estado por un cambio manual de fondo desde el código.
+
+
+Desde 0.17.1, `Panel`, `Inset` y `BackgroundShade` usan negro neutro. El estilo `DataGrid` define las dos tonalidades translúcidas de las filas y elimina sus líneas; `DataGridCell` centra verticalmente su contenido. El contorno completo de navegación se define en `NavOutline` y usa grosor uniforme de 1,5.

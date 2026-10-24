@@ -195,3 +195,20 @@ El entorno de desarrollo compila WPF pero no ejecuta una sesión gráfica Window
 - Casillas: marcar/desmarcar con clic y Espacio; encabezado de Confirmar con estado parcial cuando corresponde; selección de filas no reemplaza la confirmación.
 - Conectar Epic y Xbox: ayudas, botones y selectores legibles en ventanas secundarias; no es necesario ejecutar una migración para revisar estos estilos.
 - Revisar ventana mínima y escalas 100/125/150 %, particularmente los textos largos de origen y los filtros.
+
+
+## Revisión visual 0.17.1
+
+- Navegación: contorno cian completo y uniforme en la pestaña activa; el título Plan de desbloqueo entra completo. Iconos 20, letra 14.
+- Paneles negros transparentes sobre el mismo fondo, sin tinte azul de los rellenos.
+- Biblioteca, Plan, correspondencias e informe: filas alternas sutiles, sin líneas claras; textos y controles centrados verticalmente.
+- Verificar selección de filas, selección de casillas, edición de tiempos, menús desplegables y redimensionamiento de columnas. La plantilla de celda mantiene el contenido y los enlaces originales.
+
+- Escaneo: leer las fuentes de arriba abajo, primero izquierda y luego derecha. Xbox Live y Epic son las dos últimas; marcar y escanear conserva las mismas preferencias.
+- Botones de cancelar/borrar/desconectar: hover de rojo a rojo oscuro, texto blanco y glow rojo.
+- Selección de filas: halo cian y borde fino sin modificar altura ni posición de las columnas; comprobar también scroll horizontal, edición, casillas y selección con teclado.
+
+- Arrastre de Plan: iniciar desde una celda de solo lectura, mover despacio y con saltos largos en ambas direcciones. La fila sigue al cursor, las otras se recolocan y los números cambian en vivo. Probar filas fuera de pantalla con desplazamiento automático y saltos al primer/último lugar.
+- Escape y soltar fuera de la tabla: restaurar el orden exacto y el estado anterior de Orden personalizado, tanto con orden cronológico como con uno manual guardado.
+- No iniciar arrastres desde casillas, campos editables, encabezados ni barras. Las fechas y esperas manuales siguen perteneciendo a sus logros; no debe haber duplicados ni pérdidas. Al soltar, revisar los tiempos recalculados y Guardar/Cargar plan.
+- Con la ventana escalada al 125/150 %, comprobar que la vista flotante conserve tamaño y texto legible. Las filas virtualizadas deben conservar el estilo al desplazarse.

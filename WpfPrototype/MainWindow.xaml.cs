@@ -11,6 +11,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Data;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using Microsoft.Win32;
@@ -51,7 +52,10 @@ namespace AchievementTimelineReplay.Wpf
         internal AchievementRecord Record;
         readonly Action changed;
         internal AchievementView(AchievementRecord a, Action onChange) { Record=a; changed=onChange; }
-        public string Order { get; set; }
+        string orderNumber;
+        public string Order {get=>orderNumber;set{orderNumber=value;OnPropertyChanged(nameof(Order));}}
+        bool isDragging;
+        public bool IsDragging {get=>isDragging;set{isDragging=value;OnPropertyChanged(nameof(IsDragging));}}
         public string DisplayName => Record.DisplayName;
         public string Description => Record.Description;
         public string OriginalDate => Record.OriginalUnix>0?LegacyTools.UnixToLocal(Record.OriginalUnix).ToString("dd/MM/yyyy HH:mm:ss"):"Sin fecha";
@@ -125,6 +129,14 @@ namespace AchievementTimelineReplay.Wpf
         string activePage="Escaneo";
         Point dragStart;
         AchievementView dragRow;
+        PlanReorderSession planDrag;
+        GameEntry planDragGame;
+        PlanRowDragAdorner dragPreview;
+        AdornerLayer dragLayer;
+        Point dragPosition;
+        double dragGrabY;
+        bool dragInside;
+        long lastDragScroll;
 
         public MainWindow()
         {
@@ -148,7 +160,7 @@ namespace AchievementTimelineReplay.Wpf
             ApplyLibraryFilter();
             GoTo("Escaneo");
             UpdateButtons();
-            Log("WPF v0.17.0 iniciada. Motor derivado de v0.5.3. No se ha modificado Steam.");
+            Log("WPF v0.17.1 iniciada. Motor derivado de v0.5.3. No se ha modificado Steam.");
             LoadSavedLibrary();
             if(!String.IsNullOrWhiteSpace(SamPath.Text)) _=ValidateSamAsync(false);
         }
@@ -344,9 +356,12 @@ namespace AchievementTimelineReplay.Wpf
         {
             foreach(string source in SourceSelection.LibraryFilterSources)
                 OriginChoice.Items.Add(new ComboBoxItem{Content=SourceSelection.DisplayOrigin(source)});
+            int sourceIndex=0,sourceRows=(SourceSelection.ScanSources.Length+1)/2;
+            for(int row=0;row<sourceRows;row++)ScanSourcesPanel.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});
             foreach(string source in SourceSelection.ScanSources)
             {
                 var check=new CheckBox{Content=SourceSelection.DisplayOrigin(source),IsChecked=sourceOptions.Scans(source),Margin=new Thickness(0,3,8,3),Tag=source};
+                Grid.SetColumn(check,sourceIndex/sourceRows);Grid.SetRow(check,sourceIndex%sourceRows);sourceIndex++;
                 check.Checked+=ScanSourceChanged;check.Unchecked+=ScanSourceChanged;scanSourceChecks[source]=check;ScanSourcesPanel.Children.Add(check);
                 check.ToolTip=ScanSourceDirectory(source);
                 check.ToolTipOpening+=(s,e)=>check.ToolTip=ScanSourceDirectory(source);
@@ -1101,7 +1116,7 @@ namespace AchievementTimelineReplay.Wpf
         }
         void RefreshPlan()
         {
-            if(!initialized || updating)return;
+            if(!initialized || updating || planDrag!=null)return;
             updating=true;
             var selectedRecord=(AchievementsGrid.SelectedItem as AchievementView)?.Record;
             var schedule=running && ReferenceEquals(currentGame,executingGame) && activeSchedule!=null ? activeSchedule : LegacyPlanner.Calculate(order,TargetDuration(),AutomaticGapLimit());
@@ -1219,27 +1234,100 @@ namespace AchievementTimelineReplay.Wpf
         }
         void AchievementMouseMove(object sender,MouseEventArgs e)
         {
-            if(!CanEditPlan || e.LeftButton!=MouseButtonState.Pressed || dragRow==null)return;
+            if(!CanEditPlan || querying || e.LeftButton!=MouseButtonState.Pressed || dragRow==null || planDrag!=null)return;
             Point position=e.GetPosition(AchievementsGrid);
             if(Math.Abs(position.X-dragStart.X)<SystemParameters.MinimumHorizontalDragDistance && Math.Abs(position.Y-dragStart.Y)<SystemParameters.MinimumVerticalDragDistance)return;
-            var source=dragRow;dragRow=null;
-            CustomOrder.IsChecked=true;
-            AchievementsGrid.CommitEdit(DataGridEditingUnit.Row,true);
-            DragDrop.DoDragDrop(AchievementsGrid,source.Record,DragDropEffects.Move);
+            var source=dragRow;dragRow=null;e.Handled=true;
+            if(!AchievementsGrid.CommitEdit(DataGridEditingUnit.Row,true))return;
+            var row=AchievementsGrid.ItemContainerGenerator.ContainerFromItem(source) as DataGridRow;
+            dragLayer=AdornerLayer.GetAdornerLayer(AchievementsGrid);
+            if(row==null || dragLayer==null)return;
+            var session=new PlanReorderSession(order,source.Record,CustomOrder.IsChecked==true);
+            var game=currentGame;
+            dragGrabY=Math.Clamp(dragStart.Y-row.TranslatePoint(new Point(),AchievementsGrid).Y,0,row.ActualHeight);
+            dragPreview=new PlanRowDragAdorner(AchievementsGrid,row);
+            planDrag=session;planDragGame=game;dragPosition=position;dragInside=true;
+            source.IsDragging=true;AchievementsGrid.SelectedItem=source;
+            var timer=new System.Windows.Threading.DispatcherTimer{Interval=TimeSpan.FromMilliseconds(80)};
+            timer.Tick+=(s,args)=>{if(dragInside && planDrag!=null)PreviewPlanDrag(dragPosition);};
+            bool accepted=false;
+            try
+            {
+                dragLayer.Add(dragPreview);dragPreview.MoveTo(position.Y,dragGrabY);
+                CustomOrder.IsChecked=true;timer.Start();
+                accepted=DragDrop.DoDragDrop(AchievementsGrid,source.Record,DragDropEffects.Move)==DragDropEffects.Move;
+            }
+            finally
+            {
+                if(!accepted && ReferenceEquals(currentGame,game))
+                {
+                    session.Restore(order);
+                    updating=true;try{CustomOrder.IsChecked=session.WasCustom;}finally{updating=false;}
+                }
+                timer.Stop();source.IsDragging=false;
+                dragLayer.Remove(dragPreview);dragPreview=null;dragLayer=null;planDrag=null;planDragGame=null;dragInside=false;Mouse.UpdateCursor();
+                if(ReferenceEquals(currentGame,game))
+                {
+                    RefreshPlan();
+                    AchievementsGrid.SelectedItem=achievementRows.FirstOrDefault(a=>ReferenceEquals(a.Record,source.Record));
+                }
+            }
         }
+        void AchievementDragFeedback(object sender,GiveFeedbackEventArgs e)
+        {
+            if(planDrag==null)return;
+            e.UseDefaultCursors=false;Mouse.SetCursor(Cursors.SizeNS);e.Handled=true;
+        }
+        void AchievementDragContinue(object sender,QueryContinueDragEventArgs e)
+        {
+            if(planDrag!=null && (e.EscapePressed || !ReferenceEquals(currentGame,planDragGame) || activePage!="Plan" || !CanEditPlan || querying))
+            {e.Action=DragAction.Cancel;e.Handled=true;}
+        }
+        bool OwnPlanDrag(DragEventArgs e)=>planDrag!=null && ReferenceEquals(currentGame,planDragGame) && activePage=="Plan" && CanEditPlan && !querying && e.Data.GetDataPresent(typeof(AchievementRecord)) && ReferenceEquals(e.Data.GetData(typeof(AchievementRecord)),planDrag.Moving);
         void AchievementDragOver(object sender,DragEventArgs e)
         {
-            e.Handled=true;
-            e.Effects=DragDropEffects.None;
-            if(!CanEditPlan || !e.Data.GetDataPresent(typeof(AchievementRecord)))return;
-            e.Effects=DragDropEffects.Move;
+            e.Handled=true;e.Effects=DragDropEffects.None;
+            if(!OwnPlanDrag(e))return;
+            dragPosition=e.GetPosition(AchievementsGrid);dragInside=true;
+            dragPreview.Visibility=Visibility.Visible;
+            e.Effects=DragDropEffects.Move;PreviewPlanDrag(dragPosition);
+        }
+        void AchievementDragLeave(object sender,DragEventArgs e)
+        {
+            if(planDrag==null)return;
+            var point=e.GetPosition(AchievementsGrid);
+            dragInside=point.X>=0 && point.X<AchievementsGrid.ActualWidth && point.Y>=0 && point.Y<AchievementsGrid.ActualHeight;
+            dragPreview.Visibility=dragInside?Visibility.Visible:Visibility.Hidden;
+        }
+        void PreviewPlanDrag(Point position)
+        {
+            if(planDrag==null || !ReferenceEquals(currentGame,planDragGame) || activePage!="Plan" || !CanEditPlan || querying)return;
+            dragPreview.MoveTo(position.Y,dragGrabY);
             var scroll=FindScrollViewer(AchievementsGrid);
-            var position=e.GetPosition(AchievementsGrid);
-            if(scroll!=null)
+            if(scroll!=null && Environment.TickCount64-lastDragScroll>=75)
             {
-                if(position.Y<55)scroll.LineUp();
-                else if(position.Y>AchievementsGrid.ActualHeight-30)scroll.LineDown();
+                if(position.Y<AchievementsGrid.ColumnHeaderHeight+24){scroll.LineUp();lastDragScroll=Environment.TickCount64;}
+                else if(position.Y>AchievementsGrid.ActualHeight-30){scroll.LineDown();lastDragScroll=Environment.TickCount64;}
             }
+            AchievementsGrid.UpdateLayout();
+            double y=Math.Clamp(position.Y-dragGrabY+dragPreview.RowHeight/2,AchievementsGrid.ColumnHeaderHeight+1,Math.Max(AchievementsGrid.ColumnHeaderHeight+1,AchievementsGrid.ActualHeight-20));
+            double x=Math.Clamp(position.X,2,Math.Max(2,AchievementsGrid.ActualWidth-20));
+            var row=Ancestor<DataGridRow>(AchievementsGrid.InputHitTest(new Point(x,y)) as DependencyObject);
+            var hovered=row?.Item as AchievementView;
+            bool below=hovered!=null && y-row.TranslatePoint(new Point(),AchievementsGrid).Y>=row.ActualHeight/2;
+            if(hovered==null && achievementRows.Count>0)
+            {
+                var last=AchievementsGrid.ItemContainerGenerator.ContainerFromIndex(achievementRows.Count-1) as DataGridRow;
+                if(last!=null && y>=last.TranslatePoint(new Point(),AchievementsGrid).Y+last.ActualHeight)
+                {hovered=last.Item as AchievementView;below=true;}
+            }
+            if(hovered==null)return;
+            var moving=achievementRows.FirstOrDefault(a=>ReferenceEquals(a.Record,planDrag.Moving));
+            if(moving==null || !planDrag.MoveOver(order,hovered.Record,below))return;
+            int oldIndex=achievementRows.IndexOf(moving),newIndex=order.IndexOf(planDrag.Moving);
+            achievementRows.Move(oldIndex,newIndex);
+            int number=0;foreach(var view in achievementRows)view.Order=view.Included?(++number).ToString():"—";
+            AchievementsGrid.SelectedItem=moving;AchievementChanged(AchievementsGrid,null);
         }
         static ScrollViewer FindScrollViewer(DependencyObject parent)
         {
@@ -1254,23 +1342,11 @@ namespace AchievementTimelineReplay.Wpf
         }
         void AchievementDrop(object sender,DragEventArgs e)
         {
-            e.Handled=true;
-            if(!CanEditPlan)return;
-            var from=e.Data.GetData(typeof(AchievementRecord)) as AchievementRecord;
-            var row=Ancestor<DataGridRow>(e.OriginalSource as DependencyObject);
-            var to=row?.Item as AchievementView;
-            if(from==null || to==null || ReferenceEquals(from,to.Record))return;
-            int index=order.IndexOf(from), dest=order.IndexOf(to.Record);
-            if(index<0||dest<0)return;
-            // La mitad superior/inferior determina antes/después de la fila destino.
-            int insertion=dest+(e.GetPosition(row).Y>=row.ActualHeight/2?1:0);
-            if(index<insertion)insertion--;
-            order.RemoveAt(index);order.Insert(insertion,from);
-            CustomOrder.IsChecked=true;
-            RefreshPlan();
-            AchievementsGrid.SelectedItem=achievementRows.FirstOrDefault(a=>ReferenceEquals(a.Record,from));
-            AchievementsGrid.ScrollIntoView(AchievementsGrid.SelectedItem);
-            e.Effects=DragDropEffects.Move;
+            e.Handled=true;e.Effects=DragDropEffects.None;
+            if(!OwnPlanDrag(e))return;
+            var position=e.GetPosition(AchievementsGrid);
+            if(position.Y<AchievementsGrid.ColumnHeaderHeight)return;
+            PreviewPlanDrag(position);e.Effects=DragDropEffects.Move;
         }
         async void QuerySteamClick(object sender,RoutedEventArgs e)
         {
