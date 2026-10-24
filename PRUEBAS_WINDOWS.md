@@ -212,3 +212,9 @@ El entorno de desarrollo compila WPF pero no ejecuta una sesión gráfica Window
 - Escape y soltar fuera de la tabla: restaurar el orden exacto y el estado anterior de Orden personalizado, tanto con orden cronológico como con uno manual guardado.
 - No iniciar arrastres desde casillas, campos editables, encabezados ni barras. Las fechas y esperas manuales siguen perteneciendo a sus logros; no debe haber duplicados ni pérdidas. Al soltar, revisar los tiempos recalculados y Guardar/Cargar plan.
 - Con la ventana escalada al 125/150 %, comprobar que la vista flotante conserve tamaño y texto legible. Las filas virtualizadas deben conservar el estilo al desplazarse.
+
+
+## Revisión visual 0.17.2
+
+- Paneles principales más transparentes (40 %); textos y controles sólidos.
+- Separadores vertical y horizontal del Plan: línea fina con glow leve, cursor correcto y ajuste de dimensiones arrastrando dentro de la zona de 6 unidades. Verificar también escalas 125/150 %.

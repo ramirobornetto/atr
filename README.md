@@ -1,8 +1,8 @@
 # Achievement Timeline Replay
 
-## Descargar v0.17.1 para Windows x64
+## Descargar v0.17.2 para Windows x64
 
-[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.17.1_Windows_x64.zip)
+[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.17.2_Windows_x64.zip)
 
 Extraer **todo el ZIP** en una carpeta nueva y abrir `AchievementTimelineReplay.Wpf.exe`. No se necesita compilar ni instalar .NET. Mantener las DLL y demás archivos junto al ejecutable. Steam y SamRewritten se seleccionan en la aplicación, como antes; no vienen incluidos.
 
@@ -341,3 +341,8 @@ Las funciones de importación, correspondencias y migración mantienen su compor
 - Acciones rojas: gradiente de rojo intenso a rojo oscuro, sin extremo blanco/rosado claro y con texto blanco.
 - Fila seleccionada con contorno cian y glow, manteniendo textos y controles sin desenfoque.
 - Plan: fila flotante que acompaña al cursor, reordenamiento inmediato de las demás filas y desplazamiento automático en los bordes. Escape o soltar fuera del Plan restaura el orden y el modo previos. Los tiempos se recalculan al soltar, conservando fechas, selección y esperas manuales.
+
+## v0.17.2 — transparencia y separadores finos
+
+- Bloques principales con 40 % de transparencia (60 % de opacidad), conservando el negro y la opacidad de su contenido.
+- Separadores del Plan con línea visible de 1 unidad WPF y glow cian suave, tanto vertical como horizontal. La zona transparente de agarre conserva su ancho de 6 para facilitar el arrastre.

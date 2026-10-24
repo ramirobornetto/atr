@@ -63,3 +63,6 @@ Las plantillas de `Button`, `DangerButton`, `NavButton`, `ComboBox`, `ComboBoxIt
 
 
 Desde 0.17.1, `Panel`, `Inset` y `BackgroundShade` usan negro neutro. El estilo `DataGrid` define las dos tonalidades translúcidas de las filas y elimina sus líneas; `DataGridCell` centra verticalmente su contenido. El contorno completo de navegación se define en `NavOutline` y usa grosor uniforme de 1,5.
+
+
+Desde 0.17.2, `Panel` usa `#99080808`: 60 % opaco y 40 % transparente. `Inset` conserva su transparencia anterior. El estilo `GridSplitter` dibuja una línea de 1 unidad WPF sobre la zona de agarre transparente de 6; su brillo está definido en `SplitterLine`.
