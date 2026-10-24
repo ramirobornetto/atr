@@ -1,8 +1,8 @@
 # Achievement Timeline Replay
 
-## Descargar v0.10.0 para Windows x64
+## Descargar v0.11.0 para Windows x64
 
-[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.10.0_Windows_x64.zip)
+[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.11.0_Windows_x64.zip)
 
 Extraer **todo el ZIP** en una carpeta nueva y abrir `AchievementTimelineReplay.Wpf.exe`. No se necesita compilar ni instalar .NET. Mantener las DLL y demás archivos junto al ejecutable. Steam y SamRewritten se seleccionan en la aplicación, como antes; no vienen incluidos.
 
@@ -205,3 +205,7 @@ Biblioteca muestra una fila por juego/perfil confirmado y conserva todas sus fue
 PA añade lectura de Xbox, Epic, GOG y PlayStation, bajo una única opción PA en Escaneo y con filtros por plataforma en Biblioteca. Los IDs externos nunca se envían como AppID Steam. Preparar equivalencias con Steam permite revisar sugerencias, confirmar asociaciones y guardarlas antes de crear el plan. Los destinos duplicados o ausentes se rechazan y los logros sin fecha se conservan. SAM sigue siendo quien acepta o rechaza operaciones; sus errores detienen el plan sin anunciar éxito.
 
 Ver [PLATAFORMAS.md](PLATAFORMAS.md) para uso, agrupación, correspondencias y límites de validación.
+
+## v0.11.0 — búsqueda de destino y comparación asistida
+
+La ventana de correspondencias propone juegos Steam por nombre desde cachés locales y la tienda pública; se puede elegir la edición sin escribir el AppID. Se añaden textos localizados, sugerencias es/en con comprobación de cantidades/negaciones, motivo de cada propuesta y confirmación por lotes de coincidencias exactas o filas seleccionadas. Se respetan las elecciones guardadas y las exclusiones explícitas. Los IDs del esquema y la confirmación del usuario siguen siendo necesarios. Ver PLATAFORMAS.md.

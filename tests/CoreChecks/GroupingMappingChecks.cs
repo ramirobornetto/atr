@@ -36,7 +36,7 @@ static class GroupingMappingChecks
         Check(!sources.Shows("Xbox") && sources.Shows("Epic") && SourceSelection.LibrarySources.Contains("PlayStation"),"platform visibility filters remain independent from the one PA scan switch");
         Check(!foreign.SteamTarget && foreign.AppId==0 && foreign.ExternalGameId=="2089483628" && foreign.Achievements.Count==2,"Xbox title ID remains separate from Steam AppID and its unlocks remain importable");
         var definitions=new List<SteamDefinition>{new SteamDefinition{ApiId="STEAM_A",Name="First step",Description="Finish tutorial"},new SteamDefinition{ApiId="STEAM_B",Name="Finish",Description="Finish game"}};
-        foreign.Achievements[0].DisplayName="First step";
+        foreign.Achievements[0].DisplayName="First step";foreign.Achievements[0].Description="Finish tutorial";
         Check(PlatformMapping.Suggest(foreign.Achievements[0],definitions)?.ApiId=="STEAM_A","unique display-name match is a suggestion without an automatic confirmation");
         var file=PlatformMapping.Capture(foreign,1182900,new[]{new AchievementMapping{SourceId=foreign.Achievements[0].ApiId,TargetId="STEAM_A",Confirmed=true},new AchievementMapping{SourceId=foreign.Achievements[1].ApiId,TargetId="STEAM_B",Confirmed=false}});
         var mapped=PlatformMapping.Build(foreign,file,definitions,"Steam target");

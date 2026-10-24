@@ -144,7 +144,7 @@ namespace AchievementTimelineReplay.Wpf
             ApplyLibraryFilter();
             GoTo("Escaneo");
             UpdateButtons();
-            Log("WPF v0.10.0 iniciada. Motor derivado de v0.5.3. No se ha modificado Steam.");
+            Log("WPF v0.11.0 iniciada. Motor derivado de v0.5.3. No se ha modificado Steam.");
             LoadSavedLibrary();
             if(!String.IsNullOrWhiteSpace(SamPath.Text)) _=ValidateSamAsync(false);
         }
@@ -637,7 +637,18 @@ namespace AchievementTimelineReplay.Wpf
                         return PlatformMapping.FromSam(result.StdOut);
                     });
                 }
-                var window=new PlatformMappingWindow(source.WithRecords(order),Path.Combine(LegacyTools.DataDirectory,"Mappings"),Load,id=>names.TryGetValue(id,out var title)?title:"AppID "+id+" (verificá el nombre y edición en Steam)"){Owner=this};
+                async Task<List<SteamGameMatch>> Search(string term)
+                {
+                    var paths=allHistories.Where(PlayniteHistory.IsPA).Select(g=>g.StatsPath).Append(source.StatsPath).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+                    var local=await Task.Run(()=>SteamDiscovery.LocalGames(paths,allHistories,term));
+                    try
+                    {
+                        var online=await SteamDiscovery.SearchAsync(term);
+                        return local.Concat(online).DistinctBy(g=>g.AppId).OrderByDescending(g=>String.Equals(g.Name,term,StringComparison.OrdinalIgnoreCase)).ThenBy(g=>g.Name,StringComparer.CurrentCultureIgnoreCase).ToList();
+                    }
+                    catch(Exception ex){Log("Búsqueda pública Steam: "+ex.Message);if(local.Count>0)return local;throw;}
+                }
+                var window=new PlatformMappingWindow(source.WithRecords(order),Path.Combine(LegacyTools.DataDirectory,"Mappings"),Load,id=>names.TryGetValue(id,out var title)?title:"AppID "+id+" (verificá el nombre y edición en Steam)",Search){Owner=this};
                 if(window.ShowDialog()==true && window.Result!=null)
                 {
                     var mapped=window.Result;bool existingMapped=allHistories.Any(g=>g.StorageKey==mapped.StorageKey);PlayniteHistory.ProtectCurrent(mapped,Path.Combine(LegacyTools.DataDirectory,"Snapshots"));

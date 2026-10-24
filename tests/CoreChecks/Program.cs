@@ -48,6 +48,7 @@ static class Program
             SourceChecks.Run(root);
             PlayniteChecks.Run(root);
             GroupingMappingChecks.Run(root);
+            DiscoveryMatchingChecks.Run(root);
             var countedGame=new GameEntry{TotalAchievements=40};
             for(int i=0;i<16;i++)countedGame.Achievements.Add(new AchievementRecord{ApiId="ACH_"+i});
             var partialStates=new Dictionary<string,string>();

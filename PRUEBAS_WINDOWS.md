@@ -46,3 +46,13 @@ Si hay errores, adjuntar captura de consola y primer error + una captura del ár
 5. Confirmar destinos repetidos debe impedir preparar el plan. Cambiar AppID invalida la edición cargada hasta consultar de nuevo. Asociaciones pendientes no deben entrar al plan; los logros sin fecha sí se conservan cuando su asociación está confirmada. Revisar Steam para omitir ya desbloqueados.
 6. Probar Epic/GOG/PlayStation con desbloqueos disponibles en PA. Todos se incluyen mediante la misma casilla PA; sus filtros de Biblioteca son independientes. No se conectan directamente a esas plataformas ni se les escriben logros. Validación real pendiente de cada formato/proveedor.
 7. Con SAM rechazando un AppID u operación, comprobar mensaje de error, progreso sin avanzar para el logro fallido y ausencia de Migración completada. Sin validación propia de propiedad ni modificación de archivos PA.
+
+## Regresión 0.11.0
+
+1. Abrir correspondencias de Cuphead desde Xbox. Buscar por nombre, comprobar Cuphead AppID 268910 y distinguir DLC/ediciones. Probar también sin red: debe conservar candidatos locales cuando existan y permitir AppID manual. La propiedad del juego no se deduce de la búsqueda.
+2. Con esquema inglés, comparar los siete logros de la captura en español: revisar propuestas, cantidades 20/100, negación sin daño, nombres/descripciones y motivo. La consulta de textos públicos en el Windows del usuario está pendiente de validación real, ya que el entorno de desarrollo bloqueó esas URLs.
+3. Probar Confirmar coincidencias exactas y Confirmar seleccionadas tras revisar; destinos repetidos y filas sin propuesta no deben confirmarse en bloque. Cambiar manualmente un destino debe quitar su confirmación y motivo automático.
+4. Cargar un archivo anterior con filas vacías: se proponen candidatos sin reemplazar destinos guardados válidos. Marcar Sin equivalente, guardar y volver: debe conservar esa exclusión. Cambiar destino o idioma y volver debe conservar borradores de esa ventana, sin confirmar automáticamente nuevos IDs.
+5. Cambiar AppID después de cargar invalida la edición hasta volver a cargar. El plan preparado debe llevar el nombre elegido en la búsqueda y solo las asociaciones confirmadas. Los datos de origen y fechas no se modifican.
+
+Pendiente anotado: la barra de progreso del escaneo completo debe cubrir todas las fuentes; no se modifica en 0.11.0.

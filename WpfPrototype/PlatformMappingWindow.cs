@@ -18,66 +18,122 @@ namespace AchievementTimelineReplay.Wpf
         public string Description=>Source.Description;
         public string Date=>Source.OriginalUnix>0?LegacyTools.UnixToLocal(Source.OriginalUnix).ToString("dd/MM/yyyy HH:mm:ss"):"Sin fecha";
         SteamDefinition target;bool confirmed;
-        public SteamDefinition Target{get=>target;set{target=String.IsNullOrEmpty(value?.ApiId)?null:value;confirmed=false;Changed();}}
+        public bool ExactSuggestion;
+        public bool NoEquivalent;
+        public string MatchReason {get;set;}
+        public SteamDefinition Target{get=>target;set{NoEquivalent=value!=null && String.IsNullOrEmpty(value.ApiId);target=String.IsNullOrEmpty(value?.ApiId)?null:value;confirmed=false;ExactSuggestion=false;MatchReason="Elección manual";Changed();}}
         public bool Confirmed{get=>confirmed;set{confirmed=value && target!=null;Changed();}}
         public string TargetDescription=>target?.Description??"";
-        public string Status=>target==null?"Sin equivalente":confirmed?"Confirmado":"Por revisar";
+        public string Status=>target==null?(NoEquivalent?"Sin equivalente":"Sin sugerencia"):confirmed?"Confirmado":"Por revisar";
         public event PropertyChangedEventHandler PropertyChanged;
-        void Changed(){PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(nameof(Target)));PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(nameof(Confirmed)));PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(nameof(Status)));PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(nameof(TargetDescription)));}
+        void Changed(){PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(nameof(Target)));PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(nameof(Confirmed)));PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(nameof(Status)));PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(nameof(TargetDescription)));PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(nameof(MatchReason)));}
     }
     internal sealed class PlatformMappingWindow : Window
     {
         readonly GameEntry source;readonly string directory;readonly Func<uint,Task<List<SteamDefinition>>> load;
-        readonly Func<uint,string> targetName;
+        readonly Func<uint,string> targetName;readonly Func<string,Task<List<SteamGameMatch>>> search;
+        readonly TextBox searchText=new TextBox{Width=270,MaxLength=200,Margin=new Thickness(8)};
+        readonly ComboBox searchResults=new ComboBox{Width=430,Margin=new Thickness(8),Foreground=System.Windows.Media.Brushes.Black,Background=System.Windows.Media.Brushes.White};
+        readonly Button searchButton=new Button{Content="Buscar juego en Steam"},confirmExact=new Button{Content="Confirmar coincidencias exactas"},confirmSelected=new Button{Content="Confirmar seleccionadas"};
+        readonly ComboBox language=new ComboBox{Width=125,Margin=new Thickness(8)};
         readonly TextBox appId=new TextBox{Width=130,Margin=new Thickness(8)};
         readonly TextBlock info=new TextBlock{TextWrapping=TextWrapping.Wrap,Margin=new Thickness(8)};
         readonly CheckBox edition=new CheckBox{Content="Confirmo que el AppID corresponde al juego y edición correctos en Steam",Margin=new Thickness(8)};
         readonly ObservableCollection<MappingRow> rows=new ObservableCollection<MappingRow>();
         readonly DataGrid grid=new DataGrid{AutoGenerateColumns=false,CanUserAddRows=false,Margin=new Thickness(8),SelectionUnit=DataGridSelectionUnit.FullRow};
         readonly Button fetch=new Button{Content="Cargar logros Steam"},save=new Button{Content="Guardar correspondencias"},prepare=new Button{Content="Preparar plan Steam"};
+        readonly Dictionary<uint,MappingFile> drafts=new Dictionary<uint,MappingFile>();
+        string loadedTargetName;
         List<SteamDefinition> definitions=new List<SteamDefinition>();uint loadedId;bool busy;
         public GameEntry Result;
-        public PlatformMappingWindow(GameEntry source,string directory,Func<uint,Task<List<SteamDefinition>>> load,Func<uint,string> targetName)
+        public PlatformMappingWindow(GameEntry source,string directory,Func<uint,Task<List<SteamDefinition>>> load,Func<uint,string> targetName,Func<string,Task<List<SteamGameMatch>>> search)
         {
-            this.source=source;this.directory=directory;this.load=load;this.targetName=targetName;
+            this.source=source;this.directory=directory;this.load=load;this.targetName=targetName;this.search=search;
             Title="Correspondencias · "+source.Platform+" → Steam · "+source.GameName;Width=1220;Height=780;MinWidth=850;MinHeight=560;WindowStartupLocation=WindowStartupLocation.CenterOwner;Background=(System.Windows.Media.Brush)Application.Current.FindResource("Bg");Foreground=System.Windows.Media.Brushes.White;
             var layout=new DockPanel{Margin=new Thickness(12)};Content=layout;
             var header=new StackPanel();DockPanel.SetDock(header,Dock.Top);layout.Children.Add(header);
             header.Children.Add(new TextBlock{Text="Origen: "+source.GameName+" · "+source.Platform+" · "+source.Achievements.Count+" desbloqueados",FontSize=19,Margin=new Thickness(8),TextWrapping=TextWrapping.Wrap});
-            header.Children.Add(new TextBlock{Text="Elegí el AppID de Steam y revisá cada equivalencia. Las sugerencias por nombre o descripción no se confirman automáticamente. Solo pasarán al plan los logros confirmados; no se escribe en la plataforma de origen.",TextWrapping=TextWrapping.Wrap,Margin=new Thickness(8)});
-            var input=new WrapPanel();input.Children.Add(new TextBlock{Text="AppID Steam:",VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(8)});input.Children.Add(appId);input.Children.Add(fetch);header.Children.Add(input);header.Children.Add(info);header.Children.Add(edition);
-            var footer=new WrapPanel{HorizontalAlignment=HorizontalAlignment.Right};DockPanel.SetDock(footer,Dock.Bottom);footer.Children.Add(save);footer.Children.Add(prepare);var cancel=new Button{Content="Cerrar"};cancel.Click+=(s,e)=>Close();footer.Children.Add(cancel);layout.Children.Add(footer);layout.Children.Add(grid);
+            header.Children.Add(new TextBlock{Text="Buscá el juego de Steam por nombre, elegí la edición y revisá las sugerencias. Las sugerencias por nombre o descripción no se confirman automáticamente. Solo pasarán al plan los logros confirmados; no se escribe en la plataforma de origen.",TextWrapping=TextWrapping.Wrap,Margin=new Thickness(8)});
+            searchText.Text=source.GameName;var searchBar=new WrapPanel();searchBar.Children.Add(searchText);searchBar.Children.Add(searchButton);searchBar.Children.Add(searchResults);header.Children.Add(searchBar);
+            language.Items.Add(new ComboBoxItem{Content="Español",Tag="spanish"});language.Items.Add(new ComboBoxItem{Content="English",Tag="english"});language.SelectedIndex=System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName=="es"?0:1;
+            var input=new WrapPanel();input.Children.Add(new TextBlock{Text="AppID Steam:",VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(8)});input.Children.Add(appId);input.Children.Add(new TextBlock{Text="Idioma:",VerticalAlignment=VerticalAlignment.Center});input.Children.Add(language);input.Children.Add(fetch);header.Children.Add(input);header.Children.Add(info);header.Children.Add(edition);
+            var footer=new WrapPanel{HorizontalAlignment=HorizontalAlignment.Right};DockPanel.SetDock(footer,Dock.Bottom);footer.Children.Add(confirmExact);footer.Children.Add(confirmSelected);footer.Children.Add(save);footer.Children.Add(prepare);var cancel=new Button{Content="Cerrar"};cancel.Click+=(s,e)=>Close();footer.Children.Add(cancel);layout.Children.Add(footer);layout.Children.Add(grid);
             grid.Columns.Add(new DataGridTextColumn{Header="Logro de origen",Binding=new Binding(nameof(MappingRow.Name)),Width=new DataGridLength(2,DataGridLengthUnitType.Star),IsReadOnly=true});
             grid.Columns.Add(new DataGridTextColumn{Header="Descripción de origen",Binding=new Binding(nameof(MappingRow.Description)),Width=new DataGridLength(2,DataGridLengthUnitType.Star),IsReadOnly=true});
             grid.Columns.Add(new DataGridTextColumn{Header="Fecha",Binding=new Binding(nameof(MappingRow.Date)),Width=145,IsReadOnly=true});
             grid.Columns.Add(new DataGridTemplateColumn{Header="Equivalente Steam",Width=new DataGridLength(3,DataGridLengthUnitType.Star)});
             grid.Columns.Add(new DataGridTemplateColumn{Header="Confirmar",Width=85});
             var check=new FrameworkElementFactory(typeof(CheckBox));check.SetBinding(CheckBox.IsCheckedProperty,new Binding(nameof(MappingRow.Confirmed)){Mode=BindingMode.TwoWay,UpdateSourceTrigger=UpdateSourceTrigger.PropertyChanged});check.SetValue(CheckBox.HorizontalAlignmentProperty,HorizontalAlignment.Center);((DataGridTemplateColumn)grid.Columns[4]).CellTemplate=new DataTemplate{VisualTree=check};
-            grid.Columns.Add(new DataGridTextColumn{Header="Estado",Binding=new Binding(nameof(MappingRow.Status)),Width=115,IsReadOnly=true});grid.Columns.Insert(4,new DataGridTextColumn{Header="Descripción Steam",Binding=new Binding(nameof(MappingRow.TargetDescription)),Width=new DataGridLength(2,DataGridLengthUnitType.Star),IsReadOnly=true});grid.ItemsSource=rows;
+            grid.Columns.Add(new DataGridTextColumn{Header="Estado",Binding=new Binding(nameof(MappingRow.Status)),Width=115,IsReadOnly=true});grid.Columns.Insert(4,new DataGridTextColumn{Header="Descripción Steam",Binding=new Binding(nameof(MappingRow.TargetDescription)),Width=new DataGridLength(2,DataGridLengthUnitType.Star),IsReadOnly=true});grid.Columns.Add(new DataGridTextColumn{Header="Motivo de la sugerencia",Binding=new Binding(nameof(MappingRow.MatchReason)),Width=200,IsReadOnly=true});grid.ItemsSource=rows;
+            foreach(var column in new[]{(Index:0,Path:nameof(MappingRow.Name)),(Index:1,Path:nameof(MappingRow.Description)),(Index:4,Path:nameof(MappingRow.TargetDescription)),(Index:7,Path:nameof(MappingRow.MatchReason))})
+            {
+                var style=new Style(typeof(TextBlock),(Style)Application.Current.FindResource(typeof(TextBlock)));
+                style.Setters.Add(new Setter(TextBlock.TextTrimmingProperty,TextTrimming.CharacterEllipsis));
+                style.Setters.Add(new Setter(FrameworkElement.ToolTipProperty,new Binding(column.Path)));
+                ((DataGridTextColumn)grid.Columns[column.Index]).ElementStyle=style;
+            }
             fetch.Click+=async(s,e)=>await Fetch();save.Click+=(s,e)=>Save(false);prepare.Click+=(s,e)=>Save(true);Closing+=(s,e)=>{if(busy)e.Cancel=true;};
-            appId.TextChanged+=(s,e)=>{if(!busy && loadedId!=0){loadedId=0;edition.IsChecked=false;save.IsEnabled=prepare.IsEnabled=false;rows.Clear();info.Text="Cambió el AppID: cargá nuevamente los logros del destino.";}};
-            save.IsEnabled=prepare.IsEnabled=false;
+            appId.TextChanged+=(s,e)=>{if(loadedId!=0){RememberDraft();loadedId=0;edition.IsChecked=false;save.IsEnabled=prepare.IsEnabled=confirmExact.IsEnabled=confirmSelected.IsEnabled=false;rows.Clear();info.Text="Cambió el AppID: cargá nuevamente los logros del destino.";}};
+            searchButton.Click+=async(s,e)=>await Search();
+            searchResults.SelectionChanged+=(s,e)=>{if(searchResults.SelectedItem is SteamGameMatch game)appId.Text=game.AppId.ToString();};
+            confirmExact.Click+=(s,e)=>Confirm(rows.Where(r=>r.ExactSuggestion));confirmSelected.Click+=(s,e)=>Confirm(grid.SelectedItems.Cast<MappingRow>());
+            language.SelectionChanged+=(s,e)=>{if(!busy && loadedId!=0){RememberDraft();loadedId=0;rows.Clear();edition.IsChecked=false;save.IsEnabled=prepare.IsEnabled=false;info.Text="Cambió el idioma: cargá los logros nuevamente.";}};
+            Loaded+=async(s,e)=>await Search();
+            save.IsEnabled=prepare.IsEnabled=confirmExact.IsEnabled=confirmSelected.IsEnabled=false;
+        }
+        void RememberDraft()
+        {if(loadedId!=0 && rows.Count>0)drafts[loadedId]=PlatformMapping.Capture(source,loadedId,rows.Select(r=>new AchievementMapping{SourceId=r.Source.ApiId,TargetId=r.Target?.ApiId,Confirmed=r.Confirmed,NoEquivalent=r.NoEquivalent}));}
+        async Task Search()
+        {
+            if(busy)return;RememberDraft();loadedId=0;rows.Clear();edition.IsChecked=false;save.IsEnabled=prepare.IsEnabled=confirmExact.IsEnabled=confirmSelected.IsEnabled=false;busy=true;searchButton.IsEnabled=fetch.IsEnabled=appId.IsEnabled=searchResults.IsEnabled=searchText.IsEnabled=language.IsEnabled=false;info.Text="Buscando coincidencias por nombre…";
+            try
+            {
+                var matches=await search(searchText.Text.Trim());searchResults.ItemsSource=matches;
+                var exact=matches.Where(m=>String.Equals(m.Name.Trim(),searchText.Text.Trim(),StringComparison.OrdinalIgnoreCase)).ToList();
+                if(exact.Count==1)searchResults.SelectedItem=exact[0];
+                info.Text=matches.Count==0?"Sin coincidencias disponibles. Podés cambiar el nombre o introducir un AppID manualmente.":matches.Count+" coincidencias. Elegí la edición correcta y cargá sus logros. La búsqueda no verifica propiedad.";
+            }
+            catch(Exception ex){info.Text="No se pudo buscar en Steam: "+ex.Message+". El AppID manual sigue disponible.";}
+            finally{busy=false;searchButton.IsEnabled=fetch.IsEnabled=appId.IsEnabled=searchResults.IsEnabled=searchText.IsEnabled=language.IsEnabled=true;}
+        }
+        void Confirm(IEnumerable<MappingRow> selected)
+        {
+            if(busy || loadedId==0)return;
+            var unique=rows.Where(r=>r.Target!=null).GroupBy(r=>r.Target.ApiId,StringComparer.OrdinalIgnoreCase).Where(g=>g.Count()==1).Select(g=>g.Single()).ToHashSet();int count=0;
+            foreach(var row in selected.ToList())if(unique.Contains(row)){row.Confirmed=true;count++;}
+            info.Text=count+" correspondencias confirmadas. Los destinos repetidos o filas sin sugerencia no se confirmaron.";
         }
         async Task Fetch()
         {
             if(!UInt32.TryParse(appId.Text.Trim(),out uint id) || id==0){info.Text="Ingresá un AppID de Steam mayor que cero.";return;}
-            busy=true;grid.IsEnabled=false;info.Text="Cargando esquema de Steam…";fetch.IsEnabled=save.IsEnabled=prepare.IsEnabled=false;appId.IsEnabled=false;edition.IsChecked=false;
+            RememberDraft();busy=true;searchButton.IsEnabled=searchText.IsEnabled=searchResults.IsEnabled=language.IsEnabled=confirmExact.IsEnabled=confirmSelected.IsEnabled=false;grid.IsEnabled=false;info.Text="Cargando esquema de Steam…";fetch.IsEnabled=save.IsEnabled=prepare.IsEnabled=false;appId.IsEnabled=false;edition.IsChecked=false;
             try
             {
                 var result=await load(id);if(result.Count==0)throw new InvalidDataException("No se encontraron definiciones para ese AppID.");
-                definitions=result;loadedId=id;rows.Clear();var saved=PlatformMapping.Load(directory,source,id);
+                string localizationNote="";
+                if(!source.Achievements.All(a=>AchievementMatching.Suggest(a,result).Exact))
+                {
+                    info.Text="Buscando textos localizados para comparar los logros…";
+                    try{int count=await SteamDiscovery.LocalizeAsync(id,result,(string)((ComboBoxItem)language.SelectedItem).Tag,Path.Combine(LegacyTools.DataDirectory,"SteamAchievementTexts"));localizationNote=count>0?" · "+count+" textos localizados":"";}
+                    catch(Exception ex){localizationNote=" · Textos públicos no disponibles; se conservan las sugerencias locales/es-en.";System.Diagnostics.Debug.WriteLine(ex.Message);}
+                }
+                definitions=result;loadedId=id;rows.Clear();var saved=drafts.TryGetValue(id,out var draft)?draft:PlatformMapping.Load(directory,source,id);
                 foreach(var achievement in source.Achievements)
                 {
                     var row=new MappingRow{Source=achievement};var old=saved?.Entries.FirstOrDefault(e=>String.Equals(e.SourceId,achievement.ApiId,StringComparison.OrdinalIgnoreCase));
-                    row.Target=old==null?PlatformMapping.Suggest(achievement,definitions):definitions.FirstOrDefault(d=>String.Equals(d.ApiId,old.TargetId,StringComparison.OrdinalIgnoreCase));
-                    row.Confirmed=old?.Confirmed==true && row.Target!=null;rows.Add(row);
+                    var suggestion=AchievementMatching.Suggest(achievement,definitions);
+                    var previous=old?.TargetId==null?null:definitions.FirstOrDefault(d=>String.Equals(d.ApiId,old.TargetId,StringComparison.OrdinalIgnoreCase));
+                    row.Target=old?.NoEquivalent==true?null:previous??suggestion.Target;row.NoEquivalent=old?.NoEquivalent==true;
+                    row.ExactSuggestion=suggestion.Exact && row.Target==suggestion.Target;row.MatchReason=old?.NoEquivalent==true?"Marcado sin equivalente":previous!=null?"Correspondencia guardada":suggestion.Reason;
+                    row.Confirmed=old?.Confirmed==true && row.Target!=null && row.Target.ApiId==old.TargetId;rows.Add(row);
                 }
                 var combo=new FrameworkElementFactory(typeof(ComboBox));combo.SetValue(ComboBox.ItemsSourceProperty,new[]{new SteamDefinition{Name="— Sin equivalente —"}}.Concat(definitions).ToList());combo.SetValue(ComboBox.IsTextSearchEnabledProperty,true);combo.SetBinding(ComboBox.SelectedItemProperty,new Binding(nameof(MappingRow.Target)){Mode=BindingMode.TwoWay,UpdateSourceTrigger=UpdateSourceTrigger.PropertyChanged});combo.SetValue(ComboBox.ForegroundProperty,System.Windows.Media.Brushes.Black);combo.SetValue(ComboBox.BackgroundProperty,System.Windows.Media.Brushes.White);
                 ((DataGridTemplateColumn)grid.Columns[3]).CellTemplate=new DataTemplate{VisualTree=combo};
-                info.Text="Destino: "+targetName(id)+" · AppID "+id+" · "+definitions.Count+" logros. Revisá edición, DLC y requisitos; podés dejar filas sin confirmar.";save.IsEnabled=prepare.IsEnabled=true;
+                string title=searchResults.SelectedItem is SteamGameMatch match && match.AppId==id?match.Name:targetName(id);loadedTargetName=title;
+                info.Text="Destino: "+title+" · AppID "+id+" · "+definitions.Count+" logros · "+rows.Count(r=>r.Target!=null)+"/"+rows.Count+" sugerencias"+localizationNote+". Revisá edición, DLC y requisitos antes de confirmar.";save.IsEnabled=prepare.IsEnabled=confirmExact.IsEnabled=confirmSelected.IsEnabled=true;
             }
             catch(Exception ex){info.Text=ex.Message;definitions.Clear();loadedId=0;}
-            finally{busy=false;grid.IsEnabled=true;fetch.IsEnabled=appId.IsEnabled=true;}
+            finally{busy=false;grid.IsEnabled=true;searchButton.IsEnabled=searchText.IsEnabled=searchResults.IsEnabled=language.IsEnabled=fetch.IsEnabled=appId.IsEnabled=true;}
         }
         void Save(bool build)
         {
@@ -86,8 +142,8 @@ namespace AchievementTimelineReplay.Wpf
             try
             {
                 if(build && edition.IsChecked!=true)throw new InvalidDataException("Confirmá el juego y la edición de Steam antes de preparar el plan.");
-                var file=PlatformMapping.Capture(source,loadedId,rows.Select(r=>new AchievementMapping{SourceId=r.Source.ApiId,TargetId=r.Target?.ApiId,Confirmed=r.Confirmed}));
-                if(build)Result=PlatformMapping.Build(source,file,definitions,targetName(loadedId));
+                var file=PlatformMapping.Capture(source,loadedId,rows.Select(r=>new AchievementMapping{SourceId=r.Source.ApiId,TargetId=r.Target?.ApiId,Confirmed=r.Confirmed,NoEquivalent=r.NoEquivalent}));
+                if(build)Result=PlatformMapping.Build(source,file,definitions,loadedTargetName??targetName(loadedId));
                 PlatformMapping.Save(directory,source,file);
                 if(build){DialogResult=true;}else info.Text="Correspondencias guardadas. Las filas sin confirmar no se incluirán en el plan Steam.";
             }

@@ -9,9 +9,17 @@ using System.Text.Json;
 
 namespace AchievementTimelineReplay
 {
+    internal sealed class SteamText
+    {
+        public string Name {get;set;}
+        public string Description {get;set;}
+        public string IconKey {get;set;}
+    }
     internal sealed class SteamDefinition
     {
         public string ApiId {get;set;}
+        public string Icon {get;set;}
+        public List<SteamText> Aliases {get;set;}=new List<SteamText>();
         public string Name {get;set;}
         public string Description {get;set;}
         public override string ToString()=>String.IsNullOrEmpty(ApiId)?Name:Name+" ["+ApiId+"]";
@@ -21,6 +29,7 @@ namespace AchievementTimelineReplay
         public string SourceId {get;set;}
         public string TargetId {get;set;}
         public bool Confirmed {get;set;}
+        public bool NoEquivalent {get;set;}
     }
     internal sealed class MappingFile
     {
@@ -38,10 +47,7 @@ namespace AchievementTimelineReplay
         static string Normalize(string text)=>new string((text??"").Normalize(NormalizationForm.FormD).Where(c=>Char.IsLetterOrDigit(c)).ToArray()).ToUpperInvariant();
         public static SteamDefinition Suggest(AchievementRecord source,IEnumerable<SteamDefinition> targets)
         {
-            var names=targets.Where(t=>Normalize(t.Name)==Normalize(source.DisplayName) && Normalize(t.Name).Length>0).ToList();
-            if(names.Count==1)return names[0];
-            var descriptions=targets.Where(t=>Normalize(t.Description)==Normalize(source.Description) && Normalize(t.Description).Length>0).ToList();
-            return descriptions.Count==1?descriptions[0]:null;
+            return AchievementMatching.Suggest(source,targets).Target;
         }
         public static List<SteamDefinition> FromSchema(string path,uint appId)
         {
@@ -60,7 +66,8 @@ namespace AchievementTimelineReplay
                         foreach(string lang in new[]{"latam","spanish","english"})if(languages.TryGetValue(lang,out var name) && name is string text && !String.IsNullOrWhiteSpace(text))return text;
                         return fallback;
                     }
-                    result[api]=new SteamDefinition{ApiId=api,Name=Local("name",api),Description=Local("desc","")};
+                    string icon=bit.TryGetValue("display",out var rawDisplay) && rawDisplay is Dictionary<string,object> displayFields && displayFields.TryGetValue("icon",out var rawIcon)?Convert.ToString(rawIcon):null;
+                    result[api]=new SteamDefinition{ApiId=api,Icon=icon,Name=Local("name",api),Description=Local("desc","")};
                 }
             }
             return result.Values.ToList();
@@ -68,7 +75,7 @@ namespace AchievementTimelineReplay
         public static List<SteamDefinition> FromPA(string path,uint appId)
         {
             using var db=new ReadOnlySqlite(path);
-            return db.Query("SELECT d.ApiName,d.DisplayName,d.Description FROM AchievementDefinitions d JOIN Games g ON g.Id=d.GameId WHERE g.ProviderKey IN ('Steam','Local') AND g.ProviderGameId="+appId.ToString(CultureInfo.InvariantCulture)).Where(r=>!String.IsNullOrWhiteSpace(r["ApiName"])).DistinctBy(r=>r["ApiName"],StringComparer.OrdinalIgnoreCase).Select(r=>new SteamDefinition{ApiId=r["ApiName"],Name=r["DisplayName"]??r["ApiName"],Description=r["Description"]??""}).ToList();
+            return db.Query("SELECT d.ApiName,d.DisplayName,d.Description,d.UnlockedIconPath FROM AchievementDefinitions d JOIN Games g ON g.Id=d.GameId WHERE g.ProviderKey IN ('Steam','Local') AND g.ProviderGameId="+appId.ToString(CultureInfo.InvariantCulture)).Where(r=>!String.IsNullOrWhiteSpace(r["ApiName"])).DistinctBy(r=>r["ApiName"],StringComparer.OrdinalIgnoreCase).Select(r=>new SteamDefinition{ApiId=r["ApiName"],Icon=r["UnlockedIconPath"],Name=r["DisplayName"]??r["ApiName"],Description=r["Description"]??""}).ToList();
         }
         public static List<SteamDefinition> FromSam(string text)
         {
@@ -77,7 +84,7 @@ namespace AchievementTimelineReplay
             foreach(var entry in doc.RootElement.EnumerateArray())
             {
                 string Get(string field)=>entry.TryGetProperty(field,out var value) && value.ValueKind==JsonValueKind.String?value.GetString():null;
-                string id=Get("id");if(!String.IsNullOrWhiteSpace(id))result.Add(new SteamDefinition{ApiId=id,Name=Get("display_name")??Get("name")??id,Description=Get("description")??""});
+                string id=Get("id");if(!String.IsNullOrWhiteSpace(id))result.Add(new SteamDefinition{ApiId=id,Icon=Get("icon")??Get("icon_normal")??Get("icon_unlocked"),Name=Get("display_name")??Get("name")??id,Description=Get("description")??""});
             }
             return result.DistinctBy(d=>d.ApiId,StringComparer.OrdinalIgnoreCase).ToList();
         }
@@ -86,7 +93,7 @@ namespace AchievementTimelineReplay
         static void Validate(MappingFile file,GameEntry source,uint target)
         {
             if(source.SteamTarget || !PlayniteHistory.IsPA(source) || source.AppId!=0)throw new InvalidDataException("Las correspondencias requieren un historial PA de una plataforma externa.");
-            if(file==null || file.Version!=1 || target==0 || file.TargetAppId!=target || file.SourceKey!=source.StorageKey || file.SourcePlatform!=source.Platform || file.ExternalGameId!=source.ExternalGameId || file.Entries==null || file.Entries.Count>50000 || file.Entries.Any(e=>e==null || String.IsNullOrWhiteSpace(e.SourceId) || e.SourceId.Length>512 || (e.TargetId?.Length??0)>512) || file.Entries.Select(e=>e.SourceId).Distinct(StringComparer.OrdinalIgnoreCase).Count()!=file.Entries.Count)throw new InvalidDataException("Correspondencias de otra fuente o formato inválido.");
+            if(file==null || file.Version!=1 || target==0 || file.TargetAppId!=target || file.SourceKey!=source.StorageKey || file.SourcePlatform!=source.Platform || file.ExternalGameId!=source.ExternalGameId || file.Entries==null || file.Entries.Count>50000 || file.Entries.Any(e=>e==null || String.IsNullOrWhiteSpace(e.SourceId) || e.SourceId.Length>512 || (e.TargetId?.Length??0)>512 || (e.NoEquivalent && (e.Confirmed || !String.IsNullOrEmpty(e.TargetId)))) || file.Entries.Select(e=>e.SourceId).Distinct(StringComparer.OrdinalIgnoreCase).Count()!=file.Entries.Count)throw new InvalidDataException("Correspondencias de otra fuente o formato inválido.");
         }
         public static void Save(string directory,GameEntry source,MappingFile file)
         {

@@ -46,3 +46,19 @@ No se añade una comprobación de licencia propia. ATR delega la operación en S
 Pruebas automáticas con bases sintéticas para Xbox, Epic, GOG y PlayStation, IDs numéricos y opacos, fechas vacías, correspondencias parciales, destinos duplicados y guardado/restauración. Se comprueban rechazos con un SAM simulado; no se modifican cuentas reales.
 
 Las bases privadas del usuario confirman el caso PA Steam/Local de Age of Empires con distintos GUIDs y datos equivalentes. En esas bases, Xbox tiene definiciones pero ningún desbloqueo guardado: no prueban una migración real Xbox→Steam. El lector de datos y la compilación se verifican desde Linux; el diseño WPF, la biblioteca SQLite de Windows y una ejecución real con SAM requieren las pruebas de Windows del usuario. No se publican sus bases privadas.
+
+## Búsqueda y comparación asistida (0.11.0)
+
+La ventana de correspondencias busca por el nombre del juego al abrirse. Combina candidatos de ATR, de PA (incluidos juegos Steam sin logros desbloqueados), de la caché de nombres y de la búsqueda pública de la tienda Steam. Una coincidencia exacta única puede rellenar el AppID; el usuario puede elegir otra edición en la lista. El AppID manual sigue disponible. La búsqueda no depende de SAM ni demuestra que una cuenta tenga licencia.
+
+**Cargar logros Steam** sigue obteniendo los IDs de logros del esquema local, PA o SAM. La búsqueda pública de juegos no sustituye ese esquema y no concede acceso al juego. `Steam connection failed` informa un fallo de conexión/consulta y, por sí solo, no identifica su causa.
+
+El selector Idioma permite comparar con textos públicos en español o inglés. Cuando hacen falta, se buscan las páginas públicas de logros de Steam en ambos idiomas y se relacionan mediante imágenes únicas y textos del esquema ya identificado. Se conservan los IDs existentes: nunca se inventan IDs por la posición de una fila, su nombre o una imagen. Los textos se almacenan durante siete días en `SteamAchievementTexts`; si falla la consulta, se conservan los datos locales y continúa la comparación disponible. No hace falta proporcionar una clave API para esa consulta de textos.
+
+La columna Motivo distingue nombre/descripción exactos y descripciones semejantes. Las sugerencias bilingües es/en usan vocabulario limitado de condiciones de juego, cantidades, negaciones y algunos números romanos; no son una traducción universal ni una garantía de equivalencia. Por ejemplo, no se trata 20 paradas como 100 ni una condición sin daño como otra con daño. Los candidatos empatados quedan sin sugerencia automática.
+
+**Confirmar coincidencias exactas** confirma solo propuestas con descripción exacta y destino único. **Confirmar seleccionadas** permite aprobar conjuntamente las filas revisadas y seleccionadas. Ninguna confirma destinos repetidos ni filas sin destino. Las sugerencias no se aplican sin una acción de confirmación del usuario; la confirmación de juego/edición y las verificaciones de Steam siguen vigentes.
+
+Una fila sin propuesta se muestra como Sin sugerencia; no significa que el logro carezca de equivalente. Elegir explícitamente Sin equivalente se conserva al guardar. Las filas vacías de archivos de correspondencias anteriores pueden recibir nuevas sugerencias, sin sustituir destinos previamente elegidos ni trasladar su confirmación a otro ID. Los borradores de distintos destinos se conservan en memoria mientras la ventana permanezca abierta.
+
+Validación: casos sintéticos de los siete tipos de logro mostrados para Cuphead, conflictos numéricos/negación, ambigüedades, localización pública simulada, búsqueda sin progreso desbloqueado y caché. Las solicitudes reales a Steam Store/Community fueron bloqueadas por el proxy de este entorno de desarrollo; su funcionamiento en Windows queda pendiente de prueba. No se afirma una validación en vivo de esas páginas ni una identificación automática perfecta para todos los juegos.

@@ -8,7 +8,7 @@ c.executescript('''
 CREATE TABLE Games(Id INTEGER PRIMARY KEY,ProviderKey TEXT,ProviderGameId INTEGER,PlayniteGameId TEXT,GameName TEXT,ProviderGameKey TEXT);
 CREATE TABLE Users(Id INTEGER PRIMARY KEY,ProviderKey TEXT,ExternalUserId TEXT,IsCurrentUser INTEGER,FriendSource TEXT);
 CREATE TABLE UserGameProgress(Id INTEGER PRIMARY KEY,GameId INTEGER,UserId INTEGER);
-CREATE TABLE AchievementDefinitions(Id INTEGER PRIMARY KEY,GameId INTEGER,ApiName TEXT,DisplayName TEXT,Description TEXT);
+CREATE TABLE AchievementDefinitions(Id INTEGER PRIMARY KEY,GameId INTEGER,ApiName TEXT,DisplayName TEXT,Description TEXT,UnlockedIconPath TEXT);
 CREATE TABLE UserAchievements(UserGameProgressId INTEGER,AchievementDefinitionId INTEGER,Unlocked INTEGER,UnlockTimeUtc TEXT);
 ''')
 c.executemany('insert into Users values(?,?,?,?,?)',[(1,'Steam','test-user',1,None),(2,'Manual','manual',1,None),(3,'Local','local',0,None),(4,'Steam','friend',0,'Steam'),(5,'Steam','second-test-user',1,None),(6,'Xbox','xbox-test-user',1,None),(7,'Epic','epic-test-user',1,None),(8,'GOG','gog-test-user',1,None),(9,'PSN','psn-test-user',1,None)])
@@ -17,7 +17,7 @@ def add(game,provider,appid,guid,progress,user,entries):
  c.execute('insert into UserGameProgress values(?,?,?)',(progress,game,user))
  for index,(api,unlocked,date) in enumerate(entries):
   key=game*100+index
-  c.execute('insert or ignore into AchievementDefinitions values(?,?,?,?,?)',(key,game,api,'Title '+api,'Description '+api))
+  c.execute('insert or ignore into AchievementDefinitions(Id,GameId,ApiName,DisplayName,Description) values(?,?,?,?,?)',(key,game,api,'Title '+api,'Description '+api))
   c.execute('insert into UserAchievements values(?,?,?,?)',(progress,key,unlocked,date))
 g1='00000000-0000-0000-0000-000000000001';g2='00000000-0000-0000-0000-000000000002'
 add(1,'Steam',100,g1,1,1,[('A',1,'2024-01-01T00:00:00Z'),('B',0,None),('C',0,None),('D',0,None)])
