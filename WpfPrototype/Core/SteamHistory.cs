@@ -56,6 +56,10 @@ namespace AchievementTimelineReplay {
         public bool IsOwned;
         public bool HasLocalHistory;
         public bool HasSnapshot;
+        public bool SourceMissing;
+        public string CatalogIssue;
+        public bool RequiresAccountRefresh;
+        public bool RetainedFromCatalog;
         public string StatsPath;
         public string SchemaPath;
         public List<AchievementRecord> Achievements = new List<AchievementRecord>();

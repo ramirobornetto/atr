@@ -63,7 +63,9 @@ static class SavedPlanChecks
         File.WriteAllText(origins.FilePath(game),System.Text.Json.JsonSerializer.Serialize(new OriginAssignment{AccountId=game.AccountId,AppId=game.AppId,HistoryId=game.HistoryId,Label="Steamidra"}));
         Check(origins.Load(game)=="SteamIdra/LuaTools","Legacy Steamidra manual assignments display the new combined category");
         File.WriteAllText(origins.FilePath(game),System.Text.Json.JsonSerializer.Serialize(new OriginAssignment{AccountId=game.AccountId,AppId=game.AppId,HistoryId=game.HistoryId,Label="Steamidra (indicio LUA)"}));
-        Check(origins.Load(game)=="SteamIdra/LuaTools (indicio LUA)","Legacy Lua hints display the new combined category");
+        Check(origins.Load(game)=="SteamIdra/LuaTools","Legacy Lua hints display the new combined category");
+        File.WriteAllText(origins.FilePath(game),System.Text.Json.JsonSerializer.Serialize(new OriginAssignment{AccountId=game.AccountId,AppId=game.AppId,HistoryId=game.HistoryId,Label="SteamIdra/LuaTools (indicio LUA)"}));
+        Check(origins.Load(game)=="SteamIdra/LuaTools","Previously saved Lua hint category merges into the single SteamIdra/LuaTools category");
         origins.Save(game,null);
         Check(origins.Load(game)==null,"Clearing an origin restores unclassified state");
         Check(File.ReadAllText(store.FilePath(game)).Contains("999"),"Origin edits do not change saved plan files");

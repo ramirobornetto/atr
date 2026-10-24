@@ -37,7 +37,7 @@ namespace AchievementTimelineReplay
         public static async Task<UpdateInfo> CheckAsync(CancellationToken token)
         {
             using var client=new HttpClient{Timeout=TimeSpan.FromSeconds(15)};
-            client.DefaultRequestHeaders.UserAgent.ParseAdd("AchievementTimelineReplay/0.8.0");
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("AchievementTimelineReplay/0.8.1");
             client.DefaultRequestHeaders.CacheControl=new System.Net.Http.Headers.CacheControlHeaderValue{NoCache=true};
             using var response=await client.GetAsync(ManifestUrl,HttpCompletionOption.ResponseHeadersRead,token);
             response.EnsureSuccessStatusCode();

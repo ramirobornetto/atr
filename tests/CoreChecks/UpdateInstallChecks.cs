@@ -42,6 +42,8 @@ static class UpdateInstallChecks
         RejectArchive(Package(root,"traversal.zip",z=>Add(z,"../escape.txt")),Path.Combine(root,"bad-traversal"),"ZIP directory traversal is rejected");
         Check(!File.Exists(Path.Combine(root,"escape.txt")),"rejected traversal writes nothing outside staging");
         RejectArchive(Package(root,"profile.zip",z=>Add(z,"Snapshots/overwrite.json")),Path.Combine(root,"bad-profile"),"package cannot replace user snapshot directories");
+        RejectArchive(Package(root,"library.zip",z=>Add(z,"Library/catalog.json")),Path.Combine(root,"bad-library"),"update package cannot replace persisted user library index");
+
         RejectArchive(Package(root,"duplicate.zip",z=>Add(z,"atr.updater.DLL")),Path.Combine(root,"bad-duplicate"),"case-colliding archive entries are rejected on every platform");
         RejectArchive(Package(root,"symlink.zip",z=>{var link=z.CreateEntry("link");link.ExternalAttributes=unchecked((int)0xA1FF0000);}),Path.Combine(root,"bad-symlink"),"ZIP symbolic links are rejected");
         string target=Path.Combine(root,"application");Directory.CreateDirectory(target);

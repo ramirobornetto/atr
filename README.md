@@ -1,8 +1,8 @@
 # Achievement Timeline Replay
 
-## Descargar v0.8.0 para Windows x64
+## Descargar v0.8.1 para Windows x64
 
-[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.8.0_Windows_x64.zip)
+[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.8.1_Windows_x64.zip)
 
 Extraer **todo el ZIP** en una carpeta nueva y abrir `AchievementTimelineReplay.Wpf.exe`. No se necesita compilar ni instalar .NET. Mantener las DLL y demás archivos junto al ejecutable. Steam y SamRewritten se seleccionan en la aplicación, como antes; no vienen incluidos.
 
@@ -159,3 +159,21 @@ Instrucciones y límites: [CODEX_RUNE.md](CODEX_RUNE.md) y [ACTUALIZACIONES.md](
 
 
 Verificación de 0.8.0: 188 comprobaciones automáticas pasadas. Se probaron descarga con SHA256, rechazo de ZIPs inválidos, extracción aislada, instalación con preservación de archivos ajenos, rollback tras fallo intermedio y borradores separados de planes explícitos. ATR y el auxiliar se publican para Windows x64 con runtime incluido. El cierre/reinicio real, UAC y Explorer siguen pendientes de prueba en Windows.
+
+
+## v0.8.1 — biblioteca persistente y categoría Lua
+
+Origen ofrece una única categoría **SteamIdra/LuaTools**, tanto para detección por archivo LUA coincidente como para asignación manual. Las etiquetas guardadas Steamidra (indicio LUA) y SteamIdra/LuaTools (indicio LUA) se leen como esa misma categoría; no se pierden sus asociaciones por cuenta/historial. La explicación sobre la incertidumbre del origen permanece en el texto del plan. Las muestras y las otras categorías no cambian.
+
+Disponible mediante **Actualizar ATR** desde 0.8.0 o mediante el ZIP completo.
+
+La biblioteca se guarda automáticamente después de un escaneo o importación y se carga al iniciar sin volver a escanear ni consultar Steam. El catálogo vive en `%LOCALAPPDATA%\AchievementTimelineReplay\Library\catalog.json`, con una copia anterior y escritura mediante archivo temporal. Contiene los metadatos/rutas; los logros originales se leen de sus snapshots protegidos. Se conservan los totales conocidos, la fecha del último escaneo y sus contadores, pero no se reutilizan estados oficiales de Steam como datos actuales.
+
+**Actualizar biblioteca** revisa las rutas habituales y los archivos locales importados manualmente que recuerda el catálogo. Si falta una fuente o no puede reimportarse, conserva su historial con una indicación de disponibilidad; si el snapshot falta o está dañado, la fila queda marcada y no permite ejecutar el plan. Los borradores en memoria se conservan durante un refresco y un refresco cancelado no vacía la biblioteca anterior. **Quitar de biblioteca** elimina solo la referencia: no borra snapshots, planes, etiquetas ni archivos originales, y un escaneo puede volver a encontrar la fuente.
+
+Antes de ejecutar se reevalúa la cuenta Steam conocida y se comprueba el estado actual con SAM. En el CLI moderno, los IDs seleccionados que ya no existan en el esquema actual bloquean la ejecución, incluso en modo reparación. Las muestras conservan sus bloqueos al cargarse desde el catálogo.
+
+Después de instalar esta versión por primera vez, escanear o importar una vez para crear el catálogo; los reinicios siguientes lo cargan automáticamente. Los planes continúan guardándose explícitamente con Guardar plan. Más detalles en [BIBLIOTECA.md](BIBLIOTECA.md).
+
+
+Verificación de 0.8.1: 212 comprobaciones automáticas pasadas, incluyendo catálogo persistente, fuentes ausentes, snapshots dañados, recuperación de copia anterior, cambio de cuenta y validación de IDs actuales. WPF y el auxiliar se publican para Windows x64. El arranque visual y una actualización real entre versiones siguen requiriendo comprobación en Windows.

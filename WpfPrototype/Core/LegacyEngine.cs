@@ -194,6 +194,13 @@ namespace AchievementTimelineReplay
             }
             return omitted;
         }
+        public static void ValidateSelectedIds(IEnumerable<AchievementRecord> records,IReadOnlyDictionary<string,string> currentStates)
+        {
+            if(currentStates==null || currentStates.Count==0)throw new InvalidDataException("SAM no devolvió estados actuales utilizables.");
+            var known=new HashSet<string>(currentStates.Keys,StringComparer.OrdinalIgnoreCase);
+            var missing=records.Where(a=>a.Included && !known.Contains(a.ApiId)).Select(a=>a.ApiId).ToList();
+            if(missing.Count>0)throw new InvalidDataException(missing.Count+" logros del plan no están en el esquema actual de Steam: "+String.Join(", ",missing.Take(5))+". Revisá el plan o actualizá la biblioteca.");
+        }
         public static Dictionary<string,string> States(string response)
         {
             var d=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
@@ -223,7 +230,7 @@ namespace AchievementTimelineReplay
         readonly Action<string> log;
         public LegacyScanner(Action<string> logger) { log=logger; }
         public ScanSummary Summary {get;private set;}=new ScanSummary();
-        static uint RecentAccount(string root)
+        internal static uint RecentAccount(string root)
         {
             try
             {

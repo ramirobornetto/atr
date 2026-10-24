@@ -44,6 +44,7 @@ static class Program
             GoldbergChecks.Run(root);
             IniChecks.Run(root);
             UpdateChecks.Run(root);
+            LibraryChecks.Run(root);
             var countedGame=new GameEntry{TotalAchievements=40};
             for(int i=0;i<16;i++)countedGame.Achievements.Add(new AchievementRecord{ApiId="ACH_"+i});
             var partialStates=new Dictionary<string,string>();
@@ -140,7 +141,7 @@ static class Program
             Expect(inferred.DetectedOrigin=="Steam","Steam histories get an automatic neutral Steam origin");
             string luaDirectory=Path.Combine(summaryRoot,"config","stplug-in");Directory.CreateDirectory(luaDirectory);File.WriteAllText(Path.Combine(luaDirectory,"42.lua"),"not executed");
             OriginDetector.Apply(inferred,summaryRoot);
-            Expect(inferred.DetectedOrigin=="SteamIdra/LuaTools (indicio LUA)" && inferred.OriginEvidence.Contains("no demuestra"),"Matching Lua suggests Steamidra without claiming proven provenance");
+            Expect(inferred.DetectedOrigin=="SteamIdra/LuaTools" && inferred.OriginEvidence.Contains("no demuestra"),"Matching Lua suggests Steamidra without claiming proven provenance");
             File.WriteAllText(Path.Combine(luaDirectory,"99.lua"),"not executed");File.Delete(Path.Combine(luaDirectory,"42.lua"));OriginDetector.Apply(inferred,summaryRoot);
             Expect(inferred.DetectedOrigin=="Steam","Unrelated Lua does not classify a game as Steamidra");
             var sourceGame=new GameEntry{AppId=42,GameName="Internal codename",HistoryId="goldberg_fixture",StatsPath="Goldberg/42/achievements.json"};OriginDetector.Apply(sourceGame,summaryRoot);

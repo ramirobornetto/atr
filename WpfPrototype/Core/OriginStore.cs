@@ -30,7 +30,7 @@ namespace AchievementTimelineReplay
         {
             if(String.Equals(label,"Steam oficial",StringComparison.OrdinalIgnoreCase))return "Steam";
             if(String.Equals(label,"Steamidra",StringComparison.OrdinalIgnoreCase))return "SteamIdra/LuaTools";
-            if(String.Equals(label,"Steamidra (indicio LUA)",StringComparison.OrdinalIgnoreCase))return "SteamIdra/LuaTools (indicio LUA)";
+            if(String.Equals(label,"Steamidra (indicio LUA)",StringComparison.OrdinalIgnoreCase) || String.Equals(label,"SteamIdra/LuaTools (indicio LUA)",StringComparison.OrdinalIgnoreCase))return "SteamIdra/LuaTools";
             return label;
         }
         public void Save(GameEntry game,string label)
@@ -70,7 +70,7 @@ namespace AchievementTimelineReplay
             {
                 string lua=Path.Combine(steamRoot,"config","stplug-in",game.AppId+".lua");
                 if(File.Exists(lua))
-                {game.DetectedOrigin="SteamIdra/LuaTools (indicio LUA)";game.OriginEvidence="Existe "+lua+". Es un indicio de SteamIdra/LuaTools; no demuestra que este historial provenga de allí ni que el juego no sea oficial.";}
+                {game.DetectedOrigin="SteamIdra/LuaTools";game.OriginEvidence="Existe "+lua+". Es un indicio de SteamIdra/LuaTools; no demuestra que este historial provenga de allí ni que el juego no sea oficial.";}
             }
         }
     }
