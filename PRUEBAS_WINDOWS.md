@@ -99,3 +99,11 @@ Actualizar y abrir la biblioteca guardada: deben desaparecer también los títul
 9. Actualizar ATR y verificar que Runs, planes, snapshots y sesiones sigan presentes. La integración Epic directa se probará en una actualización posterior.
 
 Las pruebas automáticas usan SAM simulado y no sustituyen estas verificaciones de WPF/Steam en Windows.
+
+
+## v0.13.1 — destinos Steam de historiales Xbox
+
+- Desde Brotato/Xbox y otro título sin esquema Steam local, cargar logros Steam: no debe aparecer «PA: file is not a database» por abrir un JSON Xbox. Cuphead debe seguir funcionando.
+- Probar con PA cerrado y también sin cachés PA: debe consultar SAM si no hay definiciones locales.
+- Una caché PA corrupta o un esquema local ilegible se registran, pero no bloquean otras cachés ni la consulta SAM.
+- Si SAM rechaza el destino, mostrar su propio error. No afirmar automáticamente que falta una licencia.

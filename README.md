@@ -1,8 +1,8 @@
 # Achievement Timeline Replay
 
-## Descargar v0.13.0 para Windows x64
+## Descargar v0.13.1 para Windows x64
 
-[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.13.0_Windows_x64.zip)
+[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.13.1_Windows_x64.zip)
 
 Extraer **todo el ZIP** en una carpeta nueva y abrir `AchievementTimelineReplay.Wpf.exe`. No se necesita compilar ni instalar .NET. Mantener las DLL y demás archivos junto al ejecutable. Steam y SamRewritten se seleccionan en la aplicación, como antes; no vienen incluidos.
 
@@ -239,3 +239,8 @@ Antes de ejecutar se consulta Steam y se muestra un resumen con juego/AppID, fue
 Las ejecuciones conservan el plan y registran cada intento en Runs. **Reanudar última migración…** recupera el plan, desactiva reparación y consulta Steam antes de aplicar pendientes. El informe final muestra nombres/códigos, aplicados confirmados, omitidos, fallidos, pendientes y operaciones sin verificar; se puede copiar. Los planes guardados explícitamente se conservan.
 
 La barra de escaneo ahora avanza por fuentes activadas, consolidación y guardado, y no se llena al terminar solo Steam. Detalles y límites: [MIGRACIONES.md](MIGRACIONES.md). Epic directo queda fuera de esta actualización.
+
+
+## v0.13.1 — búsqueda de esquema Steam desde Xbox
+
+Se corrige la búsqueda de definiciones para correspondencias: el JSON de un historial Xbox ya no se intenta abrir como base PA. Solo se consultan cachés achievement_cache.db de PA conocidas, detectadas o configuradas. Un esquema local ilegible o una caché corrupta se registran y permiten probar otras fuentes antes de SAM. Un error de conexión/licencia de SAM sigue siendo un error independiente; no se infiere su causa a partir del mensaje genérico.

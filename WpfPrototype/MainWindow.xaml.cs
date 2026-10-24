@@ -147,7 +147,7 @@ namespace AchievementTimelineReplay.Wpf
             ApplyLibraryFilter();
             GoTo("Escaneo");
             UpdateButtons();
-            Log("WPF v0.13.0 iniciada. Motor derivado de v0.5.3. No se ha modificado Steam.");
+            Log("WPF v0.13.1 iniciada. Motor derivado de v0.5.3. No se ha modificado Steam.");
             LoadSavedLibrary();
             if(!String.IsNullOrWhiteSpace(SamPath.Text)) _=ValidateSamAsync(false);
         }
@@ -671,22 +671,13 @@ namespace AchievementTimelineReplay.Wpf
                 async Task<List<SteamDefinition>> Load(uint appId)
                 {
                     var known=allHistories.FirstOrDefault(g=>g.SteamTarget && g.AppId==appId);if(known!=null)names[appId]=known.GameName;
+                    var databases=SteamDefinitionSources.Databases(allHistories,sourceOptions.PAPaths.Concat(PlayniteHistory.FindDatabases()));
+                    string schema=Path.Combine(SteamPath.Text.Trim(),"appcache","stats","UserGameStatsSchema_"+appId+".bin");
                     return await Task.Run(()=>
                     {
-                        foreach(string path in allHistories.Where(PlayniteHistory.IsPA).Select(g=>g.StatsPath).Append(source.StatsPath).Distinct(StringComparer.OrdinalIgnoreCase).Where(File.Exists))
-                            try{using var db=new ReadOnlySqlite(path);var title=db.Query("SELECT GameName FROM Games WHERE ProviderKey IN ('Steam','Local') AND ProviderGameId="+appId).FirstOrDefault();if(title!=null && !String.IsNullOrWhiteSpace(title["GameName"]))names[appId]=title["GameName"];}catch(Exception ex){Log("Nombre del destino PA: "+ex.Message);}
-                        string schema=Path.Combine(SteamPath.Dispatcher.Invoke(()=>SteamPath.Text.Trim()),"appcache","stats","UserGameStatsSchema_"+appId+".bin");
-                        if(File.Exists(schema)){var definitions=PlatformMapping.FromSchema(schema,appId);if(definitions.Count>0)return definitions;}
-                        foreach(string path in allHistories.Where(PlayniteHistory.IsPA).Select(g=>g.StatsPath).Append(source.StatsPath).Distinct(StringComparer.OrdinalIgnoreCase).Where(File.Exists))
-                        {
-                            var definitions=PlatformMapping.FromPA(path,appId);
-                            if(definitions.Count>0)
-                            {
-                                using var db=new ReadOnlySqlite(path);var title=db.Query("SELECT GameName FROM Games WHERE ProviderKey IN ('Steam','Local') AND ProviderGameId="+appId).FirstOrDefault();
-                                if(title!=null && !String.IsNullOrWhiteSpace(title["GameName"]))names[appId]=title["GameName"];
-                                return definitions;
-                            }
-                        }
+                        var local=SteamDefinitionSources.Load(schema,appId,databases,Log);
+                        if(!String.IsNullOrWhiteSpace(local.Name))names[appId]=local.Name;
+                        if(local.Definitions.Count>0)return local.Definitions;
                         string cli=SamPath.Dispatcher.Invoke(()=>SamPath.Text.Trim());
                         if(samMode!=SamCliMode.Modern)throw new InvalidDataException("No hay esquema local ni caché PA del destino. Validá el CLI moderno de SAM para consultarlo.");
                         var result=activeReplayer!=null?activeReplayer.QueryOtherGame(cli,appId):SamRunner.List(cli,SamCliMode.Modern,appId);
@@ -696,7 +687,7 @@ namespace AchievementTimelineReplay.Wpf
                 }
                 async Task<List<SteamGameMatch>> Search(string term)
                 {
-                    var paths=allHistories.Where(PlayniteHistory.IsPA).Select(g=>g.StatsPath).Append(source.StatsPath).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+                    var paths=SteamDefinitionSources.Databases(allHistories,sourceOptions.PAPaths.Concat(PlayniteHistory.FindDatabases()));
                     var local=await Task.Run(()=>SteamDiscovery.LocalGames(paths,allHistories,term));
                     try
                     {

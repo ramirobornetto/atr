@@ -20,6 +20,18 @@ static class DiscoveryMatchingChecks
     }
     public static void Run(string root)
     {
+        string xboxJson=Path.Combine(root,"2064168993.json");File.WriteAllText(xboxJson,"{}");
+        string actualPA=Path.Combine(root,"pa","achievement_cache.db");
+        var databases=SteamDefinitionSources.Databases(new[]{new GameEntry{Platform="Xbox",HistoryId="xbox_"+new string('A',24),StatsPath=xboxJson},new GameEntry{HistoryId="pa_"+new string('B',24),StatsPath=actualPA}},new[]{xboxJson,actualPA});
+        Check(databases.Count==1 && databases[0]==actualPA,"Xbox JSON histories cannot become PA database candidates, even when the source path is configured");
+        string invalidDir=Path.Combine(root,"invalid-pa");Directory.CreateDirectory(invalidDir);string invalid=Path.Combine(invalidDir,"achievement_cache.db");File.WriteAllText(invalid,"not a sqlite database");
+        var warnings=new List<string>();var valid=PlatformMapping.FromPA(actualPA,100);Check(valid.Count>0,"destination lookup fixture supplies real Steam definitions");
+        var recovered=SteamDefinitionSources.Load(null,100,new[]{invalid,actualPA},warnings.Add);
+        Check(recovered.Definitions.Count==valid.Count && warnings.Count>0,"a corrupt PA candidate cannot prevent trying another valid cache");
+        var unavailable=SteamDefinitionSources.Load(null,999999,new[]{invalid},warnings.Add);
+        Check(unavailable.Definitions.Count==0,"unusable or absent PA definitions return control to the SAM fallback rather than aborting lookup");
+        string badSchema=Path.Combine(root,"bad-steam-schema.bin");File.WriteAllText(badSchema,"invalid binary");
+        Check(SteamDefinitionSources.Load(badSchema,100,new[]{actualPA},warnings.Add).Definitions.Count==valid.Count,"an unreadable local Steam schema also falls back to valid PA definitions");
         var games=SteamDiscovery.ParseSearch("{\"items\":[{\"id\":268910,\"name\":\"Cuphead\",\"type\":\"app\"},{\"id\":268910,\"name\":\"Duplicate\",\"type\":\"app\"},{\"id\":1,\"name\":\"Package\",\"type\":\"sub\"}]}");
         Check(games.Count==1 && games[0].AppId==268910 && games[0].Name=="Cuphead","public game search keeps candidate AppIDs without interpreting packages as games or duplicating results");
         string[] ids={"DefeatBoss","EXShot","ParryApprentice","CuttingCorners","ParryMaster","CompleteWorld1","NoHitsTaken"};
