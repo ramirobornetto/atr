@@ -34,12 +34,17 @@ namespace AchievementTimelineReplay
                 throw new InvalidDataException("El manifiesto no describe un ZIP válido del repositorio de ATR.");
             return info;
         }
-        public static async Task<UpdateInfo> CheckAsync(CancellationToken token)
+        public static async Task<UpdateInfo> CheckAsync(CancellationToken token,HttpMessageHandler handler=null)
         {
-            using var client=new HttpClient{Timeout=TimeSpan.FromSeconds(15)};
+            using var client=handler==null?new HttpClient():new HttpClient(handler,false);
+            client.Timeout=TimeSpan.FromSeconds(15);
             client.DefaultRequestHeaders.UserAgent.ParseAdd("AchievementTimelineReplay/0.8.1");
-            client.DefaultRequestHeaders.CacheControl=new System.Net.Http.Headers.CacheControlHeaderValue{NoCache=true};
-            using var response=await client.GetAsync(ManifestUrl,HttpCompletionOption.ResponseHeadersRead,token);
+            client.DefaultRequestHeaders.CacheControl=new System.Net.Http.Headers.CacheControlHeaderValue{NoCache=true,NoStore=true,MaxAge=TimeSpan.Zero};
+            client.DefaultRequestHeaders.Pragma.ParseAdd("no-cache");
+            // Some intermediaries cache raw GitHub URLs despite request headers. Vary only the lookup URL;
+            // the manifest and immutable package URL still undergo exactly the same validation.
+            string lookupUrl=ManifestUrl+"?request="+Guid.NewGuid().ToString("N");
+            using var response=await client.GetAsync(lookupUrl,HttpCompletionOption.ResponseHeadersRead,token);
             response.EnsureSuccessStatusCode();
             if(response.Content.Headers.ContentLength>16384)throw new InvalidDataException("Manifiesto demasiado grande.");
             using var stream=await response.Content.ReadAsStreamAsync(token);

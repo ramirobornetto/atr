@@ -1,6 +1,11 @@
 using System;
 using System.IO;
 using System.Text.Json;
+using System.Net;
+using System.Net.Http;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using AchievementTimelineReplay;
 
 static class UpdateChecks
@@ -22,7 +27,26 @@ static class UpdateChecks
         bad=Info();bad.Sha256="invalid";Reject(bad,"malformed package hash is rejected");
         bad=Info();bad.SizeBytes=0;Reject(bad,"empty download declaration is rejected");
         bad=Info();bad.Version="0.8.0.1";Reject(bad,"unsupported manifest version format is rejected");
+        using(var transport=new ManifestHandler())
+        {
+            var first=UpdateChecker.CheckAsync(CancellationToken.None,transport).GetAwaiter().GetResult();
+            var second=UpdateChecker.CheckAsync(CancellationToken.None,transport).GetAwaiter().GetResult();
+            Check(first.Version=="0.17.4" && second.IsNewerThan(new Version(0,17,3)),"cache-resistant requests still parse and compare the published update normally");
+            Check(transport.Urls.Count==2 && transport.Urls[0]!=transport.Urls[1] && transport.ValidRequests,"successive lookups bypass a fixed-URL cache without changing the trusted endpoint or weakening validation");
+        }
         UpdateInstallChecks.Run(root);
 
     }
+    sealed class ManifestHandler : HttpMessageHandler
+    {
+        public List<string> Urls=new List<string>();
+        public bool ValidRequests=true;
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,CancellationToken token)
+        {
+            var uri=request.RequestUri;Urls.Add(uri.AbsoluteUri);
+            ValidRequests &= request.Method==HttpMethod.Get && uri.Scheme=="https" && uri.Host=="raw.githubusercontent.com" && uri.AbsolutePath=="/ramirobornetto/atr/main/downloads/latest.json" && uri.Query.StartsWith("?request=") && Guid.TryParseExact(uri.Query.Substring(9),"N",out _) && request.Headers.CacheControl?.NoCache==true && request.Headers.CacheControl?.NoStore==true && request.Headers.CacheControl?.MaxAge==TimeSpan.Zero;
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK){Content=new StringContent(JsonSerializer.Serialize(Info("0.17.4")))});
+        }
+    }
+
 }

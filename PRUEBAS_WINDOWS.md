@@ -228,3 +228,9 @@ El entorno de desarrollo compila WPF pero no ejecuta una sesión gráfica Window
 ## Revisión visual 0.17.4
 
 - Principales al 55 % e interiores al 45 % de transparencia; revisar legibilidad sobre zonas claras y oscuras del fondo. Textos y controles mantienen su opacidad.
+
+
+## Actualizador 0.17.5
+
+- Cada búsqueda de actualización debe usar una consulta nueva al manifiesto, con cabeceras que eviten caché. Comprobar en Windows que detecte una publicación posterior.
+- La consulta cambia; la validación del paquete no cambia. Las instalaciones antiguas pueden necesitar reintentar o actualizar manualmente para recibir esta corrección.

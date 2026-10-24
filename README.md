@@ -1,8 +1,8 @@
 # Achievement Timeline Replay
 
-## Descargar v0.17.4 para Windows x64
+## Descargar v0.17.5 para Windows x64
 
-[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.17.4_Windows_x64.zip)
+[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.17.5_Windows_x64.zip)
 
 Extraer **todo el ZIP** en una carpeta nueva y abrir `AchievementTimelineReplay.Wpf.exe`. No se necesita compilar ni instalar .NET. Mantener las DLL y demás archivos junto al ejecutable. Steam y SamRewritten se seleccionan en la aplicación, como antes; no vienen incluidos.
 
@@ -354,3 +354,10 @@ Las funciones de importación, correspondencias y migración mantienen su compor
 ## v0.17.4 — mayor transparencia de paneles
 
 - Bloques principales con aproximadamente 55 % de transparencia y bloques interiores con 45 %, conservando sólidos textos y controles.
+
+## v0.17.5 — consulta de actualizaciones sin caché reutilizada
+
+- Cada consulta al manifiesto usa un identificador nuevo y solicita no almacenar ni reutilizar respuestas en caché.
+- Se conserva la validación estricta del origen, versión, nombre del ZIP, tamaño y SHA-256.
+- Incluye los bloques principales al 55 % de transparencia y los interiores al 45 % de la 0.17.4.
+- Si una instalación anterior aún informa una versión vieja como última publicada, reintentar o instalar esta versión desde el ZIP: el cambio de consulta entra en efecto después de actualizar.
