@@ -1,10 +1,10 @@
 # Xbox directo — v0.12.0
 
-ATR incluye una fuente opcional **Xbox (perfil)**, independiente de PlayniteAchievements. Consulta el historial de juegos jugados y los logros del perfil Microsoft conectado. No obtiene un catálogo de licencias compradas ni escribe desbloqueos en Xbox. Los juegos sin logros desbloqueados también pueden aparecer.
+ATR incluye una fuente opcional **Xbox (perfil)**, independiente de PlayniteAchievements. Consulta el historial de juegos jugados y los logros del perfil Microsoft conectado. No obtiene un catálogo de licencias compradas ni escribe desbloqueos en Xbox. Los juegos sin logros desbloqueados también pueden aparecer si Xbox devuelve un catálogo (por ejemplo, 0/35). Desde v0.12.1 se omiten las entradas vacías 0/0, incluidas las ya guardadas, sin borrar sus archivos. El filtro no se aplica a otras fuentes.
 
 ## Estado de la integración
 
-El lector, la conexión, la renovación de sesión, la paginación, la persistencia y la preparación de correspondencias con Steam están implementados. Las pruebas automatizadas usan respuestas simuladas. **Todavía no se validó una cuenta real con una aplicación Microsoft registrada para ATR.** Las consultas de red a Microsoft desde el entorno de desarrollo están bloqueadas. No se incluye un Client ID de otra aplicación ni se importan las sesiones de Playnite.
+El lector, la conexión, la renovación de sesión, la paginación, la persistencia y la preparación de correspondencias con Steam están implementados. Las pruebas automatizadas usan respuestas simuladas. **El usuario confirmó el inicio de sesión con un registro propio y la lectura de su perfil en v0.12.0, incluyendo Cuphead 7/42.** Esto no valida todas las cuentas, títulos ni el contrato Xbox 360. Las consultas de red a Microsoft desde el entorno de desarrollo están bloqueadas. No se incluye un Client ID de otra aplicación ni se importan las sesiones de Playnite.
 
 El primer uso requiere registrar ATR y comprobar que Microsoft acepta el permiso XboxLive.signin para esa aplicación. Si Microsoft restringe ese permiso, no alcanza con obtener un identificador: habrá que resolver la habilitación con Microsoft antes de considerar verificada la integración. No se promete acceso a todas las cuentas ni todos los títulos.
 
@@ -18,7 +18,7 @@ El **Client ID** es un identificador público de la aplicación, no el usuario d
 4. Copiar el **Id. de aplicación (cliente)**, un GUID, desde el resumen del registro.
 5. En ATR, abrir **Escaneo → Conectar Xbox…**, pegar ese identificador e iniciar la conexión. No pegar secretos ni contraseñas en ese campo.
 
-ATR solicita `XboxLive.signin offline_access`. La aceptación de esos permisos para el registro es una comprobación pendiente; no se debe resolver un rechazo sustituyendo el identificador por el de otro programa. La configuración actual permite introducir el identificador en cada instalación; una vez validado el registro propio de ATR, podrá distribuirse preconfigurado en una versión posterior.
+ATR solicita `XboxLive.signin offline_access`. La aceptación de esos permisos debe comprobarse para cada registro; no se debe resolver un rechazo sustituyendo el identificador por el de otro programa. La configuración actual permite introducir el identificador en cada instalación; una vez validado el registro propio de ATR, podrá distribuirse preconfigurado en una versión posterior.
 
 Referencias del protocolo: [flujo OAuth de código de dispositivo](https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-device-code) y [registro de aplicaciones](https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app). Los nombres de las opciones del portal pueden cambiar.
 
@@ -52,3 +52,10 @@ Bajo `%LOCALAPPDATA%\AchievementTimelineReplay\Xbox` se guardan:
 Los snapshots y los planes mantienen las ubicaciones habituales de ATR. El actualizador conserva la carpeta Xbox. **Desconectar** elimina la sesión local de ATR; no cierra otras aplicaciones ni revoca todos los permisos en Microsoft. Para revocar el consentimiento, usar la administración de aplicaciones de la cuenta Microsoft.
 
 No compartir `session.dat`, carpetas completas de datos ni códigos de acceso. Los historiales también son información personal, aunque no contengan credenciales. ATR no imprime tokens, códigos de dispositivo privados ni cuerpos de errores del servicio en el log.
+
+
+## Etiquetas y filtrado desde v0.12.1
+
+La interfaz muestra **Xbox Live (perfil)** en Escaneo, **Xbox Live** como origen y **Xbox Live → Steam** en historiales convertidos. Internamente se conserva la clave Xbox para no invalidar preferencias, identidades ni correspondencias. Las entradas originales de Steam continúan separadas.
+
+El filtro se aplica después de consultar los logros del título: no se decide únicamente por el total anunciado en el historial de títulos. Por eso se conserva un desbloqueo aunque el total inicial sea cero. Los historiales guardados con snapshot inválido no se consideran vacíos por falta de datos: conservan su aviso de error.

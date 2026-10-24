@@ -71,3 +71,11 @@ Pendiente anotado: la barra de progreso del escaneo completo debe cubrir todas l
 9. Actualizar ATR: conservar Xbox/connection.json, Xbox/session.dat, historiales, snapshots y planes. Borrar biblioteca sigue borrando solo los índices; desconectar elimina solo la sesión local.
 
 La barra de progreso global de las demás fuentes sigue siendo un pendiente anotado; esta versión no rediseña ese cálculo.
+
+
+## v0.12.1 — Xbox Live 0/0
+
+- Actualizar y abrir la biblioteca guardada: las entradas Xbox directo 0/0 deben dejar de mostrarse. No se eliminan archivos de origen, snapshots ni planes.
+- Escanear Xbox Live de nuevo: omitir entradas vacías como Sekiro 0/0; conservar Cuphead 7/42 y títulos con catálogo pero sin desbloqueos (0/35). Logs indica cada omisión.
+- Escanear Steam: su entrada de Sekiro debe conservar sus logros, sin recibir datos de la entrada Xbox ni ser filtrada por esta regla.
+- Comprobar etiquetas Xbox Live / Xbox Live → Steam y que el filtro Xbox Live conserve su estado anterior y afecte ambos tipos de entrada. Verificar también la selección de origen en Plan.

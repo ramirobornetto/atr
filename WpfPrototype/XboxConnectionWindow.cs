@@ -39,7 +39,7 @@ namespace AchievementTimelineReplay.Wpf
                     status.Text="Abrí "+verification+" e ingresá este código. Esperando tu inicio de sesión…";
                     var oauth=await api.WaitAsync(id,device,cancellation.Token);
                     var session=await api.AuthorizeAsync(oauth.AccessToken,cancellation.Token);
-                    connection.SaveToken(oauth.RefreshToken);status.Text="Cuenta Xbox conectada. Activá «Xbox (perfil)» y escaneá la biblioteca.";
+                    connection.SaveToken(oauth.RefreshToken);status.Text="Cuenta Xbox conectada. Activá «Xbox Live (perfil)» y escaneá la biblioteca.";
                     code.Text="";code.Visibility=open.Visibility=Visibility.Collapsed;
                 }
                 catch(OperationCanceledException){status.Text="Conexión cancelada.";}

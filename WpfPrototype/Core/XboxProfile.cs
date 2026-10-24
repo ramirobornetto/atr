@@ -44,7 +44,7 @@ namespace AchievementTimelineReplay
         {
             http=handler==null?new HttpClient(new HttpClientHandler{AllowAutoRedirect=false}):new HttpClient(handler);
             http.Timeout=TimeSpan.FromSeconds(35);
-            http.DefaultRequestHeaders.UserAgent.ParseAdd("ATR/0.12.0");
+            http.DefaultRequestHeaders.UserAgent.ParseAdd("ATR/0.12.1");
         }
         internal static string Text(JsonElement e,string key)
         {
@@ -163,6 +163,7 @@ namespace AchievementTimelineReplay
         }
         public static string ProfileKey(string xuid)=>Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes("Xbox|"+xuid))).Substring(0,24);
         public static string Identity(string path,string profile,string title)=>"xbox_"+Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Path.GetFullPath(path).ToUpperInvariant()+"|"+profile+"|"+title))).Substring(0,24);
+        public static bool ShouldInclude(GameEntry game)=>!IsXbox(game) || game.TotalAchievements>0 || game.Achievements.Count>0 || !String.IsNullOrEmpty(game.CatalogIssue);
         public static bool IsXbox(GameEntry game)=>game.HistoryId?.StartsWith("xbox_",StringComparison.Ordinal)==true;
         public static GameEntry ParseHistory(string xuid,XboxTitle title,IEnumerable<JsonElement> entries,string directory)
         {

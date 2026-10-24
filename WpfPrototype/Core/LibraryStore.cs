@@ -143,6 +143,7 @@ namespace AchievementTimelineReplay
                             if(entry.Labels.TryGetValue(achievement.ApiId,out var label)){achievement.DisplayName=label.Name??achievement.ApiId;achievement.Description=label.Description??"";}
                 }
                 catch(Exception ex){game.CatalogIssue="Sin snapshot válido";result.Warnings.Add("AppID "+game.AppId+": "+ex.Message);}
+                if(!XboxProfile.ShouldInclude(game))continue;
                 game.SourceMissing=!File.Exists(game.StatsPath);OriginDetector.Apply(game,result.Catalog.SteamRoot);
                 result.Games.Add(game);
             }

@@ -15,7 +15,8 @@ namespace AchievementTimelineReplay
         public Dictionary<string,bool> Visible {get;set;}=new Dictionary<string,bool>();
         public bool Scans(string source) => Scan.TryGetValue(source,out bool enabled)?enabled:source!="Xbox (perfil)";
         public bool Shows(string source) => !Visible.TryGetValue(LibraryCategory(source),out bool enabled) || enabled;
-        public static string LibraryCategory(string source) => LibrarySources.Contains(source)?source:source!=null && source.EndsWith(" → Steam",StringComparison.Ordinal)?LibraryCategory(source.Substring(0,source.Length-8)):"Otro";
+        public static string DisplayOrigin(string source)=>source=="Xbox"?"Xbox Live":source=="Xbox → Steam"?"Xbox Live → Steam":source;
+        public static string LibraryCategory(string source) => source=="Xbox Live"?"Xbox":LibrarySources.Contains(source)?source:source!=null && source.EndsWith(" → Steam",StringComparison.Ordinal)?LibraryCategory(source.Substring(0,source.Length-8)):"Otro";
         public bool AllowsSteam(uint appId,string steamRoot) => Scans(File.Exists(Path.Combine(steamRoot,"config","stplug-in",appId+".lua"))?"SteamIdra/LuaTools":"Steam");
         public bool Allows(GameEntry game,string steamRoot)
         {

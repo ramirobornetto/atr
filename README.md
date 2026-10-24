@@ -1,8 +1,8 @@
 # Achievement Timeline Replay
 
-## Descargar v0.12.0 para Windows x64
+## Descargar v0.12.1 para Windows x64
 
-[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.12.0_Windows_x64.zip)
+[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.12.1_Windows_x64.zip)
 
 Extraer **todo el ZIP** en una carpeta nueva y abrir `AchievementTimelineReplay.Wpf.exe`. No se necesita compilar ni instalar .NET. Mantener las DLL y demás archivos junto al ejecutable. Steam y SamRewritten se seleccionan en la aplicación, como antes; no vienen incluidos.
 
@@ -218,3 +218,10 @@ La tabla de correspondencias agrega **Código de origen** y **Código Steam**. L
 Nuevo **Conectar Xbox…** y fuente opcional **Xbox (perfil)**, independiente de PA: conexión Microsoft por código de dispositivo, sesión protegida por Windows, lectura paginada de juegos/logros, copia persistente y correspondencias hacia Steam. Los desbloqueos sin fecha se conservan; los perfiles conocidos distintos se separan. El escaneo de PA sigue teniendo una sola opción.
 
 **La conexión real de Xbox está pendiente de validar con un registro Microsoft propio de ATR.** No se entrega un Client ID ajeno. La configuración inicial, las limitaciones y las pruebas están en [XBOX.md](XBOX.md). No se necesita una suscripción de Azure para los recursos que usa este código; la aceptación de los permisos Xbox depende de Microsoft.
+
+
+## v0.12.1 — historial Xbox Live sin entradas vacías
+
+El escaneo Xbox omite títulos que, tras consultar sus logros, siguen con **0 desbloqueados y 0 de total**. Se conservan 0/35 y otros títulos con catálogo, además de cualquier desbloqueo real, incluso sin fecha. Las entradas Xbox directo 0/0 guardadas en versiones anteriores también se ocultan al cargar/actualizar la biblioteca; no se borran sus archivos, snapshots ni planes. Las fuentes Steam y PA no se filtran por esta regla.
+
+La etiqueta visible pasa a **Xbox Live** y los planes convertidos a **Xbox Live → Steam**. Se mantienen las identidades, las correspondencias y los filtros existentes. No se infiere propiedad ni tienda de compra y no se mezclan logros Steam/Xbox durante el escaneo.

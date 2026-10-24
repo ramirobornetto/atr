@@ -27,7 +27,7 @@ namespace AchievementTimelineReplay.Wpf
         string origin;
         public string Origin
         {
-            get => Game!=null && PlatformMapping.IsMapped(Game)?Game.MappedFromPlatform+" → Steam":origin;
+            get => SourceSelection.DisplayOrigin(Game!=null && PlatformMapping.IsMapped(Game)?Game.MappedFromPlatform+" → Steam":origin);
             set {if(origin!=value){origin=value;PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(nameof(Origin)));}}
         }
         string count;
@@ -144,7 +144,7 @@ namespace AchievementTimelineReplay.Wpf
             ApplyLibraryFilter();
             GoTo("Escaneo");
             UpdateButtons();
-            Log("WPF v0.12.0 iniciada. Motor derivado de v0.5.3. No se ha modificado Steam.");
+            Log("WPF v0.12.1 iniciada. Motor derivado de v0.5.3. No se ha modificado Steam.");
             LoadSavedLibrary();
             if(!String.IsNullOrWhiteSpace(SamPath.Text)) _=ValidateSamAsync(false);
         }
@@ -316,7 +316,7 @@ namespace AchievementTimelineReplay.Wpf
         {
             foreach(string source in SourceSelection.ScanSources)
             {
-                var check=new CheckBox{Content=source,IsChecked=sourceOptions.Scans(source),Margin=new Thickness(0,3,18,3),Tag=source};
+                var check=new CheckBox{Content=source=="Xbox (perfil)"?"Xbox Live (perfil)":source,IsChecked=sourceOptions.Scans(source),Margin=new Thickness(0,3,18,3),Tag=source};
                 check.Checked+=ScanSourceChanged;check.Unchecked+=ScanSourceChanged;scanSourceChecks[source]=check;ScanSourcesPanel.Children.Add(check);
                 if(source=="SteamIdra/LuaTools")ScanSourcesPanel.Children.Add(new TextBlock{Text="?",Foreground=(Brush)FindResource("Accent"),VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(-12,0,16,0),ToolTip="Importa historiales BIN cuyo AppID tenga un archivo .lua en Steam/config/stplug-in. El LUA filtra: los logros y fechas se leen del BIN. Puede coincidir con un juego comprado en Steam; no acredita el origen ni la licencia."});
                 if(source=="CODEX/RUNE compatible")check.ToolTip="Incluye fuentes INI importadas manualmente cuya ruta no identifica CODEX ni RUNE. No recorre otras carpetas del disco.";
@@ -347,7 +347,7 @@ namespace AchievementTimelineReplay.Wpf
             var view=CollectionViewSource.GetDefaultView(games);string query=LibrarySearch.Text.Trim();
             view.Filter=item=>item is GameRow row && ((planPinnedSourceKey!=null && row.Group.Sources.Any(g=>g.StorageKey==planPinnedSourceKey)) || (sourceOptions.Shows(row.Origin) && (query.Length==0 || row.Group.Sources.Any(g=>g.GameName.IndexOf(query,StringComparison.CurrentCultureIgnoreCase)>=0) || row.DisplayGameId.Contains(query,StringComparison.OrdinalIgnoreCase))));
             int shown=view.Cast<object>().Count();LibraryCount.Text="Mostrando "+shown+" de "+games.Count;
-            foreach(var pair in originToggles)pair.Value.Content=pair.Key+" · "+games.Count(r=>SourceSelection.LibraryCategory(r.Origin)==pair.Key);
+            foreach(var pair in originToggles)pair.Value.Content=SourceSelection.DisplayOrigin(pair.Key)+" · "+games.Count(r=>SourceSelection.LibraryCategory(r.Origin)==pair.Key);
             LibraryEmptyMessage.Visibility=shown==0?Visibility.Visible:Visibility.Collapsed;
             LibraryEmptyMessage.Text=games.Count==0?"La biblioteca está vacía. Incluí los orígenes deseados desde Escaneo o importá un historial.":!SourceSelection.LibrarySources.Any(sourceOptions.Shows)?"Todos los orígenes están ocultos. Activá uno o más filtros para mostrar sus juegos.":"No hay juegos que coincidan con los orígenes y la búsqueda actuales. Podés incluir otros orígenes desde Escaneo.";
         }
@@ -454,6 +454,7 @@ namespace AchievementTimelineReplay.Wpf
                                 try
                                 {
                                     var history=api.HistoryAsync(session,title,Path.Combine(LegacyTools.DataDirectory,"Xbox","Histories"),token).GetAwaiter().GetResult();
+                                    if(!XboxProfile.ShouldInclude(history)){Log("Xbox Live · "+title.Name+": omitido, sin catálogo ni desbloqueos (0/0).");continue;}
                                     XboxProfile.SaveHistory(history,Path.Combine(LegacyTools.DataDirectory,"Snapshots"));all.Add(history);
                                 }
                                 catch(OperationCanceledException){throw;}
@@ -506,6 +507,7 @@ namespace AchievementTimelineReplay.Wpf
                     }
                     foreach(var known in knownGames)
                     {
+                        if(!XboxProfile.ShouldInclude(known))continue;
                         if(PlayniteHistory.IsPA(known) && all.Any(g=>g.AlternatePlanKey==known.StorageKey))continue;
                         if(LibraryStore.ShouldRetainAfterScan(known,selection.Allows(known,steam)) && seen.Add(known.StorageKey)){known.RetainedFromCatalog=true;all.Add(known);}
                     }
@@ -527,7 +529,7 @@ namespace AchievementTimelineReplay.Wpf
                 }
                 RebuildHistoryGroups(previousSelection);
                 ApplyLibraryFilter();
-                ScanResult.Text="Actualización terminada: "+games.Count+" juegos/perfiles · "+allHistories.Count+" fuentes ("+found.Count(g=>g.RetainedFromCatalog)+" conservados del catálogo).\n"+(scanSteam?scanner.Summary.Format("Steam"):"Steam/BIN: desactivado o appcache/stats no disponible")+(scanGoldberg?"\n"+goldbergSummary.Format("Goldberg/GBE"):"")+(scanIni?"\n"+iniSummary.Format("CODEX/RUNE"):"")+(selection.Scans("Xbox (perfil)")?"\nXbox (perfil): "+found.Count(XboxProfile.IsXbox)+" historiales en biblioteca; revisá Logs para consultas fallidas.":"")+(scanPA?"\nPA: "+found.Count(PlayniteHistory.IsPA)+" historiales elegidos en biblioteca. Los desbloqueos sin fecha se conservan; el log detalla los proveedores.":"");
+                ScanResult.Text="Actualización terminada: "+games.Count+" juegos/perfiles · "+allHistories.Count+" fuentes ("+found.Count(g=>g.RetainedFromCatalog)+" conservados del catálogo).\n"+(scanSteam?scanner.Summary.Format("Steam"):"Steam/BIN: desactivado o appcache/stats no disponible")+(scanGoldberg?"\n"+goldbergSummary.Format("Goldberg/GBE"):"")+(scanIni?"\n"+iniSummary.Format("CODEX/RUNE"):"")+(selection.Scans("Xbox (perfil)")?"\nXbox Live (perfil): "+found.Count(XboxProfile.IsXbox)+" historiales en biblioteca; revisá Logs para consultas fallidas.":"")+(scanPA?"\nPA: "+found.Count(PlayniteHistory.IsPA)+" historiales elegidos en biblioteca. Los desbloqueos sin fecha se conservan; el log detalla los proveedores.":"");
                 SetStatus(ScanResult.Text);
                 Log(ScanResult.Text);
                 ScanProgress.IsIndeterminate=false;ScanProgress.Maximum=1;ScanProgress.Value=1;
@@ -854,6 +856,7 @@ namespace AchievementTimelineReplay.Wpf
         }
         void SelectOrigin(string label)
         {
+            label=SourceSelection.DisplayOrigin(label);
             var item=OriginChoice.Items.Cast<ComboBoxItem>().FirstOrDefault(i=>Convert.ToString(i.Content)==label);
             if(item==null){item=new ComboBoxItem{Content=label};OriginChoice.Items.Add(item);}
             selectingOrigin=true;
@@ -876,6 +879,7 @@ namespace AchievementTimelineReplay.Wpf
             try
             {
                 string label=Convert.ToString((OriginChoice.SelectedItem as ComboBoxItem)?.Content)??"Sin clasificar";
+                if(label=="Xbox Live")label="Xbox";
                 originStore.Save(currentGame,label=="Sin clasificar"?null:label);
                 LoadOrigin();
                 var row=games.FirstOrDefault(g=>ReferenceEquals(g.Game,currentGame));
