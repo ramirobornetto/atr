@@ -23,7 +23,7 @@ namespace AchievementTimelineReplay.Wpf
         public string GameName { get; set; }
         public uint AppId { get; set; }
         string source;
-        public string Source {get=>SourceSelection.DisplayText(source);set{source=value;PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(nameof(Source)));}}
+        public string Source {get=>SourceSelection.DisplayText(source)?.Replace("Automático: ","");set{source=value;PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(nameof(Source)));}}
         string origin;
         public string Origin
         {
@@ -137,7 +137,8 @@ namespace AchievementTimelineReplay.Wpf
             AchievementsGrid.CanUserSortColumns=false;
             var settings=LegacyTools.ReadSettings();
             SteamPath.Text=settings.TryGetValue("steam",out var steam) && !String.IsNullOrWhiteSpace(steam) ? steam : LegacyTools.DetectSteam();
-            SamPath.Text=settings.TryGetValue("sam",out var sam) && !String.IsNullOrWhiteSpace(sam) ? sam : LegacyTools.DetectSam();
+            string savedSam=settings.TryGetValue("sam",out var sam) && !String.IsNullOrWhiteSpace(sam) ? sam : LegacyTools.DetectSam();
+            SamPath.Text=String.IsNullOrWhiteSpace(savedSam)?"":Path.GetDirectoryName(savedSam);
             recoverUpdateDrafts=File.Exists(UpdateReadyPath);
             try{sourceOptions=SourceSelection.Load(SourceOptionsPath);}catch(Exception ex){Log("Preferencias de fuentes: "+ex.Message);}
             try{historyChoices=HistoryGroups.LoadChoices(HistoryChoicesPath);}catch(Exception ex){Log("Selección de historiales: "+ex.Message);}
@@ -165,7 +166,7 @@ namespace AchievementTimelineReplay.Wpf
         }
         void SavePaths()
         {
-            if(initialized) LegacyTools.WriteSettings(SteamPath.Text.Trim(),SamPath.Text.Trim());
+            if(initialized) LegacyTools.WriteSettings(SteamPath.Text.Trim(),SamExecutablePath);
         }
         void Navigate(object sender,RoutedEventArgs e) => GoTo(Convert.ToString(((Button)sender).Tag));
         void GoTo(string screen)
@@ -193,21 +194,30 @@ namespace AchievementTimelineReplay.Wpf
             var dlg=new Microsoft.Win32.OpenFolderDialog {Title="Seleccioná la carpeta raíz de Steam",InitialDirectory=Directory.Exists(SteamPath.Text)?SteamPath.Text:Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86)};
             if(dlg.ShowDialog(this)==true) {SteamPath.Text=dlg.FolderName;SavePaths();}
         }
+        string SamExecutablePath
+        {
+            get
+            {
+                string value=SamPath.Text.Trim();
+                // Retain compatibility with previously saved or manually pasted executable paths.
+                return String.IsNullOrWhiteSpace(value)?"":value.EndsWith(".exe",StringComparison.OrdinalIgnoreCase)?value:Path.Combine(value,"samrewritten-cli.exe");
+            }
+        }
         void BrowseSam(object sender,RoutedEventArgs e)
         {
             if(running || preparing || querying)return;
-            var dlg=new OpenFileDialog {Filter="SamRewritten CLI (*.exe)|*.exe|Todos los archivos (*.*)|*.*",Title="Seleccioná samrewritten-cli.exe"};
-            if(dlg.ShowDialog(this)==true) {SamPath.Text=dlg.FileName;SavePaths();_=ValidateSamAsync(true);}
+            var dlg=new Microsoft.Win32.OpenFolderDialog {Title="Seleccioná la carpeta de SAM Rewritten",InitialDirectory=Directory.Exists(SamPath.Text)?SamPath.Text:Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)};
+            if(dlg.ShowDialog(this)==true) {SamPath.Text=dlg.FolderName;SavePaths();_=ValidateSamAsync(true);}
         }
         async void ValidateSamClick(object sender,RoutedEventArgs e) {await ValidateSamAsync(true);}
         async Task<bool> ValidateSamAsync(bool notify)
         {
             SavePaths();
-            string cli=SamPath.Text.Trim();
+            string cli=SamExecutablePath;
             if(!File.Exists(cli))
             {
                 samMode=SamCliMode.Unknown;SamInfo.Text="SAM: no encontrado";
-                if(notify) MessageBox.Show(this,"No se encontró el ejecutable seleccionado.","SamRewritten",MessageBoxButton.OK,MessageBoxImage.Warning);
+                if(notify) MessageBox.Show(this,"No se encontró samrewritten-cli.exe en la carpeta indicada. Elegí la carpeta que contiene ese archivo.","SamRewritten",MessageBoxButton.OK,MessageBoxImage.Warning);
                 UpdateButtons();return false;
             }
             SamInfo.Text="Validando SamRewritten…";
@@ -315,14 +325,29 @@ namespace AchievementTimelineReplay.Wpf
             }
             catch(Exception ex){Log("No se pudo guardar la biblioteca: "+ex.Message);SetStatus("Biblioteca cargada, pero no se pudo guardar el catálogo. Revisá Logs.");return false;}
         }
+        string ScanSourceDirectory(string source)
+        {
+            string roaming=Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            switch(source)
+            {
+                case "Steam": return Path.Combine(SteamPath.Text.Trim(),"appcache","stats");
+                case "SteamIdra/LuaTools": return Path.Combine(SteamPath.Text.Trim(),"appcache","stats")+Environment.NewLine+Path.Combine(SteamPath.Text.Trim(),"config","stplug-in");
+                case "Goldberg": return Path.Combine(roaming,"Goldberg SteamEmu Saves");
+                case "GSE": return Path.Combine(roaming,"GSE Saves");
+                case "CODEX": case "RUNE": return String.Join(Environment.NewLine,IniHistory.DefaultRoots().Where(p=>String.Equals(Path.GetFileName(p),source,StringComparison.OrdinalIgnoreCase)));
+                case "PA": return Path.Combine(roaming,"Playnite","ExtensionsData");
+                case "Xbox (perfil)": case "Epic (perfil)": return "Consulta en línea; sin directorio local de escaneo.";
+                default: return "Sin directorio predeterminado; solo archivos importados manualmente.";
+            }
+        }
         void BuildSourceControls()
         {
             foreach(string source in SourceSelection.ScanSources)
             {
                 var check=new CheckBox{Content=SourceSelection.DisplayOrigin(source),IsChecked=sourceOptions.Scans(source),Margin=new Thickness(0,3,18,3),Tag=source};
                 check.Checked+=ScanSourceChanged;check.Unchecked+=ScanSourceChanged;scanSourceChecks[source]=check;ScanSourcesPanel.Children.Add(check);
-                if(source=="SteamIdra/LuaTools")check.ToolTip="Importa los historiales Steam cuyo AppID tenga un LUA en Steam/config/stplug-in.";
-                if(source=="CODEX/RUNE compatible")check.ToolTip="Incluye fuentes INI importadas manualmente cuya ruta no identifica CODEX ni RUNE. No recorre otras carpetas del disco.";
+                check.ToolTip=ScanSourceDirectory(source);
+                check.ToolTipOpening+=(s,e)=>check.ToolTip=ScanSourceDirectory(source);
             }
             foreach(string source in SourceSelection.LibraryFilterSources)
             {
@@ -386,7 +411,7 @@ namespace AchievementTimelineReplay.Wpf
             if(checkingUpdates || scanning || running || querying || preparing) return;
             SavePaths();
             string steam=SteamPath.Text.Trim();
-            string cli=SamPath.Text.Trim();
+            string cli=SamExecutablePath;
             var selection=new SourceSelection{Scan=new Dictionary<string,bool>(sourceOptions.Scan),PAPaths=new List<string>(sourceOptions.PAPaths)};
             UpdateConnectionNotice();var missing=MissingConnections(selection);
             foreach(string key in missing){selection.Scan[key]=false;Log(SourceSelection.DisplayOrigin(key)+": fuente omitida; conectá la cuenta para escanearla.");}
@@ -735,7 +760,7 @@ namespace AchievementTimelineReplay.Wpf
                         var local=SteamDefinitionSources.Load(schema,appId,databases,Log);
                         if(!String.IsNullOrWhiteSpace(local.Name))names[appId]=local.Name;
                         if(local.Definitions.Count>0)return local.Definitions;
-                        string cli=SamPath.Dispatcher.Invoke(()=>SamPath.Text.Trim());
+                        string cli=SamPath.Dispatcher.Invoke(()=>SamExecutablePath);
                         if(samMode!=SamCliMode.Modern)throw new InvalidDataException("No hay esquema local ni caché Playnite Achievements del destino. Validá el CLI moderno de SAM para consultarlo.");
                         var result=activeReplayer!=null?activeReplayer.QueryOtherGame(cli,appId):SamRunner.List(cli,SamCliMode.Modern,appId);
                         if(SamRunner.Failed(result))throw new InvalidDataException("SAM rechazó la consulta del destino: "+result.StdErr+" "+result.StdOut);
@@ -1248,7 +1273,7 @@ namespace AchievementTimelineReplay.Wpf
         {
             if(!CanQueryPlan || currentGame.IsDemo || !currentGame.SteamTarget)return;
             var game=currentGame;
-            string cli=SamPath.Text.Trim();
+            string cli=SamExecutablePath;
             if(samMode!=SamCliMode.Modern || !File.Exists(cli))
             {
                 MessageBox.Show(this,"Seleccioná y validá el CLI moderno de SamRewritten en Escaneo.","Steam",MessageBoxButton.OK,MessageBoxImage.Information);return;
@@ -1278,7 +1303,7 @@ namespace AchievementTimelineReplay.Wpf
         void OpenSamClick(object sender,RoutedEventArgs e)
         {
             if(checkingUpdates || currentGame==null || currentGame.IsDemo || !currentGame.SteamTarget)return;
-            string cli=SamPath.Text.Trim(),folder=Path.GetDirectoryName(cli),gui=null;
+            string cli=SamExecutablePath,folder=Path.GetDirectoryName(cli),gui=null;
             try {if(Directory.Exists(folder)) gui=Directory.GetFiles(folder,"*.exe").FirstOrDefault(f=>Path.GetFileName(f).Contains("samrewritten",StringComparison.OrdinalIgnoreCase) && !Path.GetFileName(f).Contains("cli",StringComparison.OrdinalIgnoreCase));}catch{}
             if(gui==null) {MessageBox.Show(this,"No encontré la interfaz gráfica de SamRewritten junto al CLI. Abrí SAM y buscá el AppID "+currentGame.AppId,"Abrir SAM",MessageBoxButton.OK,MessageBoxImage.Information);return;}
             try {Process.Start(new ProcessStartInfo{FileName=gui,Arguments="--auto-open="+currentGame.AppId,UseShellExecute=true});}
@@ -1326,7 +1351,7 @@ namespace AchievementTimelineReplay.Wpf
                 if(!order.Any(a=>a.Included)){MessageBox.Show(this,"No hay logros seleccionados.","Migración",MessageBoxButton.OK,MessageBoxImage.Information);return;}
                 if(!await ValidateSamAsync(false))throw new InvalidOperationException("Seleccioná y validá el ejecutable CLI de SamRewritten.");
                 if(Process.GetProcessesByName("steam").Length==0)throw new InvalidOperationException("Steam no parece estar abierto. Abrilo e iniciá sesión.");
-                string cli=SamPath.Text.Trim();uint appId=game.AppId;var mode=samMode;
+                string cli=SamExecutablePath;uint appId=game.AppId;var mode=samMode;
                 var parameters=ReadPlanParameters();uint account=LegacyScanner.RecentAccount(SteamPath.Text.Trim());
                 async Task<Dictionary<string,string>> ReadStates()
                 {

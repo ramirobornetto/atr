@@ -62,31 +62,31 @@
             </StackPanel>
             <Grid Grid.Row="1" Margin="0,0,0,10">
               <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="95" />
+                <ColumnDefinition Width="185" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
               </Grid.ColumnDefinitions>
-              <TextBlock Text="Steam" VerticalAlignment="Center" />
+              <TextBlock Text="Directorio Steam:" VerticalAlignment="Center" />
               <TextBox Grid.Column="1" x:Name="SteamPath" Style="{StaticResource CompactTextBox}" />
-              <Button Grid.Column="2" x:Name="BrowseSteamButton" Content="Elegir carpeta…" Click="BrowseSteam" Height="{DynamicResource ControlHeight}" VerticalAlignment="Center" Padding="{DynamicResource ButtonPadding}" />
+              <Button Grid.Column="2" x:Name="BrowseSteamButton" Content="Elegir carpeta…" Click="BrowseSteam" Height="{DynamicResource ControlHeight}" VerticalAlignment="Center" Padding="{DynamicResource ButtonPadding}" ToolTip="Elegí la carpeta donde está instalado Steam." />
             </Grid>
             <Grid Grid.Row="2" Margin="0,0,0,16">
               <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="95" />
+                <ColumnDefinition Width="185" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
               </Grid.ColumnDefinitions>
-              <TextBlock Text="SAM CLI" VerticalAlignment="Center" />
+              <TextBlock Text="Directorio SAM Rewritten:" VerticalAlignment="Center" />
               <TextBox x:Name="SamPath" Grid.Column="1" Style="{StaticResource CompactTextBox}" />
-              <Button Grid.Column="2" x:Name="BrowseSamButton" Content="Elegir .exe…" Click="BrowseSam" Height="{DynamicResource ControlHeight}" VerticalAlignment="Center" Padding="{DynamicResource ButtonPadding}" />
-              <Button Grid.Column="3" x:Name="ValidateSamButton" Content="Validar" Click="ValidateSamClick" Height="{DynamicResource ControlHeight}" VerticalAlignment="Center" Padding="{DynamicResource ButtonPadding}" />
+              <Button Grid.Column="2" x:Name="BrowseSamButton" Content="Elegir carpeta…" Click="BrowseSam" Height="{DynamicResource ControlHeight}" VerticalAlignment="Center" Padding="{DynamicResource ButtonPadding}" ToolTip="Elegí la carpeta que contiene samrewritten-cli.exe." />
+              <Button Grid.Column="3" x:Name="ValidateSamButton" Content="Validar" Click="ValidateSamClick" Height="{DynamicResource ControlHeight}" VerticalAlignment="Center" Padding="{DynamicResource ButtonPadding}" ToolTip="Comprueba que SAM Rewritten se pueda ejecutar y detecta su versión." />
             </Grid>
             <StackPanel Grid.Row="3">
               <TextBlock x:Name="SamInfo" Text="SAM sin validar" Foreground="{StaticResource Muted}" Margin="0,0,0,15" />
               <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                <Button x:Name="ScanButton" Content="▶  Escanear biblioteca" Style="{StaticResource AccentButton}" Click="ScanClick" Height="{DynamicResource ControlHeight}" VerticalAlignment="Center" Padding="{DynamicResource ButtonPadding}" />
-                <Button x:Name="CancelScanButton" Content="Cancelar escaneo" Click="CancelScanClick" IsEnabled="False" Height="{DynamicResource ControlHeight}" VerticalAlignment="Center" Padding="{DynamicResource ButtonPadding}" />
+                <Button x:Name="ScanButton" Content="▶  Escanear biblioteca" Style="{StaticResource AccentButton}" Click="ScanClick" Height="{DynamicResource ControlHeight}" VerticalAlignment="Center" Padding="{DynamicResource ButtonPadding}" ToolTip="Busca historiales de logros en las fuentes seleccionadas." />
+                <Button x:Name="CancelScanButton" Content="Cancelar escaneo" Click="CancelScanClick" IsEnabled="False" Height="{DynamicResource ControlHeight}" VerticalAlignment="Center" Padding="{DynamicResource ButtonPadding}" ToolTip="Detiene el escaneo en curso." />
               </StackPanel>
               <ProgressBar x:Name="ScanProgress" Height="16" Minimum="0" Maximum="100" Value="0" />
               <TextBlock x:Name="ScanResult" Text="Listo para escanear" Foreground="{StaticResource Muted}" Margin="0,10,0,0" TextWrapping="Wrap" Visibility="Collapsed" />
@@ -106,11 +106,11 @@
                   </StackPanel>
                   <StackPanel Grid.Column="2" HorizontalAlignment="Left">
                     <TextBlock Text="Importar y conectar" FontWeight="SemiBold" FontSize="16" Margin="0,0,0,12" />
-                    <Button x:Name="ImportGoldbergButton" Content="Importar Goldberg…" Click="ImportGoldbergClick" Margin="0,3,0,7" Style="{StaticResource CompactButton}" />
-                    <Button x:Name="ImportIniButton" Content="Importar CODEX/RUNE…" HorizontalAlignment="Left" Click="ImportIniClick" Margin="0,3,0,7" Style="{StaticResource CompactButton}" />
-                    <Button x:Name="ImportPAButton" Content="Importar Playnite Achievements…" Click="ImportPAClick" HorizontalAlignment="Left" Margin="0,3,0,7" Style="{StaticResource CompactButton}" />
-                    <Button x:Name="ConnectEpicButton" Content="Conectar Epic…" Click="ConnectEpicClick" HorizontalAlignment="Left" Margin="0,3,0,7" Style="{StaticResource CompactButton}" />
-                    <Button x:Name="ConnectXboxButton" Content="Conectar Xbox…" Click="ConnectXboxClick" HorizontalAlignment="Left" Margin="0,3,0,7" Style="{StaticResource CompactButton}" />
+                    <Button x:Name="ImportGoldbergButton" Content="Goldberg" Click="ImportGoldbergClick" Margin="0,3,0,7" Style="{StaticResource CompactButton}" ToolTip="Importa un archivo achievements.json de Goldberg o GSE." />
+                    <Button x:Name="ImportIniButton" Content="Codex/Rune" HorizontalAlignment="Left" Click="ImportIniClick" Margin="0,3,0,7" Style="{StaticResource CompactButton}" ToolTip="Importa un archivo achievements.ini de CODEX, RUNE o un formato compatible." />
+                    <Button x:Name="ImportPAButton" Content="Playnite Achievements" Click="ImportPAClick" HorizontalAlignment="Left" Margin="0,3,0,7" Style="{StaticResource CompactButton}" ToolTip="Importa los historiales de achievement_cache.db de Playnite Achievements." />
+                    <Button x:Name="ConnectEpicButton" Content="Conectar Epic" Click="ConnectEpicClick" HorizontalAlignment="Left" Margin="0,3,0,7" Style="{StaticResource CompactButton}" ToolTip="Vincula tu cuenta de Epic para consultar sus logros desbloqueados." />
+                    <Button x:Name="ConnectXboxButton" Content="Conectar Xbox" Click="ConnectXboxClick" HorizontalAlignment="Left" Margin="0,3,0,7" Style="{StaticResource CompactButton}" ToolTip="Vincula tu cuenta Microsoft para consultar sus logros de Xbox Live." />
                   </StackPanel>
                 </Grid>
               </ScrollViewer>
@@ -123,30 +123,38 @@
               <RowDefinition Height="Auto" />
               <RowDefinition Height="*" />
             </Grid.RowDefinitions>
-            <StackPanel>
-              <TextBlock Text="Biblioteca de historiales" FontSize="21" FontWeight="Bold" />
-              <TextBlock x:Name="LibraryStamp" Text="El primer escaneo o importación guardará la biblioteca para el próximo inicio." Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap" Margin="0,5,0,0" />
-            </StackPanel>
-            <WrapPanel Grid.Row="1" Margin="0,11,0,12">
-              <TextBox x:Name="LibrarySearch" Width="280" HorizontalAlignment="Left" TextChanged="LibraryFilterChanged" ToolTip="Buscar por nombre o AppID" />
-              <TextBlock x:Name="LibraryCount" Margin="10,0,8,0" VerticalAlignment="Center" Foreground="{StaticResource Accent}" Text="Mostrando 0 de 0" />
-              <Button x:Name="RefreshLibraryButton" Content="Actualizar biblioteca" Click="ScanClick" />
-              <Button x:Name="RemoveLibraryButton" Content="Quitar de biblioteca" Click="RemoveLibraryClick" />
-              <StackPanel Orientation="Horizontal">
-                <Button x:Name="ClearLibraryButton" Style="{StaticResource DangerButton}" Click="ClearLibraryClick" ToolTip="Borrar biblioteca" AutomationProperties.Name="Borrar biblioteca" Background="#922D3B" BorderBrush="#E85B6A" Width="38" Padding="9,7">
-                  <Path Stroke="White" StrokeThickness="1.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Data="M 1 4 L 17 4 M 6 4 L 6 1 L 12 1 L 12 4 M 3 4 L 4 19 L 14 19 L 15 4 M 7 7 L 7 16 M 11 7 L 11 16" Stretch="Uniform" Width="16" Height="19" />
-                </Button>
-                <TextBlock Text="?" VerticalAlignment="Center" Margin="4,0,8,0" Cursor="Help" Foreground="{StaticResource Accent}" FontWeight="Bold" ToolTipService.ShowDuration="30000">
-                  <TextBlock.ToolTip>
-                    <ToolTip MaxWidth="420">
-                      <TextBlock TextWrapping="Wrap" Text="Borra únicamente la biblioteca guardada de ATR y su copia de respaldo. No elimina archivos de logros, snapshots, planes guardados ni orígenes personalizados. Para volver a mostrar los juegos, realizá un nuevo escaneo o importalos manualmente." />
-                    </ToolTip>
-                  </TextBlock.ToolTip>
-                </TextBlock>
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <StackPanel>
+                <TextBlock Text="Biblioteca de historiales" FontSize="21" FontWeight="Bold" />
+                <TextBlock x:Name="LibraryStamp" Text="El primer escaneo o importación guardará la biblioteca para el próximo inicio." Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap" Margin="0,5,0,0" />
               </StackPanel>
+              <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
+                <Button x:Name="RefreshLibraryButton" Content="Actualizar biblioteca" Click="ScanClick" />
+                <StackPanel Orientation="Horizontal">
+                  <Button x:Name="ClearLibraryButton" Style="{StaticResource DangerButton}" Click="ClearLibraryClick" ToolTip="Borrar biblioteca" AutomationProperties.Name="Borrar biblioteca" Background="#922D3B" BorderBrush="#E85B6A" Width="38" Padding="9,7">
+                    <Path Stroke="White" StrokeThickness="1.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Data="M 1 4 L 17 4 M 6 4 L 6 1 L 12 1 L 12 4 M 3 4 L 4 19 L 14 19 L 15 4 M 7 7 L 7 16 M 11 7 L 11 16" Stretch="Uniform" Width="16" Height="19" />
+                  </Button>
+                  <TextBlock Text="?" VerticalAlignment="Center" Margin="4,0,8,0" Cursor="Help" Foreground="{StaticResource Accent}" FontWeight="Bold" ToolTipService.ShowDuration="30000">
+                    <TextBlock.ToolTip>
+                      <ToolTip MaxWidth="420">
+                        <TextBlock TextWrapping="Wrap" Text="Borra únicamente la biblioteca guardada de ATR y su copia de respaldo. No elimina archivos de logros, snapshots, planes guardados ni orígenes personalizados. Para volver a mostrar los juegos, realizá un nuevo escaneo o importalos manualmente." />
+                      </ToolTip>
+                    </TextBlock.ToolTip>
+                  </TextBlock>
+                </StackPanel>
+              </StackPanel>
+            </Grid>
+            <WrapPanel Grid.Row="1" Margin="0,11,0,12">
+              <TextBox x:Name="LibrarySearch" Width="280" HorizontalAlignment="Left" TextChanged="LibraryFilterChanged" ToolTip="Buscar por nombre o AppID" Height="{DynamicResource LibrarySearchHeight}" />
+              <Button x:Name="RemoveLibraryButton" Content="Quitar de la biblioteca" Click="RemoveLibraryClick" Margin="8,2,3,2" />
             </WrapPanel>
             <StackPanel Grid.Row="2" Margin="0,0,0,8">
               <WrapPanel x:Name="LibraryOriginsPanel" />
+              <TextBlock x:Name="LibraryCount" Margin="3,6,0,2" VerticalAlignment="Center" Foreground="{StaticResource Accent}" Text="Mostrando 0 de 0" />
               <TextBlock x:Name="LibraryEmptyMessage" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="3,5,0,2" Visibility="Collapsed" />
             </StackPanel>
             <DataGrid Grid.Row="3" x:Name="GamesGrid" IsReadOnly="True" SelectionChanged="GameChanged" MouseDoubleClick="LibraryDoubleClick" AlternationCount="2">

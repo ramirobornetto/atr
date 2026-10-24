@@ -4,6 +4,8 @@
        Guardá y ejecutá con F5. Los controles pueden sobrescribir cada propiedad localmente. -->
   <!-- Altura común de botones, campos de una línea y desplegables cerrados. -->
   <sys:Double x:Key="ControlHeight">34</sys:Double>
+  <!-- Búsqueda en Biblioteca: un poco más baja que los controles normales. -->
+  <sys:Double x:Key="LibrarySearchHeight">30</sys:Double>
   <!-- Controles dentro de las tablas: deben caber dentro de TableRowHeight. -->
   <sys:Double x:Key="TableControlHeight">23</sys:Double>
   <sys:Double x:Key="TableRowHeight">29</sys:Double>

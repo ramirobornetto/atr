@@ -7,6 +7,7 @@ Abrí `WpfPrototype/Appearance.xaml` en Visual Studio. Los valores del comienzo 
 | Nombre | Qué modifica | Valor inicial |
 | --- | --- | --- |
 | ControlHeight | Alto de botones, campos de una línea y desplegables cerrados | 34 |
+| LibrarySearchHeight | Alto del campo de búsqueda en Biblioteca | 30 |
 | TableControlHeight | Alto de los desplegables dentro de correspondencias | 23 |
 | TableRowHeight | Alto de las filas de las tablas | 29 |
 | TableHeaderHeight | Alto de los encabezados de las tablas | 38 |
@@ -25,11 +26,11 @@ La navegación lateral, los títulos, avisos, registros de varias líneas y algu
 
 ## Cambiar solamente un elemento
 
-Para cambiar solo «Importar Goldberg…», abrí `MainWindow.xaml`, seleccioná ese botón en el diseñador (su nombre es `ImportGoldbergButton`), pulsá F4 y poné `40` en `Height`. Solamente ese botón cambiará. También podés escribir la propiedad en su etiqueta:
+Para cambiar solo «Goldberg», abrí `MainWindow.xaml`, seleccioná ese botón en el diseñador (su nombre es `ImportGoldbergButton`), pulsá F4 y poné `40` en `Height`. Solamente ese botón cambiará. También podés escribir la propiedad en su etiqueta:
 
 ```xml
 <Button x:Name="ImportGoldbergButton"
-        Content="Importar Goldberg…"
+        Content="Goldberg"
         Click="ImportGoldbergClick"
         Margin="0,3,0,7"
         Style="{StaticResource CompactButton}"
