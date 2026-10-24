@@ -142,3 +142,16 @@ Pendiente de validación manual real: inicio de sesión y respuestas de Epic en 
 - Actualizar conservando biblioteca, sesiones Xbox/Epic, perfil del navegador, snapshots, correspondencias, planes e informes. Verificar recuperación de un borrador guardado antes de actualizar.
 
 La compilación y las pruebas de servicios/SAM simulado se ejecutan en el entorno de desarrollo. Este entorno no dispone de una sesión gráfica Windows ni de otra cuenta Microsoft del usuario; esos pasos manuales no se declaran aprobados automáticamente.
+
+
+## v0.16.0 — revisión visual y compatibilidad
+
+- Escaneo: fuentes a la izquierda, botones a la derecha. Sin párrafos explicativos ni resultados multilínea al terminar; etapa visible mientras corre y detalle disponible en Logs.
+- Seleccionar Epic o Xbox Live sin sesión vinculada: aviso global visible con el botón de conexión indicado. Si hay otras fuentes, continuarán; si solo están seleccionadas cuentas no vinculadas, no iniciar un escaneo vacío. No eliminar historiales guardados de esas fuentes.
+- Verificar Playnite Achievements en botones, filtros, selector de origen, mensajes y logs, conservando las preferencias de la versión anterior. Las rutas físicas e identificadores guardados no se renombran.
+- Biblioteca: retirar filtros GOG/PlayStation/OnlineFix. Si hay datos antiguos de esos orígenes, mostrarlos a través de Otro y permitir conservar sus planes/snapshots.
+- Plan: dos columnas inferiores, botones y selector de historial compactos, mayor margen entre ruta y tabla. Consultar estado en Steam y Estado en Steam. Revisar tamaño habitual y ventana mínima para que no se superpongan controles.
+- Correspondencias: mismo alto de nombre/AppID/selectores/botones; selectores de fila compactos. Confirmar del encabezado marca todas las equivalencias únicas con destino válido, omite conflictos y permite desmarcar todo. Cambiar una equivalencia actualiza la casilla de encabezado; comprobar también correspondencias guardadas y estado parcial.
+- Guardar/cargar planes, reordenar y calcular duración deben mantener el comportamiento anterior; los cambios son de presentación y selección, no de fechas ni identidad de archivos.
+
+El entorno de desarrollo compila WPF pero no ejecuta una sesión gráfica Windows; la distribución final de píxeles requiere esa revisión manual.

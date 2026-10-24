@@ -1,8 +1,8 @@
 # Achievement Timeline Replay
 
-## Descargar v0.15.0 para Windows x64
+## Descargar v0.16.0 para Windows x64
 
-[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.15.0_Windows_x64.zip)
+[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.16.0_Windows_x64.zip)
 
 Extraer **todo el ZIP** en una carpeta nueva y abrir `AchievementTimelineReplay.Wpf.exe`. No se necesita compilar ni instalar .NET. Mantener las DLL y demás archivos junto al ejecutable. Steam y SamRewritten se seleccionan en la aplicación, como antes; no vienen incluidos.
 
@@ -269,3 +269,12 @@ Xbox usa el registro de ATR preconfigurado, sin mostrar Client ID ni pedir confi
 Los resúmenes Xbox/Epic separan recuperados, sin catálogo, sin progreso disponible, sin desbloqueos, repetidos y errores reales. La ausencia de progreso Epic deja de recomendar cambios de privacidad sin evidencia. Los fallos de PA se informan como errores de lectura aparte de los historiales importados.
 
 Se amplían pruebas de cancelación, reanudación ligada a cuenta, bloqueo de escrituras ante un fallo de checkpoint y conservación de biblioteca, sesiones, navegador, snapshots y planes al actualizar/volver atrás. Los cambios visuales generales quedan fuera de esta versión. Los nuevos flujos de ingreso aún requieren prueba real en Windows; ver XBOX.md, EPIC.md y PRUEBAS_WINDOWS.md.
+
+
+## v0.16.0 — limpieza y distribución de la interfaz
+
+Escaneo se organiza en dos columnas, con fuentes a la izquierda y botones de importar/conectar a la derecha. Se quitan los párrafos explicativos, las instrucciones de muestras y el bloque de estadísticas final; el progreso de la etapa se muestra mientras se escanea y el detalle queda en Logs. Los avisos de Xbox/Epic no conectados permanecen visibles; esas fuentes se omiten durante ese escaneo y las demás continúan.
+
+Plan distribuye los controles inferiores en dos columnas, compacta el encabezado y separa la ruta de la tabla. El botón pasa a **Consultar estado en Steam** y la columna a **Estado en Steam**. Correspondencias unifica alturas de campos/botones y compacta los selectores de la tabla. La casilla del encabezado Confirmar permite marcar/desmarcar todas las equivalencias válidas; filas sin destino o con destinos repetidos quedan pendientes.
+
+La interfaz usa **Playnite Achievements** en lugar de PA y elimina (perfil) de las etiquetas. Los filtros GOG, PlayStation y OnlineFix se retiran; sus datos siguen accesibles mediante Otro. Las claves de preferencias, identidades, sesiones y correspondencias se conservan. Se eliminan las leyendas del motor/snapshots de la barra lateral y del pie. La validación de distribución visual requiere Windows; las pruebas automáticas cubren compatibilidad de claves y selección masiva sin conflictos.

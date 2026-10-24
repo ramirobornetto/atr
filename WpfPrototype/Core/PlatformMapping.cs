@@ -42,7 +42,8 @@ namespace AchievementTimelineReplay
     }
     internal static class PlatformMapping
     {
-        public static string SourceName(string sourceKey,string platform)=>sourceKey?.StartsWith("xbox_",StringComparison.Ordinal)==true?"Xbox Live":sourceKey?.StartsWith("epic_",StringComparison.Ordinal)==true?"Epic Games":"PA / "+platform;
+        public static string SourceName(string sourceKey,string platform)=>sourceKey?.StartsWith("xbox_",StringComparison.Ordinal)==true?"Xbox Live":sourceKey?.StartsWith("epic_",StringComparison.Ordinal)==true?"Epic Games":"Playnite Achievements / "+platform;
+        public static HashSet<string> UniqueTargets(IEnumerable<string> targets)=>targets.Where(id=>!String.IsNullOrWhiteSpace(id)).GroupBy(id=>id,StringComparer.OrdinalIgnoreCase).Where(g=>g.Count()==1).Select(g=>g.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
         public static bool IsMapped(GameEntry game)=>game.HistoryId?.StartsWith("mapped_",StringComparison.Ordinal)==true;
         public static string Identity(string path,string sourceKey,uint appId)=>"mapped_"+Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Path.GetFullPath(path).ToUpperInvariant()+"|"+sourceKey+"|"+appId))).Substring(0,24);
         static string Normalize(string text)=>new string((text??"").Normalize(NormalizationForm.FormD).Where(c=>Char.IsLetterOrDigit(c)).ToArray()).ToUpperInvariant();
@@ -93,7 +94,7 @@ namespace AchievementTimelineReplay
         public static MappingFile Capture(GameEntry source,uint appId,IEnumerable<AchievementMapping> entries)=>new MappingFile{SourceKey=source.StorageKey,SourcePlatform=source.Platform,ExternalGameId=source.ExternalGameId,TargetAppId=appId,Entries=entries.ToList()};
         static void Validate(MappingFile file,GameEntry source,uint target)
         {
-            if(source.SteamTarget || (!PlayniteHistory.IsPA(source) && !XboxProfile.IsXbox(source) && !EpicProfile.IsEpic(source)) || source.AppId!=0)throw new InvalidDataException("Las correspondencias requieren un historial PA externo o una consulta de perfil Xbox/Epic.");
+            if(source.SteamTarget || (!PlayniteHistory.IsPA(source) && !XboxProfile.IsXbox(source) && !EpicProfile.IsEpic(source)) || source.AppId!=0)throw new InvalidDataException("Las correspondencias requieren un historial Playnite Achievements externo o una consulta de perfil Xbox/Epic.");
             if(file==null || file.Version!=1 || target==0 || file.TargetAppId!=target || file.SourceKey!=source.StorageKey || file.SourcePlatform!=source.Platform || file.ExternalGameId!=source.ExternalGameId || file.Entries==null || file.Entries.Count>50000 || file.Entries.Any(e=>e==null || String.IsNullOrWhiteSpace(e.SourceId) || e.SourceId.Length>512 || (e.TargetId?.Length??0)>512 || (e.NoEquivalent && (e.Confirmed || !String.IsNullOrEmpty(e.TargetId)))) || file.Entries.Select(e=>e.SourceId).Distinct(StringComparer.OrdinalIgnoreCase).Count()!=file.Entries.Count)throw new InvalidDataException("Correspondencias de otra fuente o formato inválido.");
         }
         public static void Save(string directory,GameEntry source,MappingFile file)

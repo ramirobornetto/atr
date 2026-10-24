@@ -23,7 +23,7 @@ namespace AchievementTimelineReplay
             if(File.Exists(schema))
             {
                 try{var definitions=PlatformMapping.FromSchema(schema,appId);if(definitions.Count>0)return new SteamLocalDefinitions{Definitions=definitions};}
-                catch(Exception ex){log?.Invoke("Esquema Steam no utilizable; se continúa con PA/SAM: "+ex.Message);}
+                catch(Exception ex){log?.Invoke("Esquema Steam no utilizable; se continúa con Playnite Achievements/SAM: "+ex.Message);}
             }
             foreach(var path in databases)
             {
@@ -36,10 +36,10 @@ namespace AchievementTimelineReplay
                         using var db=new ReadOnlySqlite(path);
                         name=db.Query("SELECT GameName FROM Games WHERE ProviderKey IN ('Steam','Local') AND ProviderGameId="+appId.ToString(CultureInfo.InvariantCulture)).FirstOrDefault()?["GameName"];
                     }
-                    catch(Exception ex){log?.Invoke("Nombre del destino PA no disponible: "+ex.Message);}
+                    catch(Exception ex){log?.Invoke("Nombre del destino Playnite Achievements no disponible: "+ex.Message);}
                     return new SteamLocalDefinitions{Name=name,Definitions=definitions};
                 }
-                catch(Exception ex){log?.Invoke("Caché PA no utilizable ("+path+"); se continúa con otras fuentes: "+ex.Message);}
+                catch(Exception ex){log?.Invoke("Caché Playnite Achievements no utilizable ("+path+"); se continúa con otras fuentes: "+ex.Message);}
             }
             return new SteamLocalDefinitions();
         }

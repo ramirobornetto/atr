@@ -11,7 +11,7 @@ namespace AchievementTimelineReplay
         public List<GameEntry> Sources=new List<GameEntry>();
         public GameEntry Selected;
         public bool Manual;
-        public static string Label(GameEntry game)=>String.IsNullOrEmpty(game.HistoryId)?"Steam directo":XboxProfile.IsXbox(game)?"Xbox Live (perfil)":EpicProfile.IsEpic(game)?"Epic Games (perfil)":PlayniteHistory.IsPA(game)?"PA / "+game.PAProvider:PlatformMapping.IsMapped(game)?PlatformMapping.SourceName(game.MappedSourceKey,game.MappedFromPlatform)+" → Steam":game.DetectedOrigin??game.SourceLabel;
+        public static string Label(GameEntry game)=>SourceSelection.DisplayText(String.IsNullOrEmpty(game.HistoryId)?"Steam directo":XboxProfile.IsXbox(game)?"Xbox Live":EpicProfile.IsEpic(game)?"Epic Games":PlayniteHistory.IsPA(game)?"Playnite Achievements / "+game.PAProvider:PlatformMapping.IsMapped(game)?PlatformMapping.SourceName(game.MappedSourceKey,game.MappedFromPlatform)+" → Steam":game.DetectedOrigin??game.SourceLabel);
         public string Summary => (Manual?"Manual: ":"Automático: ")+Label(Selected)+" · "+Sources.Count+" fuentes";
         public string Details => String.Join(Environment.NewLine,Sources.Select(g=>g.SourceLabel+": "+g.Achievements.Count+"/"+g.TotalAchievements+(g.SourceMissing?" · archivo faltante":"")))+Environment.NewLine+"Elegida: "+Selected.SourceLabel+". Automático prioriza desbloqueos, después fechas válidas y archivo directo.";
     }

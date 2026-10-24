@@ -28,12 +28,12 @@ namespace AchievementTimelineReplay
         [DllImport(Library,CallingConvention=CallingConvention.Cdecl)]static extern IntPtr sqlite3_column_text(IntPtr statement,int column);
         public ReadOnlySqlite(string path)
         {
-            if(!File.Exists(path))throw new FileNotFoundException("No se encontró la base PA.",path);
+            if(!File.Exists(path))throw new FileNotFoundException("No se encontró la base Playnite Achievements.",path);
             int rc=sqlite3_open_v2(Path.GetFullPath(path),out database,1,IntPtr.Zero);
             if(rc!=0){string error=Error();Dispose();throw new InvalidDataException(error);}
             sqlite3_busy_timeout(database,2000);
         }
-        string Error()=>"No se pudo leer PA: "+Marshal.PtrToStringUTF8(sqlite3_errmsg(database))+". Cerrá Playnite antes de volver a intentar.";
+        string Error()=>"No se pudo leer Playnite Achievements: "+Marshal.PtrToStringUTF8(sqlite3_errmsg(database))+". Cerrá Playnite antes de volver a intentar.";
         public List<Dictionary<string,string>> Query(string sql,CancellationToken token=default)
         {
             IntPtr statement=IntPtr.Zero;
@@ -44,7 +44,7 @@ namespace AchievementTimelineReplay
                 var rows=new List<Dictionary<string,string>>();int rc;
                 while((rc=sqlite3_step(statement))==100)
                 {
-                    token.ThrowIfCancellationRequested();if(rows.Count>=1000000)throw new InvalidDataException("La consulta PA supera el límite de registros.");
+                    token.ThrowIfCancellationRequested();if(rows.Count>=1000000)throw new InvalidDataException("La consulta Playnite Achievements supera el límite de registros.");
                     var row=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
                     for(int i=0;i<count;i++)row[names[i]]=Marshal.PtrToStringUTF8(sqlite3_column_text(statement,i));rows.Add(row);
                 }

@@ -50,7 +50,7 @@ namespace AchievementTimelineReplay
                 {
                     using var db=new ReadOnlySqlite(path);
                     foreach(var row in db.Query("SELECT ProviderGameId,GameName FROM Games WHERE ProviderKey IN ('Steam','Local')"))
-                        if(UInt32.TryParse(row["ProviderGameId"],out uint id) && id>0 && !String.IsNullOrWhiteSpace(row["GameName"]))games.Add(new SteamGameMatch{AppId=id,Name=row["GameName"],Origin="Caché PA"});
+                        if(UInt32.TryParse(row["ProviderGameId"],out uint id) && id>0 && !String.IsNullOrWhiteSpace(row["GameName"]))games.Add(new SteamGameMatch{AppId=id,Name=row["GameName"],Origin="Caché Playnite Achievements"});
                 }
                 catch(InvalidDataException){}
             try{games.AddRange(LegacyScanner.LoadNames().Where(p=>p.Value.Contains(term,StringComparison.OrdinalIgnoreCase)).Take(40).Select(p=>new SteamGameMatch{AppId=p.Key,Name=p.Value,Origin="Caché nombres Steam"}));}catch(IOException){}
@@ -58,7 +58,7 @@ namespace AchievementTimelineReplay
         }
         static HttpClient Client(HttpMessageHandler handler=null)
         {
-            var client=handler==null?new HttpClient():new HttpClient(handler,false);client.Timeout=TimeSpan.FromSeconds(12);client.DefaultRequestHeaders.UserAgent.ParseAdd("AchievementTimelineReplay/0.15.0");return client;
+            var client=handler==null?new HttpClient():new HttpClient(handler,false);client.Timeout=TimeSpan.FromSeconds(12);client.DefaultRequestHeaders.UserAgent.ParseAdd("AchievementTimelineReplay/0.16.0");return client;
         }
         public static async Task<List<SteamGameMatch>> SearchAsync(string term,CancellationToken token=default,HttpMessageHandler handler=null)
         {

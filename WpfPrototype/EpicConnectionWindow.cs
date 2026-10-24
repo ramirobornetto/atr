@@ -29,7 +29,7 @@ namespace AchievementTimelineReplay.Wpf
             manual.Children.Add(new TextBlock{Text="Alternativa con navegador externo: ingresá en Epic, obtené el código temporal y pegalo para conectar. Podés pegar el JSON completo que contiene authorizationCode.",TextWrapping=TextWrapping.Wrap,Margin=new Thickness(8)});
             var get=new Button{Content="Obtener código en Epic"};get.Click+=(s,e)=>Open(EpicProfile.CodeUrl);manual.Children.Add(get);manual.Children.Add(code);
             var connect=new Button{Content="Conectar con el código"};var finish=new WrapPanel();finish.Children.Add(paste);finish.Children.Add(connect);manual.Children.Add(finish);cancel.IsEnabled=false;
-            try{status.Text=connection.Connected?"Cuenta conectada: "+(connection.Read().DisplayName??"Epic")+". Podés escanear Epic (perfil).":"Sin cuenta conectada.";}catch{status.Text="La sesión guardada no está disponible. Iniciá sesión nuevamente.";}
+            try{status.Text=connection.Connected?"Cuenta conectada: "+(connection.Read().DisplayName??"Epic")+". Podés escanear Epic.":"Sin cuenta conectada.";}catch{status.Text="La sesión guardada no está disponible. Iniciá sesión nuevamente.";}
             login.Click+=async(s,e)=>
             {
                 try

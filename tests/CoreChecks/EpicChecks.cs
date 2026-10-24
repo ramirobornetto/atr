@@ -64,7 +64,7 @@ static class EpicChecks
         Check(game.Achievements.Count==1 && game.Achievements[0].ApiId=="FIRST" && game.Achievements[0].OriginalUnix==0,"explicit Epic unlock state preserves undated achievements and excludes locked achievements with misleading dates");
         Check(game.Platform=="Epic" && !game.SteamTarget && game.AppId==0 && game.ExternalGameId=="sandbox|main-app" && game.TotalAchievements==2,"Epic namespace/app identity and achievement codes remain distinct from Steam AppIDs");
         EpicProfile.SaveHistory(game,snapshots);var store=new LibraryStore(Path.Combine(dir,"Library"),snapshots);store.Save(new[]{game},"",null,"");var loaded=store.Load();
-        Check(loaded.Games.Count==1 && loaded.Warnings.Count==0 && loaded.Games[0].Achievements[0].OriginalUnix==0 && loaded.Games[0].SourceLabel=="Epic Games (perfil)","Epic history, profile binding, undated unlocks and snapshots survive catalog reload");
+        Check(loaded.Games.Count==1 && loaded.Warnings.Count==0 && loaded.Games[0].Achievements[0].OriginalUnix==0 && loaded.Games[0].SourceLabel=="Epic Games","Epic history, profile binding, undated unlocks and snapshots survive catalog reload");
         var none=EpicProfile.ParseHistory(Account,new EpicGame{AppName="empty",Namespace="sandbox"},J(Definitions),J("[]"),dir);
         Check(!EpicProfile.ShouldInclude(none) && EpicProfile.ShouldInclude(game),"only Epic games with at least one explicit unlock are eligible for import");
         var removed=EpicProfile.ParseHistory(Account,asset,J(Definitions),J("[{\"playerAchievement\":{\"achievementName\":\"REMOVED\",\"unlocked\":true,\"unlockDate\":\"invalid\"}}]"),dir);

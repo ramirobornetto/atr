@@ -58,7 +58,7 @@ static class XboxChecks
         Check(game.TotalAchievements==42 && game.GameName=="Cuphead","title metadata retains total achievement count and display name");
         XboxProfile.SaveHistory(game,snapshots);
         var library=new LibraryStore(Path.Combine(dir,"Library"),snapshots);library.Save(new[]{game},"",null,"Xbox fixture");var loaded=library.Load();
-        Check(loaded.Games.Count==1 && loaded.Warnings.Count==0 && loaded.Games[0].Achievements.Count==2 && loaded.Games[0].Achievements.Any(a=>a.OriginalUnix==0) && loaded.Games[0].SourceLabel=="Xbox Live (perfil)","direct Xbox snapshots and identities survive catalog reload, including undated unlocks");
+        Check(loaded.Games.Count==1 && loaded.Warnings.Count==0 && loaded.Games[0].Achievements.Count==2 && loaded.Games[0].Achievements.Any(a=>a.OriginalUnix==0) && loaded.Games[0].SourceLabel=="Xbox Live","direct Xbox snapshots and identities survive catalog reload, including undated unlocks");
         var empty=XboxProfile.ParseHistory("123456789",new XboxTitle{Id="8",Name="No unlocks"},Array.Empty<JsonElement>(),dir);XboxProfile.SaveHistory(empty,snapshots);library.Save(new[]{empty},"",null,"");var emptyLoaded=library.Load();
         Check(emptyLoaded.Games.Count==0,"old direct Xbox 0/0 entries are hidden when reloading the saved catalog without deleting source files");
         Check(File.Exists(empty.StatsPath) && !XboxProfile.ShouldInclude(empty),"empty Xbox entries are excluded without deleting their cache or snapshots");

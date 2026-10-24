@@ -42,7 +42,7 @@ namespace AchievementTimelineReplay
                 foreach(var row in custom.Query("SELECT PlayniteGameId,PayloadJson FROM GameCustomData",token))
                 {
                     try{using var doc=JsonDocument.Parse(row["PayloadJson"]);customizations[row["PlayniteGameId"]]=doc.RootElement.Clone();if(doc.RootElement.TryGetProperty("ManualLink",out var link) && link.ValueKind==JsonValueKind.Object)links[row["PlayniteGameId"]]=link.Clone();}
-                    catch(JsonException){log("PA: personalización ilegible; no se importó ese vínculo manual.");}
+                    catch(JsonException){log("Playnite Achievements: personalización ilegible; no se importó ese vínculo manual.");}
                 }
             }
             using var cache=new ReadOnlySqlite(cachePath);
@@ -59,9 +59,9 @@ namespace AchievementTimelineReplay
                 token.ThrowIfCancellationRequested();var first=bucket.First();string provider=first["ProviderKey"],guid=first["PlayniteGameId"];
                 string platform=provider=="PSN"?"PlayStation":provider=="Steam" || provider=="Manual" || provider=="Local"?"Steam":provider;
                 uint.TryParse(first["ProviderGameId"],out uint appId);string externalId=first["ProviderGameKey"]??first["ProviderGameId"];
-                if(!Guid.TryParse(guid,out var parsedGuid) || (platform=="Steam" && appId==0) || (platform!="Steam" && String.IsNullOrWhiteSpace(externalId))){log("PA: historial sin AppID Steam o identidad de juego válidos; no se adivinó el destino.");continue;}
+                if(!Guid.TryParse(guid,out var parsedGuid) || (platform=="Steam" && appId==0) || (platform!="Steam" && String.IsNullOrWhiteSpace(externalId))){log("Playnite Achievements: historial sin AppID Steam o identidad de juego válidos; no se adivinó el destino.");continue;}
                 JsonElement manual=default;
-                if(provider=="Manual" && (!links.TryGetValue(guid,out manual) || Text(manual,"SourceKey")!="Steam" || Text(manual,"SourceGameId")!=appId.ToString(CultureInfo.InvariantCulture))){log("PA Manual: falta un vínculo Steam válido para este juego; conservá game_custom_data.db junto a la caché.");continue;}
+                if(provider=="Manual" && (!links.TryGetValue(guid,out manual) || Text(manual,"SourceKey")!="Steam" || Text(manual,"SourceGameId")!=appId.ToString(CultureInfo.InvariantCulture))){log("Playnite Achievements Manual: falta un vínculo Steam válido para este juego; conservá game_custom_data.db junto a la caché.");continue;}
                 if(platform!="Steam")appId=0;
                 string profile=Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(first["UserProvider"]+"|"+(first["ExternalUserId"]??first["UserId"])))).Substring(0,24);
                 string group=parsedGuid.ToString("D");
@@ -74,7 +74,7 @@ namespace AchievementTimelineReplay
                 uint steamAccount=0;
                 string external=provider=="Steam"?first["ExternalUserId"]:steamUsers.Count==1?steamUsers[0]:null;
                 if(UInt64.TryParse(external,out var steam64) && steam64>76561197960265728UL && steam64-76561197960265728UL<=UInt32.MaxValue)steamAccount=(uint)(steam64-76561197960265728UL);
-                var game=new GameEntry{AppId=appId,Platform=platform,ExternalGameId=platform=="Steam"?null:externalId,ProfileKey=profile,PAAccountId=steamAccount,AccountId=0,HistoryId=Identity(cachePath,group),PAGroupKey=group,PAProvider=provider,GameName=first["GameName"]??"AppID "+appId,StatsPath=cachePath,SchemaPath=File.Exists(customPath)?customPath:null,SourceLabel="achievement_cache.db (PA / "+provider+")",DetectedOrigin=platform=="Steam"?"PA":platform,HasLocalHistory=true};
+                var game=new GameEntry{AppId=appId,Platform=platform,ExternalGameId=platform=="Steam"?null:externalId,ProfileKey=profile,PAAccountId=steamAccount,AccountId=0,HistoryId=Identity(cachePath,group),PAGroupKey=group,PAProvider=provider,GameName=first["GameName"]??"AppID "+appId,StatsPath=cachePath,SchemaPath=File.Exists(customPath)?customPath:null,SourceLabel="achievement_cache.db (Playnite Achievements / "+provider+")",DetectedOrigin=platform=="Steam"?"PA":platform,HasLocalHistory=true};
                 var seen=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 foreach(var row in bucket)
                 {
@@ -109,7 +109,7 @@ namespace AchievementTimelineReplay
                         long unix=0;
                         if(manual.TryGetProperty("UnlockTimes",out var extraTimes) && extraTimes.ValueKind==JsonValueKind.Object)
                             foreach(var time in extraTimes.EnumerateObject().Where(p=>String.Equals(p.Name.Trim(),api,StringComparison.OrdinalIgnoreCase)))if(time.Value.ValueKind==JsonValueKind.String){unix=Timestamp(time.Value.GetString());break;}
-                        game.Achievements.Add(new AchievementRecord{ApiId=api,DisplayName=api,Description="Sin definición en la caché PA.",OriginalUnix=unix});seen.Add(api);
+                        game.Achievements.Add(new AchievementRecord{ApiId=api,DisplayName=api,Description="Sin definición en la caché Playnite Achievements.",OriginalUnix=unix});seen.Add(api);
                     }
                 }
                 if(customizations.TryGetValue(guid,out var customization) && customization.TryGetProperty("AchievementOverrides",out var overrides) && overrides.ValueKind==JsonValueKind.Object)
@@ -134,7 +134,7 @@ namespace AchievementTimelineReplay
             foreach(var group in candidates.GroupBy(g=>g.StorageKey))
             {
                 var winner=Choose(group);result.Add(winner);
-                log("PA · "+winner.GameName+": "+winner.Achievements.Count+"/"+winner.TotalAchievements+" · elegido "+winner.PAProvider+" · "+winner.Achievements.Count(a=>a.OriginalUnix==0)+" sin fecha válida (conservados).");
+                log("Playnite Achievements · "+winner.GameName+": "+winner.Achievements.Count+"/"+winner.TotalAchievements+" · elegido "+winner.PAProvider+" · "+winner.Achievements.Count(a=>a.OriginalUnix==0)+" sin fecha válida (conservados).");
             }
             return result;
         }
@@ -157,7 +157,7 @@ namespace AchievementTimelineReplay
                 var direct=matches[0];var winner=direct.Achievements.Count>=pa.Achievements.Count?direct:pa;
                 if(direct.Achievements.Count==pa.Achievements.Count && pa.Achievements.Count(a=>a.OriginalUnix>0)>direct.Achievements.Count(a=>a.OriginalUnix>0))winner=pa;
                 var loser=ReferenceEquals(winner,pa)?direct:pa;winner.AlternatePlanKey=loser.StorageKey;
-                if(ReferenceEquals(winner,pa)){winner.PAOrigin=direct.DetectedOrigin;winner.DetectedOrigin=direct.DetectedOrigin;winner.OriginEvidence="Coincide con el historial directo por AppID, IDs y fechas; se eligió PA por cantidad de desbloqueos.";}
+                if(ReferenceEquals(winner,pa)){winner.PAOrigin=direct.DetectedOrigin;winner.DetectedOrigin=direct.DetectedOrigin;winner.OriginEvidence="Coincide con el historial directo por AppID, IDs y fechas; se eligió Playnite Achievements por cantidad de desbloqueos.";}
                 result.Remove(loser);log?.Invoke("Historial coincidente · "+winner.GameName+": se eligió "+winner.SourceLabel+" ("+winner.Achievements.Count+" desbloqueados). Los planes de la otra fuente se conservan.");
             }
             return result;

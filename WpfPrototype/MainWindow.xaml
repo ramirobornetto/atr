@@ -1,124 +1,433 @@
-<Window Icon="Assets/atr.ico" x:Class="AchievementTimelineReplay.Wpf.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Achievement Timeline Replay v0.15.0 — WPF" Width="1440" Height="900" MinWidth="1060" MinHeight="680" Background="{StaticResource Bg}" WindowStartupLocation="CenterScreen" FontFamily="Segoe UI" Foreground="White" Closing="WindowClosing">
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Icon="Assets/atr.ico" x:Class="AchievementTimelineReplay.Wpf.MainWindow" Title="Achievement Timeline Replay v0.16.0 — WPF" Width="1440" Height="900" MinWidth="1060" MinHeight="680" Background="{StaticResource Bg}" WindowStartupLocation="CenterScreen" FontFamily="Segoe UI" Foreground="White" Closing="WindowClosing">
   <Grid Margin="14">
-    <Grid.ColumnDefinitions><ColumnDefinition Width="232"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="232" />
+      <ColumnDefinition Width="*" />
+    </Grid.ColumnDefinitions>
     <Border Grid.Column="0" CornerRadius="12" Background="{StaticResource Panel}" Margin="0,0,12,0" Padding="15">
       <DockPanel LastChildFill="True">
         <StackPanel DockPanel.Dock="Top">
-          <TextBlock Text="◆  ACHIEVEMENT" Foreground="{StaticResource Accent}" FontWeight="Bold" FontSize="18" Margin="5,9,0,0"/>
-          <TextBlock Text="TIMELINE REPLAY" Foreground="#D7E6F0" FontSize="12" Margin="33,0,0,35"/>
-          <Button x:Name="NavScan" Tag="Escaneo" Style="{StaticResource NavButton}" Content="◎   Escaneo" Click="Navigate"/>
-          <Button x:Name="NavLibrary" Tag="Biblioteca" Style="{StaticResource NavButton}" Content="▦   Biblioteca" Click="Navigate"/>
-          <Button x:Name="NavPlan" Tag="Plan" Style="{StaticResource NavButton}" Content="☷   Plan de desbloqueo" Click="Navigate"/>
-          <Button x:Name="NavExecution" Tag="Ejecucion" Style="{StaticResource NavButton}" Content="▷   Ejecución" Click="Navigate"/>
-          <Button x:Name="NavLogs" Tag="Logs" Style="{StaticResource NavButton}" Content="≡   Logs" Click="Navigate"/>
+          <TextBlock Text="◆  ACHIEVEMENT" Foreground="{StaticResource Accent}" FontWeight="Bold" FontSize="18" Margin="5,9,0,0" />
+          <TextBlock Text="TIMELINE REPLAY" Foreground="#D7E6F0" FontSize="12" Margin="33,0,0,35" />
+          <Button x:Name="NavScan" Tag="Escaneo" Style="{StaticResource NavButton}" Content="◎   Escaneo" Click="Navigate" />
+          <Button x:Name="NavLibrary" Tag="Biblioteca" Style="{StaticResource NavButton}" Content="▦   Biblioteca" Click="Navigate" />
+          <Button x:Name="NavPlan" Tag="Plan" Style="{StaticResource NavButton}" Content="☷   Plan de desbloqueo" Click="Navigate" />
+          <Button x:Name="NavExecution" Tag="Ejecucion" Style="{StaticResource NavButton}" Content="▷   Ejecución" Click="Navigate" />
+          <Button x:Name="NavLogs" Tag="Logs" Style="{StaticResource NavButton}" Content="≡   Logs" Click="Navigate" />
         </StackPanel>
         <StackPanel DockPanel.Dock="Bottom" VerticalAlignment="Bottom">
-          <Button x:Name="UpdateButton" Content="Actualizar ATR" Click="CheckUpdatesClick" Margin="0,0,0,12"/>
-          <Border Height="1" Background="#365165" Margin="0,0,0,15"/>
-          <TextBlock Text="MOTOR v0.5.3  ·  UI WPF" Foreground="#91B4C7" FontSize="11"/>
-          <TextBlock Text="Historias y snapshots originales" Foreground="#91B4C7" TextWrapping="Wrap" Margin="0,6,0,0" FontSize="11"/>
+          <Button x:Name="UpdateButton" Content="Actualizar ATR" Click="CheckUpdatesClick" Margin="0,0,0,12" />
+          <Border Height="1" Background="#365165" Margin="0,0,0,15" />
         </StackPanel>
       </DockPanel>
     </Border>
-    <Grid Grid.Column="1"><Grid.RowDefinitions><RowDefinition Height="99"/><RowDefinition Height="*"/><RowDefinition Height="52"/></Grid.RowDefinitions>
+    <Grid Grid.Column="1">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="99" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+        <RowDefinition Height="52" />
+      </Grid.RowDefinitions>
       <Border Grid.Row="0" Background="{StaticResource Panel}" CornerRadius="12" Margin="0,0,0,10" Padding="21,13">
-        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-          <StackPanel VerticalAlignment="Center"><TextBlock Text="Achievement Timeline Replay" FontSize="26" FontWeight="Bold"/><TextBlock Text="Detectar historial  →  preparar timeline  →  ejecutar migración  →  consultar logs" Foreground="{StaticResource Muted}" Margin="0,7,0,0"/></StackPanel>
-          <StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock x:Name="HeaderGame" Text="Sin juego seleccionado" FontWeight="SemiBold" FontSize="14" TextAlignment="Right"/><TextBlock x:Name="HeaderGameInfo" Text="Escaneá para comenzar" Foreground="{StaticResource Accent}" TextAlignment="Right" FontSize="12" Margin="0,6,0,0"/></StackPanel>
-        </Grid>
-      </Border>
-      <Border Grid.Row="1" Background="{StaticResource Panel}" CornerRadius="12" Padding="14">
         <Grid>
-          <!-- Escaneo y sus estados: el escaneo usa tarea secundaria y progreso cancelable. -->
-          <Grid x:Name="EscaneoPanel"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-            <StackPanel><TextBlock Text="Escaneo de historiales" FontWeight="Bold" FontSize="21"/><TextBlock Text="Steam local, Goldberg/GBE y CODEX/RUNE compatible. Se importan logros desbloqueados con fecha válida; los archivos originales no se modifican." Foreground="{StaticResource Muted}" Margin="0,8,0,18"/></StackPanel>
-            <Grid Grid.Row="1" Margin="0,0,0,10"><Grid.ColumnDefinitions><ColumnDefinition Width="95"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Steam" VerticalAlignment="Center"/><TextBox Grid.Column="1" x:Name="SteamPath"/><Button Grid.Column="2" x:Name="BrowseSteamButton" Content="Elegir carpeta…" Click="BrowseSteam"/></Grid>
-            <Grid Grid.Row="2" Margin="0,0,0,16"><Grid.ColumnDefinitions><ColumnDefinition Width="95"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="SAM CLI" VerticalAlignment="Center"/><TextBox x:Name="SamPath" Grid.Column="1"/><Button Grid.Column="2" x:Name="BrowseSamButton" Content="Elegir .exe…" Click="BrowseSam"/><Button Grid.Column="3" x:Name="ValidateSamButton" Content="Validar" Click="ValidateSamClick"/></Grid>
-            <StackPanel Grid.Row="3"><TextBlock x:Name="SamInfo" Text="SAM sin validar" Foreground="{StaticResource Muted}" Margin="0,0,0,15"/><StackPanel Orientation="Horizontal" Margin="0,0,0,8"><Button x:Name="ScanButton" Content="▶  Escanear biblioteca" Style="{StaticResource AccentButton}" Click="ScanClick"/><Button x:Name="CancelScanButton" Content="Cancelar escaneo" Click="CancelScanClick" IsEnabled="False"/></StackPanel><ProgressBar x:Name="ScanProgress" Height="16" Minimum="0" Maximum="100" Value="0"/><TextBlock x:Name="ScanResult" Text="Listo para escanear" Foreground="{StaticResource Muted}" Margin="0,10,0,0" TextWrapping="Wrap"/></StackPanel>
-            <Border Grid.Row="4" CornerRadius="10" Background="{StaticResource Inset}" Padding="19" Margin="0,18,0,0"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel><TextBlock Text="Fuentes disponibles" FontWeight="SemiBold" FontSize="16" Margin="0,0,0,12"/><WrapPanel x:Name="ScanSourcesPanel"/><TextBlock Text="Estas opciones controlan qué historiales se importan al escanear. Desactivar un origen no borra lo ya importado. SteamIdra/LuaTools filtra los BIN por AppID con un LUA coincidente." TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,6,0,8"/>
-                <WrapPanel Margin="0,8,0,8"><Button x:Name="ImportGoldbergButton" Content="Importar Goldberg…" Click="ImportGoldbergClick"/></WrapPanel>
-                <TextBlock Text="Goldberg: %APPDATA%\Goldberg SteamEmu Saves o %APPDATA%\GSE Saves. También podés importar el archivo &lt;AppID&gt;/achievements.json de otra carpeta. ATR busca nombres automáticamente junto al historial o en el esquema de Steam. Si faltan, podés buscar la definición desde el plan." TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,6,0,0"/>
-                <TextBlock Text="Para probar sin emulación, importá muestras/Goldberg/480/achievements.json incluido en el ZIP. La muestra permite preparar planes y bloquea las acciones de Steam. Goldberg y Steam se muestran como historiales separados del mismo juego." TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,12,0,0"/>
-
-                <Button x:Name="ImportIniButton" Content="Importar CODEX/RUNE…" HorizontalAlignment="Left" Click="ImportIniClick"/>
-                <Button x:Name="ConnectEpicButton" Content="Conectar Epic…" Click="ConnectEpicClick" HorizontalAlignment="Left"/>
-                <TextBlock Text="Epic (perfil): iniciá sesión en la ventana de conexión; la autorización se completa automáticamente. También hay una alternativa con navegador externo. Consulta los logros disponibles del servicio y conserva únicamente juegos con desbloqueos, también sin fecha. Es independiente de PA y no modifica Epic. Ver EPIC.md." TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,6,0,10"/>
-                <Button x:Name="ConnectXboxButton" Content="Conectar Xbox…" Click="ConnectXboxClick" HorizontalAlignment="Left"/>
-                <TextBlock Text="Xbox Live (perfil): consulta directamente los juegos jugados y sus logros con tu cuenta Microsoft. Conectá la cuenta para incluirla en el próximo escaneo. Es independiente de PA y no modifica Xbox. No requiere configuración de desarrollo. Ver XBOX.md." TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,6,0,10"/>
-                <Button x:Name="ImportPAButton" Content="Importar PA…" Click="ImportPAClick" HorizontalAlignment="Left" Margin="3,12,3,2"/>
-                <TextBlock Text="PA (PlayniteAchievements): detecta la instalación habitual de Playnite o permite importar achievement_cache.db de una instalación portable. Conservá game_custom_data.db junto a la caché para leer el seguimiento manual. Cerrá Playnite antes de importar; no se modifican sus bases. Incluye Steam, Manual, Local, Xbox, Epic, GOG y PlayStation. Las plataformas externas requieren confirmar equivalencias con Steam antes de ejecutar." TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,6,0,10"/>
-                <TextBlock Text="MuestrasAAA incluye 20 muestras de logros para juegos AAA: 5 Goldberg, 5 GSE, 5 CODEX y 5 RUNE. Copiá las carpetas numéricas a cada ruta habitual o importá sus archivos manualmente. Las acciones de Steam están bloqueadas para las muestras." TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,8,0,0"/></StackPanel></ScrollViewer></Border>
-          </Grid>
-          <Grid x:Name="BibliotecaPanel" Visibility="Collapsed"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions><StackPanel><TextBlock Text="Biblioteca de historiales" FontSize="21" FontWeight="Bold"/><TextBlock x:Name="LibraryStamp" Text="El primer escaneo o importación guardará la biblioteca para el próximo inicio." Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap" Margin="0,5,0,0"/></StackPanel><WrapPanel Grid.Row="1" Margin="0,11,0,12"><TextBox x:Name="LibrarySearch" Width="280" HorizontalAlignment="Left" TextChanged="LibraryFilterChanged" ToolTip="Buscar por nombre o AppID"/><TextBlock x:Name="LibraryCount" Margin="10,0,8,0" VerticalAlignment="Center" Foreground="{StaticResource Accent}" Text="Mostrando 0 de 0"/><Button x:Name="RefreshLibraryButton" Content="Actualizar biblioteca" Click="ScanClick"/><Button x:Name="RemoveLibraryButton" Content="Quitar de biblioteca" Click="RemoveLibraryClick"/><StackPanel Orientation="Horizontal"><Button x:Name="ClearLibraryButton" Style="{StaticResource DangerButton}" Click="ClearLibraryClick" ToolTip="Borrar biblioteca" AutomationProperties.Name="Borrar biblioteca" Background="#922D3B" BorderBrush="#E85B6A" Width="38" Padding="9,7"><Path Stroke="White" StrokeThickness="1.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Data="M 1 4 L 17 4 M 6 4 L 6 1 L 12 1 L 12 4 M 3 4 L 4 19 L 14 19 L 15 4 M 7 7 L 7 16 M 11 7 L 11 16" Stretch="Uniform" Width="16" Height="19"/></Button><TextBlock Text="?" VerticalAlignment="Center" Margin="4,0,8,0" Cursor="Help" Foreground="{StaticResource Accent}" FontWeight="Bold" ToolTipService.ShowDuration="30000"><TextBlock.ToolTip><ToolTip MaxWidth="420"><TextBlock TextWrapping="Wrap" Text="Borra únicamente la biblioteca guardada de ATR y su copia de respaldo. No elimina archivos de logros, snapshots, planes guardados ni orígenes personalizados. Para volver a mostrar los juegos, realizá un nuevo escaneo o importalos manualmente."/></ToolTip></TextBlock.ToolTip></TextBlock></StackPanel></WrapPanel><StackPanel Grid.Row="2" Margin="0,0,0,8"><WrapPanel x:Name="LibraryOriginsPanel"/><TextBlock x:Name="LibraryEmptyMessage" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="3,5,0,2" Visibility="Collapsed"/></StackPanel><DataGrid Grid.Row="3" x:Name="GamesGrid" IsReadOnly="True" SelectionChanged="GameChanged" MouseDoubleClick="LibraryDoubleClick" AlternationCount="2"><DataGrid.Columns><DataGridTextColumn Header="Juego" Binding="{Binding GameName}" Width="*"/><DataGridTextColumn Header="ID del juego" Binding="{Binding DisplayGameId}" Width="105"/><DataGridTextColumn Header="Origen" Binding="{Binding Origin}" Width="230"/><DataGridTextColumn Header="Fuente" Binding="{Binding Source}" Width="300"><DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="ToolTip" Value="{Binding SourceDetails}"/><Setter Property="TextTrimming" Value="CharacterEllipsis"/></Style></DataGridTextColumn.ElementStyle></DataGridTextColumn><DataGridTextColumn Header="Logros" Binding="{Binding Count}" Width="100"/><DataGridTextColumn Header="Archivo" Binding="{Binding SourceStatus}" Width="165"/><DataGridTextColumn Header="Snapshot" Binding="{Binding Snapshot}" Width="100"/></DataGrid.Columns></DataGrid></Grid>
-          <Grid x:Name="PlanPanel" Visibility="Collapsed"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*" MinHeight="90"/><RowDefinition Height="8"/><RowDefinition Height="Auto" MinHeight="190"/></Grid.RowDefinitions>
-            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><Grid Margin="0,0,10,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-              <StackPanel VerticalAlignment="Center" Margin="0,0,14,0"><TextBlock Text="{Binding Text, ElementName=HeaderGame}" FontSize="21" FontWeight="Bold" TextTrimming="CharacterEllipsis"/>
-                <WrapPanel Margin="0,5,0,3"><TextBlock Text="Historial de origen " VerticalAlignment="Center"/><ComboBox x:Name="HistorySourceChoice" Width="340" SelectionChanged="HistorySourceChanged" Foreground="#102030" Background="#D9E8F0"/><Button x:Name="MapPlatformButton" Content="Preparar equivalencias con Steam…" Click="MapPlatformClick" Visibility="Collapsed"/></WrapPanel>
-                <StackPanel x:Name="DefinitionTools" Orientation="Horizontal" Visibility="Collapsed" Margin="0,5,0,5"><Button x:Name="FindDefinitionsButton" Content="Buscar archivo de definición…" Click="FindDefinitionsClick"/><TextBlock Text="?" VerticalAlignment="Center" Foreground="{StaticResource Accent}" FontWeight="Bold" Margin="5,0,8,0" Cursor="Help" ToolTipService.ShowDuration="30000"><TextBlock.ToolTip><ToolTip MaxWidth="420"><TextBlock TextWrapping="Wrap" Text="ATR busca nombres y descripciones automáticamente junto al historial y en el esquema local de Steam. Si faltan nombres, elegí steam_settings/achievements.json del mismo juego. Aunque se llama igual que el historial, este archivo contiene las definiciones, no los desbloqueos. Solo se completan nombres y descripciones: no cambia las fechas, el orden ni la selección. Podés continuar sin él; se mostrarán los IDs internos."/></ToolTip></TextBlock.ToolTip></TextBlock></StackPanel>
-                <TextBlock x:Name="HistorySelectionNotice" Visibility="Collapsed" FontSize="11" Foreground="{StaticResource Accent}" TextWrapping="Wrap" Margin="0,3,0,0"/>
-                <TextBlock x:Name="UnknownDatesNotice" Visibility="Collapsed" TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Accent}" Margin="0,4,0,0" ToolTip="Sin fecha conserva el estado desbloqueado. Los intervalos sugeridos pertenecen al nuevo plan, no al historial original. Podés editar Espera nueva, Momento nuevo o Duración automática."/>
-                <TextBlock x:Name="PlanHistoryPath" FontStyle="Italic" FontSize="11" Foreground="{StaticResource Muted}" TextTrimming="CharacterEllipsis" Margin="0,3,0,0" ToolTip="Abrir el Explorador y seleccionar este archivo" Cursor="Hand" MouseLeftButtonUp="OpenHistoryLocation"/>
-              </StackPanel>
-              <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center"><TextBlock Text="Origen " VerticalAlignment="Center" Margin="0,0,5,0" Foreground="{StaticResource Muted}"/><ComboBox x:Name="OriginChoice" SelectionChanged="OriginChanged" IsEditable="False" IsTextSearchEnabled="False" Width="245" Foreground="#102030" Background="#D9E8F0" VerticalContentAlignment="Center" Padding="7,4" SelectedIndex="0">
-                  <ComboBoxItem Content="Sin clasificar"/><ComboBoxItem Content="Steam"/><ComboBoxItem Content="SteamIdra/LuaTools"/><ComboBoxItem Content="PA"/><ComboBoxItem Content="Xbox Live"/><ComboBoxItem Content="Epic"/><ComboBoxItem Content="GOG"/><ComboBoxItem Content="PlayStation"/><ComboBoxItem Content="Goldberg"/><ComboBoxItem Content="GSE"/><ComboBoxItem Content="CODEX/RUNE compatible"/><ComboBoxItem Content="CODEX"/><ComboBoxItem Content="RUNE"/><ComboBoxItem Content="OnlineFix"/><ComboBoxItem Content="Otro"/>
-                </ComboBox></StackPanel>
-            </Grid><StackPanel Orientation="Horizontal" Grid.Column="1"><Button Content="Consultar Steam" Click="QuerySteamClick" x:Name="QueryButton"/><Button Content="Abrir en SAM" Click="OpenSamClick" x:Name="OpenSamButton"/></StackPanel></Grid>
-            <Grid Grid.Row="1"><Grid.ColumnDefinitions><ColumnDefinition Width="*" MinWidth="320"/><ColumnDefinition Width="8"/><ColumnDefinition Width="285" MinWidth="180"/></Grid.ColumnDefinitions>
-              <DataGrid x:Name="AchievementsGrid" Grid.Column="0" SelectionChanged="AchievementChanged" CellEditEnding="AchievementCellEditEnding" PreviewMouseLeftButtonDown="AchievementMouseDown" PreviewMouseMove="AchievementMouseMove" DragOver="AchievementDragOver" Drop="AchievementDrop" AllowDrop="True" AlternationCount="2" IsReadOnly="False"><DataGrid.Columns>
-                <DataGridTemplateColumn Header="✓" Width="38" IsReadOnly="True"><DataGridTemplateColumn.CellTemplate><DataTemplate>
-                  <CheckBox IsChecked="{Binding Included, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Center" ToolTip="Incluir este logro en el plan">
-                    <CheckBox.Style><Style TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}"><Style.Triggers>
-                      <DataTrigger Binding="{Binding IsReadOnly, RelativeSource={RelativeSource AncestorType=DataGrid}}" Value="True"><Setter Property="IsEnabled" Value="False"/></DataTrigger>
-                    </Style.Triggers></Style></CheckBox.Style>
-                  </CheckBox>
-                </DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
-                <DataGridTextColumn Header="#" Binding="{Binding Order}" Width="38" IsReadOnly="True"/>
-                <DataGridTextColumn Header="Logro" Binding="{Binding DisplayName}" Width="220" IsReadOnly="True"/>
-                <DataGridTextColumn Header="Descripción" Binding="{Binding Description}" Width="255" IsReadOnly="True"/>
-                <DataGridTextColumn Header="Fecha original" Binding="{Binding OriginalDate}" Width="135" IsReadOnly="True"/>
-                <DataGridTextColumn Header="Espera original" Binding="{Binding OriginalGap}" Width="115" IsReadOnly="True"/>
-                <DataGridTextColumn Header="Espera nueva ✎" Binding="{Binding NewGap, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" Width="110"/>
-                <DataGridTextColumn Header="Momento nuevo ✎" Binding="{Binding TargetOffset, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" Width="125"/>
-                <DataGridTextColumn Header="Hora estimada" Binding="{Binding TargetTime}" Width="110" IsReadOnly="True"/>
-                <DataGridTextColumn Header="Steam" Binding="{Binding SteamState}" Width="145" IsReadOnly="True"/>
-              </DataGrid.Columns></DataGrid>
-              <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="#36576A" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" ToolTip="Arrastrá para ajustar el ancho de la tabla y los detalles"/>
-              <Border Grid.Column="2" CornerRadius="10" Background="#20364B" Margin="10,0,0,0" Padding="15"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel><TextBlock Text="Detalles del logro" FontWeight="Bold" FontSize="17"/><TextBlock x:Name="DetailTitle" FontWeight="SemiBold" FontSize="14" Margin="0,20,0,9" TextWrapping="Wrap"/><TextBlock x:Name="DetailDescription" TextWrapping="Wrap" Foreground="#DCEAF4"/><TextBlock x:Name="DetailTime" Margin="0,15,0,0" TextWrapping="Wrap"/><TextBlock x:Name="DetailSource" Margin="0,8,0,0" Text="Fuente: —" TextWrapping="Wrap"/><TextBlock x:Name="DetailSteam" Margin="0,8,0,0" Text="Steam: —" TextWrapping="Wrap"/><TextBlock x:Name="DetailOrder" Margin="0,8,0,0" Text="Orden: —" TextWrapping="Wrap"/></StackPanel></ScrollViewer></Border>
-            </Grid>
-            <GridSplitter Grid.Row="2" Height="6" HorizontalAlignment="Stretch" VerticalAlignment="Center" Background="#36576A" ResizeDirection="Rows" ResizeBehavior="PreviousAndNext" ToolTip="Arrastrá para ajustar la altura de la tabla"/>
-            <Border Grid.Row="3" Background="{StaticResource Inset}" CornerRadius="10" Padding="12"><ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="320"><StackPanel>
-              <TextBlock x:Name="EditingStatus" TextWrapping="Wrap" Foreground="{StaticResource Accent}" Margin="0,0,0,6"/>
-              <TextBlock x:Name="OriginStatus" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="3,0,0,6"/>
-              <WrapPanel><Button x:Name="SavePlanButton" Content="Guardar plan" Click="SavePlanClick"/><Button x:Name="LoadPlanButton" Content="Cargar guardado" Click="LoadPlanClick"/><Button x:Name="RestoreOriginalButton" Content="Restaurar original" Click="RestoreOriginalClick"/></WrapPanel>
-              <TextBlock x:Name="PlanSaveStatus" Text="Sin plan guardado en disco." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="3,4,0,6"/>
-              <WrapPanel Margin="0,0,0,8"><CheckBox x:Name="CustomOrder" Content="Orden personalizado" Checked="CustomOrderChanged" Unchecked="CustomOrderChanged"/><Button x:Name="UpButton" Content="↑ Subir" Click="MoveUp"/><Button x:Name="DownButton" Content="↓ Bajar" Click="MoveDown"/><Button x:Name="RestoreOrderButton" Content="Restaurar orden" Click="RestoreOrder"/><Button x:Name="ClearTimingsButton" Content="Limpiar tiempos manuales" Click="ClearTimings"/></WrapPanel>
-              <WrapPanel Margin="0,0,0,7"><TextBlock Text="Duración automática  " VerticalAlignment="Center"/><TextBox x:Name="DurationHours" Width="64" TextChanged="DurationChanged" Text="0"/><TextBlock Text="h" VerticalAlignment="Center" Margin="3,0,9,0"/><TextBox x:Name="DurationMinutes" Width="48" TextChanged="DurationChanged" Text="0"/><TextBlock Text="m" VerticalAlignment="Center" Margin="3,0,9,0"/><TextBox x:Name="DurationSeconds" Width="48" TextChanged="DurationChanged" Text="0"/><TextBlock Text="s" VerticalAlignment="Center" Margin="3,0,16,0"/><TextBlock x:Name="OriginalDuration" Foreground="{StaticResource Muted}" VerticalAlignment="Center"/><TextBlock x:Name="EffectiveDuration" Foreground="{StaticResource Accent}" VerticalAlignment="Center" Margin="16,0,0,0"/></WrapPanel>
-              <WrapPanel Margin="0,0,0,7">
-                <CheckBox x:Name="LimitLongGaps" Content="Limitar esperas automáticas largas" Checked="GapLimitChanged" Unchecked="GapLimitChanged"/>
-                <TextBlock Text="Máximo por espera (min)" VerticalAlignment="Center" Margin="8,0,4,0"/>
-                <TextBox x:Name="MaxGapMinutes" Text="30" Width="65" TextChanged="DurationChanged"/>
-                <TextBlock Text=" ? " Foreground="{StaticResource Accent}" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" Focusable="True" ToolTipService.ShowDuration="30000" AutomationProperties.Name="Información sobre el límite de esperas">
-                  <TextBlock.ToolTip><ToolTip><TextBlock Width="360" TextWrapping="Wrap" Foreground="#102030" Text="Las fechas de los logros incluyen pausas entre sesiones y no indican horas jugadas. Esta opción limita cada espera automática después del escalado, incluso entre días distintos. No altera el historial original ni los tiempos manuales. No representa tiempo real jugado ni reconstruye sesiones reales o fechas pasadas en Steam. Desactivala si querés conservar las esperas completas."/></ToolTip></TextBlock.ToolTip>
-                </TextBlock>
-              </WrapPanel>
-              <TextBlock x:Name="GapLimitValidation" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="4,0,0,7"/>
-              <WrapPanel><TextBlock x:Name="SelectedCount" Text="Seleccionados: —" VerticalAlignment="Center" Margin="0,0,15,0"/><TextBlock Text="Espera inicial (s)" VerticalAlignment="Center"/><TextBox x:Name="InitialDelay" Width="55" Text="10" TextChanged="DurationChanged"/><TextBlock Text=" ? " Foreground="{StaticResource Accent}" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" Focusable="True" ToolTipService.ShowDuration="30000"><TextBlock.ToolTip><ToolTip><TextBlock Width="360" Foreground="#102030" TextWrapping="Wrap" Text="Segundos de espera antes del primer desbloqueo. Se añade al plan, no es la espera entre logros. El valor se limita entre 0 y 3600 segundos; un valor inválido usa 10 segundos."/></ToolTip></TextBlock.ToolTip></TextBlock><CheckBox x:Name="LockFirst" Content="Modo reparación: bloquear antes"/><TextBlock Text=" ? " Foreground="{StaticResource Accent}" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" Focusable="True" ToolTipService.ShowDuration="30000"><TextBlock.ToolTip><ToolTip><TextBlock Width="360" Foreground="#102030" TextWrapping="Wrap" Text="Modo reparación: bloquea primero los logros seleccionados y luego los vuelve a desbloquear. Puede cambiar su fecha oficial. Dejalo desactivado para conservar los ya obtenidos. Consultar Steam siempre desmarca los ya desbloqueados; para repararlos tendrías que volver a seleccionarlos explícitamente."/></ToolTip></TextBlock.ToolTip></TextBlock><CheckBox x:Name="IdleDuringMigration" IsChecked="True" Content="Registrar tiempo de juego (SAM idle)"/><TextBlock Text=" ? " Foreground="{StaticResource Accent}" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" Focusable="True" ToolTipService.ShowDuration="30000"><TextBlock.ToolTip><ToolTip><TextBlock Width="360" Foreground="#102030" TextWrapping="Wrap" Text="Mantiene el juego activo mediante SAM idle mientras dura la migración e intenta que Steam registre ese tiempo. No es gameplay real ni modifica horas históricas. Steam puede contabilizarlo de forma distinta. Se detiene al terminar o cancelar."/></ToolTip></TextBlock.ToolTip></TextBlock></WrapPanel>
-            </StackPanel></ScrollViewer></Border>
-          </Grid>
-          <Grid x:Name="ExecutionPanel" Visibility="Collapsed"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-            <TextBlock Text="Ejecución de la migración" FontWeight="Bold" FontSize="21"/>
-            <StackPanel Grid.Row="1" Margin="0,18,0,18"><TextBlock x:Name="ExecutionGame" Text="No hay ningún plan preparado" FontWeight="SemiBold" FontSize="18"/><TextBlock x:Name="ExecutionSummary" Margin="0,8,0,0" Foreground="{StaticResource Muted}" TextWrapping="Wrap"/></StackPanel>
-            <StackPanel Grid.Row="2"><ProgressBar x:Name="ReplayProgress" Value="0" Maximum="1" Height="19"/><TextBlock x:Name="ReplayProgressText" Text="0 / 0 logros" Foreground="{StaticResource Accent}" Margin="0,12,0,0"/><TextBlock x:Name="ReplayStatus" Text="Listo" Foreground="{StaticResource Muted}" Margin="0,6,0,0"/></StackPanel>
-            <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,22,0,15"><Button x:Name="StartButton" Content="▶  Iniciar migración" Style="{StaticResource AccentButton}" Click="StartReplayClick"/><Button x:Name="ResumeMigrationButton" Content="Reanudar última migración…" Click="ResumeMigrationClick"/><Button x:Name="CancelReplayButton" Content="Cancelar migración" Click="CancelReplayClick" IsEnabled="False"/></StackPanel>
-            <Border Grid.Row="4" Background="{StaticResource Inset}" Padding="16" CornerRadius="9"><DockPanel>
-              <StackPanel DockPanel.Dock="Top"><TextBlock x:Name="ReportTitle" Text="Informe de migración" FontWeight="SemiBold"/><TextBlock x:Name="ReportSummary" Text="Antes de ejecutar se consultará Steam y se mostrará un resumen. El plan y el avance se guardan para poder reanudar. La cancelación no revierte los logros ya aplicados." Foreground="{StaticResource Muted}" Margin="0,9,0,10" TextWrapping="Wrap"/><Button x:Name="CopyReportButton" Content="Copiar informe" Click="CopyMigrationReport" HorizontalAlignment="Left" IsEnabled="False"/></StackPanel>
-              <DataGrid x:Name="MigrationResults" IsReadOnly="True" CanUserAddRows="False" AutoGenerateColumns="False"><DataGrid.Columns><DataGridTextColumn Header="Logro" Binding="{Binding Name}" Width="*"/><DataGridTextColumn Header="Código Steam" Binding="{Binding ApiId}" Width="180"/><DataGridTextColumn Header="Resultado" Binding="{Binding Status}" Width="175"/><DataGridTextColumn Header="Detalle" Binding="{Binding Detail}" Width="2*"/></DataGrid.Columns></DataGrid>
-            </DockPanel></Border>
-          </Grid>
-          <Grid x:Name="LogsPanel" Visibility="Collapsed"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions><DockPanel><TextBlock Text="Logs técnicos" FontWeight="Bold" FontSize="21"/><Button DockPanel.Dock="Right" Content="Copiar logs" Click="CopyLogs"/></DockPanel><TextBox x:Name="LogBox" Grid.Row="1" FontFamily="Consolas" FontSize="12" Background="#0B1927" Foreground="#D3EDF4" BorderBrush="#3A6073" IsReadOnly="True" AcceptsReturn="True" TextWrapping="NoWrap" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"/></Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <StackPanel VerticalAlignment="Center">
+            <TextBlock Text="Achievement Timeline Replay" FontSize="26" FontWeight="Bold" />
+            <TextBlock Text="Detectar historial  →  preparar timeline  →  ejecutar migración  →  consultar logs" Foreground="{StaticResource Muted}" Margin="0,7,0,0" />
+          </StackPanel>
+          <StackPanel Grid.Column="1" VerticalAlignment="Center">
+            <TextBlock x:Name="HeaderGame" Text="Sin juego seleccionado" FontWeight="SemiBold" FontSize="14" TextAlignment="Right" />
+            <TextBlock x:Name="HeaderGameInfo" Text="Escaneá para comenzar" Foreground="{StaticResource Accent}" TextAlignment="Right" FontSize="12" Margin="0,6,0,0" />
+          </StackPanel>
         </Grid>
       </Border>
-      <Border Grid.Row="2" Background="{StaticResource Panel}" CornerRadius="10" Margin="0,9,0,0" Padding="15,9"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock x:Name="GlobalStatus" VerticalAlignment="Center" Text="Listo. Escaneá tu biblioteca para comenzar." Foreground="{StaticResource Muted}" TextTrimming="CharacterEllipsis"/><TextBlock Grid.Column="1" Text="v0.15.0  ·  Motor v0.5.3" Foreground="{StaticResource Accent}" VerticalAlignment="Center"/></Grid></Border>
+      <Border x:Name="ConnectionNotice" Grid.Row="1" Visibility="Collapsed" Background="#493A24" CornerRadius="7" Padding="12,9" Margin="0,0,0,10">
+        <TextBlock x:Name="SourceConnectionNotice" TextWrapping="Wrap" Foreground="#FFE0A0" />
+      </Border>
+      <Border Grid.Row="2" Background="{StaticResource Panel}" CornerRadius="12" Padding="14">
+        <Grid>
+          <Grid x:Name="EscaneoPanel">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <StackPanel Margin="0,0,0,16">
+              <TextBlock Text="Escaneo de historiales" FontWeight="Bold" FontSize="21" />
+            </StackPanel>
+            <Grid Grid.Row="1" Margin="0,0,0,10">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="95" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Text="Steam" VerticalAlignment="Center" />
+              <TextBox Grid.Column="1" x:Name="SteamPath" Style="{StaticResource CompactTextBox}" />
+              <Button Grid.Column="2" x:Name="BrowseSteamButton" Content="Elegir carpeta…" Click="BrowseSteam" Height="34" VerticalAlignment="Center" Padding="12,5" />
+            </Grid>
+            <Grid Grid.Row="2" Margin="0,0,0,16">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="95" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Text="SAM CLI" VerticalAlignment="Center" />
+              <TextBox x:Name="SamPath" Grid.Column="1" Style="{StaticResource CompactTextBox}" />
+              <Button Grid.Column="2" x:Name="BrowseSamButton" Content="Elegir .exe…" Click="BrowseSam" Height="34" VerticalAlignment="Center" Padding="12,5" />
+              <Button Grid.Column="3" x:Name="ValidateSamButton" Content="Validar" Click="ValidateSamClick" Height="34" VerticalAlignment="Center" Padding="12,5" />
+            </Grid>
+            <StackPanel Grid.Row="3">
+              <TextBlock x:Name="SamInfo" Text="SAM sin validar" Foreground="{StaticResource Muted}" Margin="0,0,0,15" />
+              <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                <Button x:Name="ScanButton" Content="▶  Escanear biblioteca" Style="{StaticResource AccentButton}" Click="ScanClick" Height="34" VerticalAlignment="Center" Padding="12,5" />
+                <Button x:Name="CancelScanButton" Content="Cancelar escaneo" Click="CancelScanClick" IsEnabled="False" Height="34" VerticalAlignment="Center" Padding="12,5" />
+              </StackPanel>
+              <ProgressBar x:Name="ScanProgress" Height="16" Minimum="0" Maximum="100" Value="0" />
+              <TextBlock x:Name="ScanResult" Text="Listo para escanear" Foreground="{StaticResource Muted}" Margin="0,10,0,0" TextWrapping="Wrap" Visibility="Collapsed" />
+              <TextBlock x:Name="ScanActivity" Visibility="Collapsed" Margin="0,8,0,0" Foreground="{StaticResource Muted}" TextWrapping="Wrap" />
+            </StackPanel>
+            <Border Grid.Row="4" CornerRadius="10" Background="{StaticResource Inset}" Padding="19" Margin="0,18,0,0">
+              <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <Grid>
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="24" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <StackPanel>
+                    <TextBlock Text="Fuentes disponibles" FontWeight="SemiBold" FontSize="16" Margin="0,0,0,12" />
+                    <StackPanel x:Name="ScanSourcesPanel" />
+                  </StackPanel>
+                  <StackPanel Grid.Column="2" HorizontalAlignment="Left">
+                    <TextBlock Text="Importar y conectar" FontWeight="SemiBold" FontSize="16" Margin="0,0,0,12" />
+                    <Button x:Name="ImportGoldbergButton" Content="Importar Goldberg…" Click="ImportGoldbergClick" Margin="0,3,0,7" Style="{StaticResource CompactButton}" />
+                    <Button x:Name="ImportIniButton" Content="Importar CODEX/RUNE…" HorizontalAlignment="Left" Click="ImportIniClick" Margin="0,3,0,7" Style="{StaticResource CompactButton}" />
+                    <Button x:Name="ImportPAButton" Content="Importar Playnite Achievements…" Click="ImportPAClick" HorizontalAlignment="Left" Margin="0,3,0,7" Style="{StaticResource CompactButton}" />
+                    <Button x:Name="ConnectEpicButton" Content="Conectar Epic…" Click="ConnectEpicClick" HorizontalAlignment="Left" Margin="0,3,0,7" Style="{StaticResource CompactButton}" />
+                    <Button x:Name="ConnectXboxButton" Content="Conectar Xbox…" Click="ConnectXboxClick" HorizontalAlignment="Left" Margin="0,3,0,7" Style="{StaticResource CompactButton}" />
+                  </StackPanel>
+                </Grid>
+              </ScrollViewer>
+            </Border>
+          </Grid>
+          <Grid x:Name="BibliotecaPanel" Visibility="Collapsed">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <StackPanel>
+              <TextBlock Text="Biblioteca de historiales" FontSize="21" FontWeight="Bold" />
+              <TextBlock x:Name="LibraryStamp" Text="El primer escaneo o importación guardará la biblioteca para el próximo inicio." Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap" Margin="0,5,0,0" />
+            </StackPanel>
+            <WrapPanel Grid.Row="1" Margin="0,11,0,12">
+              <TextBox x:Name="LibrarySearch" Width="280" HorizontalAlignment="Left" TextChanged="LibraryFilterChanged" ToolTip="Buscar por nombre o AppID" />
+              <TextBlock x:Name="LibraryCount" Margin="10,0,8,0" VerticalAlignment="Center" Foreground="{StaticResource Accent}" Text="Mostrando 0 de 0" />
+              <Button x:Name="RefreshLibraryButton" Content="Actualizar biblioteca" Click="ScanClick" />
+              <Button x:Name="RemoveLibraryButton" Content="Quitar de biblioteca" Click="RemoveLibraryClick" />
+              <StackPanel Orientation="Horizontal">
+                <Button x:Name="ClearLibraryButton" Style="{StaticResource DangerButton}" Click="ClearLibraryClick" ToolTip="Borrar biblioteca" AutomationProperties.Name="Borrar biblioteca" Background="#922D3B" BorderBrush="#E85B6A" Width="38" Padding="9,7">
+                  <Path Stroke="White" StrokeThickness="1.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Data="M 1 4 L 17 4 M 6 4 L 6 1 L 12 1 L 12 4 M 3 4 L 4 19 L 14 19 L 15 4 M 7 7 L 7 16 M 11 7 L 11 16" Stretch="Uniform" Width="16" Height="19" />
+                </Button>
+                <TextBlock Text="?" VerticalAlignment="Center" Margin="4,0,8,0" Cursor="Help" Foreground="{StaticResource Accent}" FontWeight="Bold" ToolTipService.ShowDuration="30000">
+                  <TextBlock.ToolTip>
+                    <ToolTip MaxWidth="420">
+                      <TextBlock TextWrapping="Wrap" Text="Borra únicamente la biblioteca guardada de ATR y su copia de respaldo. No elimina archivos de logros, snapshots, planes guardados ni orígenes personalizados. Para volver a mostrar los juegos, realizá un nuevo escaneo o importalos manualmente." />
+                    </ToolTip>
+                  </TextBlock.ToolTip>
+                </TextBlock>
+              </StackPanel>
+            </WrapPanel>
+            <StackPanel Grid.Row="2" Margin="0,0,0,8">
+              <WrapPanel x:Name="LibraryOriginsPanel" />
+              <TextBlock x:Name="LibraryEmptyMessage" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="3,5,0,2" Visibility="Collapsed" />
+            </StackPanel>
+            <DataGrid Grid.Row="3" x:Name="GamesGrid" IsReadOnly="True" SelectionChanged="GameChanged" MouseDoubleClick="LibraryDoubleClick" AlternationCount="2">
+              <DataGrid.Columns>
+                <DataGridTextColumn Header="Juego" Binding="{Binding GameName}" Width="*" />
+                <DataGridTextColumn Header="ID del juego" Binding="{Binding DisplayGameId}" Width="105" />
+                <DataGridTextColumn Header="Origen" Binding="{Binding Origin}" Width="230" />
+                <DataGridTextColumn Header="Fuente" Binding="{Binding Source}" Width="300">
+                  <DataGridTextColumn.ElementStyle>
+                    <Style TargetType="TextBlock">
+                      <Setter Property="ToolTip" Value="{Binding SourceDetails}" />
+                      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                    </Style>
+                  </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn Header="Logros" Binding="{Binding Count}" Width="100" />
+                <DataGridTextColumn Header="Archivo" Binding="{Binding SourceStatus}" Width="165" />
+                <DataGridTextColumn Header="Snapshot" Binding="{Binding Snapshot}" Width="100" />
+              </DataGrid.Columns>
+            </DataGrid>
+          </Grid>
+          <Grid x:Name="PlanPanel" Visibility="Collapsed">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="*" MinHeight="90" />
+              <RowDefinition Height="8" />
+              <RowDefinition Height="Auto" MinHeight="190" />
+            </Grid.RowDefinitions>
+            <Grid Margin="0,0,0,0">
+              <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+              </Grid.RowDefinitions>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Text="{Binding Text, ElementName=HeaderGame}" FontSize="21" FontWeight="Bold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="0,0,12,0" />
+              <WrapPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right">
+                <TextBlock Text="Origen" VerticalAlignment="Center" Margin="0,0,5,0" Foreground="{StaticResource Muted}" />
+                <ComboBox x:Name="OriginChoice" SelectionChanged="OriginChanged" IsEditable="False" IsTextSearchEnabled="False" Width="245" Foreground="#102030" Background="#D9E8F0" VerticalContentAlignment="Center" Padding="7,4" SelectedIndex="0" Height="34" VerticalAlignment="Center">
+                  <ComboBoxItem Content="Sin clasificar" />
+                  <ComboBoxItem Content="Steam" />
+                  <ComboBoxItem Content="SteamIdra/LuaTools" />
+                  <ComboBoxItem Content="Playnite Achievements" />
+                  <ComboBoxItem Content="Xbox Live" />
+                  <ComboBoxItem Content="Epic" />
+                  <ComboBoxItem Content="GOG" />
+                  <ComboBoxItem Content="PlayStation" />
+                  <ComboBoxItem Content="Goldberg" />
+                  <ComboBoxItem Content="GSE" />
+                  <ComboBoxItem Content="CODEX/RUNE compatible" />
+                  <ComboBoxItem Content="CODEX" />
+                  <ComboBoxItem Content="RUNE" />
+                  <ComboBoxItem Content="OnlineFix" />
+                  <ComboBoxItem Content="Otro" />
+                </ComboBox>
+                <Button Content="Consultar estado en Steam" Click="QuerySteamClick" x:Name="QueryButton" Style="{StaticResource CompactButton}" />
+                <Button Content="Abrir en SAM" Click="OpenSamClick" x:Name="OpenSamButton" Style="{StaticResource CompactButton}" />
+              </WrapPanel>
+              <WrapPanel Grid.Row="1" Grid.ColumnSpan="2" Margin="0,7,0,0" VerticalAlignment="Center">
+                <TextBlock Text="Historial de origen" VerticalAlignment="Center" Margin="0,0,8,0" />
+                <ComboBox x:Name="HistorySourceChoice" Width="340" SelectionChanged="HistorySourceChanged" Foreground="#102030" Background="#D9E8F0" Height="34" VerticalAlignment="Center" Padding="7,4" />
+                <Button x:Name="MapPlatformButton" Content="Preparar equivalencias con Steam…" Click="MapPlatformClick" Visibility="Collapsed" Style="{StaticResource CompactButton}" />
+              </WrapPanel>
+              <StackPanel Grid.Row="2" Grid.ColumnSpan="2">
+                <StackPanel x:Name="DefinitionTools" Orientation="Horizontal" Visibility="Collapsed" Margin="0,5,0,5">
+                  <Button x:Name="FindDefinitionsButton" Content="Buscar archivo de definición…" Click="FindDefinitionsClick" />
+                  <TextBlock Text="?" VerticalAlignment="Center" Foreground="{StaticResource Accent}" FontWeight="Bold" Margin="5,0,8,0" Cursor="Help" ToolTipService.ShowDuration="30000">
+                    <TextBlock.ToolTip>
+                      <ToolTip MaxWidth="420">
+                        <TextBlock TextWrapping="Wrap" Text="ATR busca nombres y descripciones automáticamente junto al historial y en el esquema local de Steam. Si faltan nombres, elegí steam_settings/achievements.json del mismo juego. Aunque se llama igual que el historial, este archivo contiene las definiciones, no los desbloqueos. Solo se completan nombres y descripciones: no cambia las fechas, el orden ni la selección. Podés continuar sin él; se mostrarán los IDs internos." />
+                      </ToolTip>
+                    </TextBlock.ToolTip>
+                  </TextBlock>
+                </StackPanel>
+                <TextBlock x:Name="HistorySelectionNotice" Visibility="Collapsed" FontSize="11" Foreground="{StaticResource Accent}" TextWrapping="Wrap" Margin="0,3,0,0" />
+                <TextBlock x:Name="UnknownDatesNotice" Visibility="Collapsed" TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Accent}" Margin="0,4,0,0" ToolTip="Sin fecha conserva el estado desbloqueado. Los intervalos sugeridos pertenecen al nuevo plan, no al historial original. Podés editar Espera nueva, Momento nuevo o Duración automática." />
+                <TextBlock x:Name="PlanHistoryPath" FontStyle="Italic" FontSize="11" Foreground="{StaticResource Muted}" TextTrimming="CharacterEllipsis" Margin="0,8,0,14" ToolTip="Abrir el Explorador y seleccionar este archivo" Cursor="Hand" MouseLeftButtonUp="OpenHistoryLocation" />
+              </StackPanel>
+            </Grid>
+            <Grid Grid.Row="1">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" MinWidth="320" />
+                <ColumnDefinition Width="8" />
+                <ColumnDefinition Width="285" MinWidth="180" />
+              </Grid.ColumnDefinitions>
+              <DataGrid x:Name="AchievementsGrid" Grid.Column="0" SelectionChanged="AchievementChanged" CellEditEnding="AchievementCellEditEnding" PreviewMouseLeftButtonDown="AchievementMouseDown" PreviewMouseMove="AchievementMouseMove" DragOver="AchievementDragOver" Drop="AchievementDrop" AllowDrop="True" AlternationCount="2" IsReadOnly="False">
+                <DataGrid.Columns>
+                  <DataGridTemplateColumn Header="✓" Width="38" IsReadOnly="True">
+                    <DataGridTemplateColumn.CellTemplate>
+                      <DataTemplate>
+                        <CheckBox IsChecked="{Binding Included, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Center" ToolTip="Incluir este logro en el plan">
+                          <CheckBox.Style>
+                            <Style TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
+                              <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsReadOnly, RelativeSource={RelativeSource AncestorType=DataGrid}}" Value="True">
+                                  <Setter Property="IsEnabled" Value="False" />
+                                </DataTrigger>
+                              </Style.Triggers>
+                            </Style>
+                          </CheckBox.Style>
+                        </CheckBox>
+                      </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                  </DataGridTemplateColumn>
+                  <DataGridTextColumn Header="#" Binding="{Binding Order}" Width="38" IsReadOnly="True" />
+                  <DataGridTextColumn Header="Logro" Binding="{Binding DisplayName}" Width="220" IsReadOnly="True" />
+                  <DataGridTextColumn Header="Descripción" Binding="{Binding Description}" Width="255" IsReadOnly="True" />
+                  <DataGridTextColumn Header="Fecha original" Binding="{Binding OriginalDate}" Width="135" IsReadOnly="True" />
+                  <DataGridTextColumn Header="Espera original" Binding="{Binding OriginalGap}" Width="115" IsReadOnly="True" />
+                  <DataGridTextColumn Header="Espera nueva ✎" Binding="{Binding NewGap, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" Width="110" />
+                  <DataGridTextColumn Header="Momento nuevo ✎" Binding="{Binding TargetOffset, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" Width="125" />
+                  <DataGridTextColumn Header="Hora estimada" Binding="{Binding TargetTime}" Width="110" IsReadOnly="True" />
+                  <DataGridTextColumn Header="Estado en Steam" Binding="{Binding SteamState}" Width="145" IsReadOnly="True" />
+                </DataGrid.Columns>
+              </DataGrid>
+              <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="#36576A" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" ToolTip="Arrastrá para ajustar el ancho de la tabla y los detalles" />
+              <Border Grid.Column="2" CornerRadius="10" Background="#20364B" Margin="10,0,0,0" Padding="15">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                  <StackPanel>
+                    <TextBlock Text="Detalles del logro" FontWeight="Bold" FontSize="17" />
+                    <TextBlock x:Name="DetailTitle" FontWeight="SemiBold" FontSize="14" Margin="0,20,0,9" TextWrapping="Wrap" />
+                    <TextBlock x:Name="DetailDescription" TextWrapping="Wrap" Foreground="#DCEAF4" />
+                    <TextBlock x:Name="DetailTime" Margin="0,15,0,0" TextWrapping="Wrap" />
+                    <TextBlock x:Name="DetailSource" Margin="0,8,0,0" Text="Fuente: —" TextWrapping="Wrap" />
+                    <TextBlock x:Name="DetailSteam" Margin="0,8,0,0" Text="Steam: —" TextWrapping="Wrap" />
+                    <TextBlock x:Name="DetailOrder" Margin="0,8,0,0" Text="Orden: —" TextWrapping="Wrap" />
+                  </StackPanel>
+                </ScrollViewer>
+              </Border>
+            </Grid>
+            <GridSplitter Grid.Row="2" Height="6" HorizontalAlignment="Stretch" VerticalAlignment="Center" Background="#36576A" ResizeDirection="Rows" ResizeBehavior="PreviousAndNext" ToolTip="Arrastrá para ajustar la altura de la tabla" />
+            <Border Grid.Row="3" Background="{StaticResource Inset}" CornerRadius="10" Padding="12">
+              <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="320">
+                <Grid>
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="24" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <StackPanel>
+                    <TextBlock x:Name="EditingStatus" TextWrapping="Wrap" Foreground="{StaticResource Accent}" Margin="0,0,0,6" />
+                    <TextBlock x:Name="OriginStatus" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="3,0,0,6" />
+                    <WrapPanel>
+                      <Button x:Name="SavePlanButton" Content="Guardar plan" Click="SavePlanClick" />
+                      <Button x:Name="LoadPlanButton" Content="Cargar guardado" Click="LoadPlanClick" />
+                      <Button x:Name="RestoreOriginalButton" Content="Restaurar original" Click="RestoreOriginalClick" />
+                    </WrapPanel>
+                    <TextBlock x:Name="PlanSaveStatus" Text="Sin plan guardado en disco." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="3,4,0,6" />
+                    <WrapPanel Margin="0,0,0,8">
+                      <CheckBox x:Name="CustomOrder" Content="Orden personalizado" Checked="CustomOrderChanged" Unchecked="CustomOrderChanged" />
+                      <Button x:Name="UpButton" Content="↑ Subir" Click="MoveUp" />
+                      <Button x:Name="DownButton" Content="↓ Bajar" Click="MoveDown" />
+                      <Button x:Name="RestoreOrderButton" Content="Restaurar orden" Click="RestoreOrder" />
+                      <Button x:Name="ClearTimingsButton" Content="Limpiar tiempos manuales" Click="ClearTimings" />
+                    </WrapPanel>
+                    <TextBlock x:Name="SelectedCount" Text="Seleccionados: —" VerticalAlignment="Center" Margin="3,8,0,0" />
+                  </StackPanel>
+                  <StackPanel Grid.Column="2">
+                    <WrapPanel Margin="0,0,0,7">
+                      <TextBlock Text="Duración automática  " VerticalAlignment="Center" />
+                      <TextBox x:Name="DurationHours" Width="64" TextChanged="DurationChanged" Text="0" />
+                      <TextBlock Text="h" VerticalAlignment="Center" Margin="3,0,9,0" />
+                      <TextBox x:Name="DurationMinutes" Width="48" TextChanged="DurationChanged" Text="0" />
+                      <TextBlock Text="m" VerticalAlignment="Center" Margin="3,0,9,0" />
+                      <TextBox x:Name="DurationSeconds" Width="48" TextChanged="DurationChanged" Text="0" />
+                      <TextBlock Text="s" VerticalAlignment="Center" Margin="3,0,16,0" />
+                      <TextBlock x:Name="OriginalDuration" Foreground="{StaticResource Muted}" VerticalAlignment="Center" />
+                      <TextBlock x:Name="EffectiveDuration" Foreground="{StaticResource Accent}" VerticalAlignment="Center" Margin="16,0,0,0" />
+                    </WrapPanel>
+                    <WrapPanel Margin="0,0,0,7">
+                      <CheckBox x:Name="LimitLongGaps" Content="Limitar esperas automáticas largas" Checked="GapLimitChanged" Unchecked="GapLimitChanged" />
+                      <TextBlock Text="Máximo por espera (min)" VerticalAlignment="Center" Margin="8,0,4,0" />
+                      <TextBox x:Name="MaxGapMinutes" Text="30" Width="65" TextChanged="DurationChanged" />
+                      <TextBlock Text=" ? " Foreground="{StaticResource Accent}" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" Focusable="True" ToolTipService.ShowDuration="30000" AutomationProperties.Name="Información sobre el límite de esperas">
+                        <TextBlock.ToolTip>
+                          <ToolTip>
+                            <TextBlock Width="360" TextWrapping="Wrap" Foreground="#102030" Text="Las fechas de los logros incluyen pausas entre sesiones y no indican horas jugadas. Esta opción limita cada espera automática después del escalado, incluso entre días distintos. No altera el historial original ni los tiempos manuales. No representa tiempo real jugado ni reconstruye sesiones reales o fechas pasadas en Steam. Desactivala si querés conservar las esperas completas." />
+                          </ToolTip>
+                        </TextBlock.ToolTip>
+                      </TextBlock>
+                    </WrapPanel>
+                    <TextBlock x:Name="GapLimitValidation" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="4,0,0,7" />
+                    <WrapPanel>
+                      <TextBlock Text="Espera inicial (s)" VerticalAlignment="Center" />
+                      <TextBox x:Name="InitialDelay" Width="55" Text="10" TextChanged="DurationChanged" />
+                      <TextBlock Text=" ? " Foreground="{StaticResource Accent}" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" Focusable="True" ToolTipService.ShowDuration="30000">
+                        <TextBlock.ToolTip>
+                          <ToolTip>
+                            <TextBlock Width="360" Foreground="#102030" TextWrapping="Wrap" Text="Segundos de espera antes del primer desbloqueo. Se añade al plan, no es la espera entre logros. El valor se limita entre 0 y 3600 segundos; un valor inválido usa 10 segundos." />
+                          </ToolTip>
+                        </TextBlock.ToolTip>
+                      </TextBlock>
+                      <CheckBox x:Name="LockFirst" Content="Modo reparación: bloquear antes" />
+                      <TextBlock Text=" ? " Foreground="{StaticResource Accent}" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" Focusable="True" ToolTipService.ShowDuration="30000">
+                        <TextBlock.ToolTip>
+                          <ToolTip>
+                            <TextBlock Width="360" Foreground="#102030" TextWrapping="Wrap" Text="Modo reparación: bloquea primero los logros seleccionados y luego los vuelve a desbloquear. Puede cambiar su fecha oficial. Dejalo desactivado para conservar los ya obtenidos. Consultar Steam siempre desmarca los ya desbloqueados; para repararlos tendrías que volver a seleccionarlos explícitamente." />
+                          </ToolTip>
+                        </TextBlock.ToolTip>
+                      </TextBlock>
+                      <CheckBox x:Name="IdleDuringMigration" IsChecked="True" Content="Registrar tiempo de juego (SAM idle)" />
+                      <TextBlock Text=" ? " Foreground="{StaticResource Accent}" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" Focusable="True" ToolTipService.ShowDuration="30000">
+                        <TextBlock.ToolTip>
+                          <ToolTip>
+                            <TextBlock Width="360" Foreground="#102030" TextWrapping="Wrap" Text="Mantiene el juego activo mediante SAM idle mientras dura la migración e intenta que Steam registre ese tiempo. No es gameplay real ni modifica horas históricas. Steam puede contabilizarlo de forma distinta. Se detiene al terminar o cancelar." />
+                          </ToolTip>
+                        </TextBlock.ToolTip>
+                      </TextBlock>
+                    </WrapPanel>
+                  </StackPanel>
+                </Grid>
+              </ScrollViewer>
+            </Border>
+          </Grid>
+          <Grid x:Name="ExecutionPanel" Visibility="Collapsed">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <TextBlock Text="Ejecución de la migración" FontWeight="Bold" FontSize="21" />
+            <StackPanel Grid.Row="1" Margin="0,18,0,18">
+              <TextBlock x:Name="ExecutionGame" Text="No hay ningún plan preparado" FontWeight="SemiBold" FontSize="18" />
+              <TextBlock x:Name="ExecutionSummary" Margin="0,8,0,0" Foreground="{StaticResource Muted}" TextWrapping="Wrap" />
+            </StackPanel>
+            <StackPanel Grid.Row="2">
+              <ProgressBar x:Name="ReplayProgress" Value="0" Maximum="1" Height="19" />
+              <TextBlock x:Name="ReplayProgressText" Text="0 / 0 logros" Foreground="{StaticResource Accent}" Margin="0,12,0,0" />
+              <TextBlock x:Name="ReplayStatus" Text="Listo" Foreground="{StaticResource Muted}" Margin="0,6,0,0" />
+            </StackPanel>
+            <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,22,0,15">
+              <Button x:Name="StartButton" Content="▶  Iniciar migración" Style="{StaticResource AccentButton}" Click="StartReplayClick" />
+              <Button x:Name="ResumeMigrationButton" Content="Reanudar última migración…" Click="ResumeMigrationClick" />
+              <Button x:Name="CancelReplayButton" Content="Cancelar migración" Click="CancelReplayClick" IsEnabled="False" />
+            </StackPanel>
+            <Border Grid.Row="4" Background="{StaticResource Inset}" Padding="16" CornerRadius="9">
+              <DockPanel>
+                <StackPanel DockPanel.Dock="Top">
+                  <TextBlock x:Name="ReportTitle" Text="Informe de migración" FontWeight="SemiBold" />
+                  <TextBlock x:Name="ReportSummary" Text="Antes de ejecutar se consultará Steam y se mostrará un resumen. El plan y el avance se guardan para poder reanudar. La cancelación no revierte los logros ya aplicados." Foreground="{StaticResource Muted}" Margin="0,9,0,10" TextWrapping="Wrap" />
+                  <Button x:Name="CopyReportButton" Content="Copiar informe" Click="CopyMigrationReport" HorizontalAlignment="Left" IsEnabled="False" />
+                </StackPanel>
+                <DataGrid x:Name="MigrationResults" IsReadOnly="True" CanUserAddRows="False" AutoGenerateColumns="False">
+                  <DataGrid.Columns>
+                    <DataGridTextColumn Header="Logro" Binding="{Binding Name}" Width="*" />
+                    <DataGridTextColumn Header="Código Steam" Binding="{Binding ApiId}" Width="180" />
+                    <DataGridTextColumn Header="Resultado" Binding="{Binding Status}" Width="175" />
+                    <DataGridTextColumn Header="Detalle" Binding="{Binding Detail}" Width="2*" />
+                  </DataGrid.Columns>
+                </DataGrid>
+              </DockPanel>
+            </Border>
+          </Grid>
+          <Grid x:Name="LogsPanel" Visibility="Collapsed">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <DockPanel>
+              <TextBlock Text="Logs técnicos" FontWeight="Bold" FontSize="21" />
+              <Button DockPanel.Dock="Right" Content="Copiar logs" Click="CopyLogs" />
+            </DockPanel>
+            <TextBox x:Name="LogBox" Grid.Row="1" FontFamily="Consolas" FontSize="12" Background="#0B1927" Foreground="#D3EDF4" BorderBrush="#3A6073" IsReadOnly="True" AcceptsReturn="True" TextWrapping="NoWrap" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" />
+          </Grid>
+        </Grid>
+      </Border>
+      <Border Grid.Row="3" Background="{StaticResource Panel}" CornerRadius="10" Margin="0,9,0,0" Padding="15,9">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <TextBlock x:Name="GlobalStatus" VerticalAlignment="Center" Text="Listo. Escaneá tu biblioteca para comenzar." Foreground="{StaticResource Muted}" TextTrimming="CharacterEllipsis" />
+          <TextBlock Grid.Column="1" Text="v0.16.0" Foreground="{StaticResource Accent}" VerticalAlignment="Center" />
+        </Grid>
+      </Border>
     </Grid>
   </Grid>
 </Window>

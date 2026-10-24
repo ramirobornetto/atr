@@ -44,7 +44,7 @@ namespace AchievementTimelineReplay
         {
             http=handler==null?new HttpClient(new HttpClientHandler{AllowAutoRedirect=false}):new HttpClient(handler);
             http.Timeout=TimeSpan.FromSeconds(35);
-            http.DefaultRequestHeaders.UserAgent.ParseAdd("ATR/0.15.0");
+            http.DefaultRequestHeaders.UserAgent.ParseAdd("ATR/0.16.0");
         }
         internal static string Text(JsonElement e,string key)
         {
@@ -169,7 +169,7 @@ namespace AchievementTimelineReplay
         {
             if(!UInt64.TryParse(xuid,out _) || !UInt32.TryParse(title.Id,out _))throw new InvalidDataException("Identidad Xbox inválida.");
             string profile=ProfileKey(xuid),path=Path.GetFullPath(Path.Combine(directory,profile,title.Id+".json"));
-            var game=new GameEntry{Platform="Xbox",ExternalGameId=title.Id,ProfileKey=profile,StatsPath=path,HistoryId=Identity(path,profile,title.Id),GameName=title.Name,SourceLabel="Xbox Live (perfil)",DetectedOrigin="Xbox",HasLocalHistory=true,UsesCurrentSnapshot=true,TotalAchievements=title.Total};
+            var game=new GameEntry{Platform="Xbox",ExternalGameId=title.Id,ProfileKey=profile,StatsPath=path,HistoryId=Identity(path,profile,title.Id),GameName=title.Name,SourceLabel="Xbox Live",DetectedOrigin="Xbox",HasLocalHistory=true,UsesCurrentSnapshot=true,TotalAchievements=title.Total};
             var seen=new HashSet<string>(StringComparer.OrdinalIgnoreCase);int total=0;
             foreach(var e in entries)
             {

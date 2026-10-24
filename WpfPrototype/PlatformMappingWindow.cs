@@ -45,6 +45,8 @@ namespace AchievementTimelineReplay.Wpf
         readonly DataGrid grid=new DataGrid{AutoGenerateColumns=false,CanUserAddRows=false,Margin=new Thickness(8),SelectionUnit=DataGridSelectionUnit.FullRow};
         readonly Button fetch=new Button{Content="Cargar logros Steam"},save=new Button{Content="Guardar correspondencias"},prepare=new Button{Content="Preparar plan Steam"};
         readonly Dictionary<uint,MappingFile> drafts=new Dictionary<uint,MappingFile>();
+        readonly CheckBox confirmAll=new CheckBox{Content="Confirmar",IsThreeState=true,Margin=new Thickness(0),ToolTip="Marcar o desmarcar todas las equivalencias válidas. Sin equivalente o con destino repetido quedan pendientes."};
+        bool bulkConfirm,allConfirmed;
         string loadedTargetName;
         List<SteamDefinition> definitions=new List<SteamDefinition>();uint loadedId;bool busy;
         public GameEntry Result;
@@ -52,6 +54,9 @@ namespace AchievementTimelineReplay.Wpf
         {
             this.source=source;this.directory=directory;this.load=load;this.targetName=targetName;this.search=search;
             Title="Correspondencias · "+source.Platform+" → Steam · "+source.GameName;Width=1220;Height=780;MinWidth=850;MinHeight=560;WindowStartupLocation=WindowStartupLocation.CenterOwner;Background=(System.Windows.Media.Brush)Application.Current.FindResource("Bg");Foreground=System.Windows.Media.Brushes.White;
+            foreach(var control in new Control[]{searchText,appId,searchResults,language}){control.Height=34;control.MinHeight=34;control.VerticalAlignment=VerticalAlignment.Center;control.VerticalContentAlignment=VerticalAlignment.Center;}
+            var compactButtons=new Style(typeof(Button),(Style)Application.Current.FindResource(typeof(Button)));
+            compactButtons.Setters.Add(new Setter(HeightProperty,34d));compactButtons.Setters.Add(new Setter(MinHeightProperty,34d));compactButtons.Setters.Add(new Setter(Control.PaddingProperty,new Thickness(12,5,12,5)));compactButtons.Setters.Add(new Setter(VerticalAlignmentProperty,VerticalAlignment.Center));Resources[typeof(Button)]=compactButtons;
             var layout=new DockPanel{Margin=new Thickness(12)};Content=layout;
             var header=new StackPanel();DockPanel.SetDock(header,Dock.Top);layout.Children.Add(header);
             header.Children.Add(new TextBlock{Text="Origen: "+source.GameName+" · "+source.Platform+" · "+source.Achievements.Count+" desbloqueados",FontSize=19,Margin=new Thickness(8),TextWrapping=TextWrapping.Wrap});
@@ -74,10 +79,20 @@ namespace AchievementTimelineReplay.Wpf
             grid.Columns.Add(TextColumn("Código Steam",nameof(MappingRow.TargetCode),160));
             grid.Columns.Add(TextColumn("Descripción Steam",nameof(MappingRow.TargetDescription),new DataGridLength(2,DataGridLengthUnitType.Star)));
             var check=new FrameworkElementFactory(typeof(CheckBox));check.SetBinding(CheckBox.IsCheckedProperty,new Binding(nameof(MappingRow.Confirmed)){Mode=BindingMode.TwoWay,UpdateSourceTrigger=UpdateSourceTrigger.PropertyChanged});check.SetValue(CheckBox.HorizontalAlignmentProperty,HorizontalAlignment.Center);
-            grid.Columns.Add(new DataGridTemplateColumn{Header="Confirmar",Width=85,CellTemplate=new DataTemplate{VisualTree=check}});
+            grid.Columns.Add(new DataGridTemplateColumn{Header=confirmAll,Width=118,CanUserSort=false,CellTemplate=new DataTemplate{VisualTree=check}});
             grid.Columns.Add(TextColumn("Estado",nameof(MappingRow.Status),115));
             grid.Columns.Add(TextColumn("Motivo de la sugerencia",nameof(MappingRow.MatchReason),200));grid.ItemsSource=rows;
             foreach(var column in grid.Columns.Where(c=>c.Width.IsStar))column.MinWidth=160;
+            rows.CollectionChanged+=(s,e)=>UpdateConfirmAll();
+            confirmAll.Click+=(s,e)=>
+            {
+                if(busy || loadedId==0)return;
+                grid.CommitEdit(DataGridEditingUnit.Cell,true);grid.CommitEdit(DataGridEditingUnit.Row,true);
+                bool mark=!allConfirmed;var eligible=PlatformMapping.UniqueTargets(rows.Select(r=>r.Target?.ApiId));bulkConfirm=true;
+                try{foreach(var row in rows)row.Confirmed=mark && row.Target!=null && eligible.Contains(row.Target.ApiId);}
+                finally{bulkConfirm=false;UpdateConfirmAll();}
+                info.Text=mark?rows.Count(r=>r.Confirmed)+" correspondencias confirmadas. Las filas sin equivalente o con destinos repetidos siguen pendientes.":"Se desmarcaron todas las correspondencias.";
+            };
             fetch.Click+=async(s,e)=>await Fetch();save.Click+=(s,e)=>Save(false);prepare.Click+=(s,e)=>Save(true);Closing+=(s,e)=>{if(busy)e.Cancel=true;};
             appId.TextChanged+=(s,e)=>{if(loadedId!=0){RememberDraft();loadedId=0;edition.IsChecked=false;save.IsEnabled=prepare.IsEnabled=confirmExact.IsEnabled=confirmSelected.IsEnabled=false;rows.Clear();info.Text="Cambió el AppID: cargá nuevamente los logros del destino.";}};
             searchButton.Click+=async(s,e)=>await Search();
@@ -85,7 +100,17 @@ namespace AchievementTimelineReplay.Wpf
             confirmExact.Click+=(s,e)=>Confirm(rows.Where(r=>r.ExactSuggestion));confirmSelected.Click+=(s,e)=>Confirm(grid.SelectedItems.Cast<MappingRow>());
             language.SelectionChanged+=(s,e)=>{if(!busy && loadedId!=0){RememberDraft();loadedId=0;rows.Clear();edition.IsChecked=false;save.IsEnabled=prepare.IsEnabled=false;info.Text="Cambió el idioma: cargá los logros nuevamente.";}};
             Loaded+=async(s,e)=>await Search();
-            save.IsEnabled=prepare.IsEnabled=confirmExact.IsEnabled=confirmSelected.IsEnabled=false;
+            save.IsEnabled=prepare.IsEnabled=confirmExact.IsEnabled=confirmSelected.IsEnabled=false;UpdateConfirmAll();
+        }
+        void UpdateConfirmAll()
+        {
+            if(bulkConfirm)return;
+            if(busy || loadedId==0){confirmAll.IsChecked=false;confirmAll.IsEnabled=false;allConfirmed=false;return;}
+            var eligible=PlatformMapping.UniqueTargets(rows.Select(r=>r.Target?.ApiId));
+            var valid=rows.Where(r=>r.Target!=null && eligible.Contains(r.Target.ApiId)).ToList();
+            allConfirmed=valid.Count>0 && valid.All(r=>r.Confirmed);
+            confirmAll.IsChecked=allConfirmed?true:rows.Any(r=>r.Confirmed)?(bool?)null:false;
+            confirmAll.IsEnabled=valid.Count>0 || rows.Any(r=>r.Confirmed);
         }
         void RememberDraft()
         {if(loadedId!=0 && rows.Count>0)drafts[loadedId]=PlatformMapping.Capture(source,loadedId,rows.Select(r=>new AchievementMapping{SourceId=r.Source.ApiId,TargetId=r.Target?.ApiId,Confirmed=r.Confirmed,NoEquivalent=r.NoEquivalent}));}
@@ -100,12 +125,12 @@ namespace AchievementTimelineReplay.Wpf
                 info.Text=matches.Count==0?"Sin coincidencias disponibles. Podés cambiar el nombre o introducir un AppID manualmente.":matches.Count+" coincidencias. Elegí la edición correcta y cargá sus logros. La búsqueda no verifica propiedad.";
             }
             catch(Exception ex){info.Text="No se pudo buscar en Steam: "+ex.Message+". El AppID manual sigue disponible.";}
-            finally{busy=false;searchButton.IsEnabled=fetch.IsEnabled=appId.IsEnabled=searchResults.IsEnabled=searchText.IsEnabled=language.IsEnabled=true;}
+            finally{busy=false;UpdateConfirmAll();searchButton.IsEnabled=fetch.IsEnabled=appId.IsEnabled=searchResults.IsEnabled=searchText.IsEnabled=language.IsEnabled=true;}
         }
         void Confirm(IEnumerable<MappingRow> selected)
         {
             if(busy || loadedId==0)return;
-            var unique=rows.Where(r=>r.Target!=null).GroupBy(r=>r.Target.ApiId,StringComparer.OrdinalIgnoreCase).Where(g=>g.Count()==1).Select(g=>g.Single()).ToHashSet();int count=0;
+            var ids=PlatformMapping.UniqueTargets(rows.Select(r=>r.Target?.ApiId));var unique=rows.Where(r=>r.Target!=null && ids.Contains(r.Target.ApiId)).ToHashSet();int count=0;
             foreach(var row in selected.ToList())if(unique.Contains(row)){row.Confirmed=true;count++;}
             info.Text=count+" correspondencias confirmadas. Los destinos repetidos o filas sin sugerencia no se confirmaron.";
         }
@@ -131,15 +156,16 @@ namespace AchievementTimelineReplay.Wpf
                     var previous=old?.TargetId==null?null:definitions.FirstOrDefault(d=>String.Equals(d.ApiId,old.TargetId,StringComparison.OrdinalIgnoreCase));
                     row.Target=old?.NoEquivalent==true?null:previous??suggestion.Target;row.NoEquivalent=old?.NoEquivalent==true;
                     row.ExactSuggestion=suggestion.Exact && row.Target==suggestion.Target;row.MatchReason=old?.NoEquivalent==true?"Marcado sin equivalente":previous!=null?"Correspondencia guardada":suggestion.Reason;
-                    row.Confirmed=old?.Confirmed==true && row.Target!=null && row.Target.ApiId==old.TargetId;rows.Add(row);
+                    row.Confirmed=old?.Confirmed==true && row.Target!=null && row.Target.ApiId==old.TargetId;row.PropertyChanged+=(s,e)=>{if(e.PropertyName==nameof(MappingRow.Target) || e.PropertyName==nameof(MappingRow.Confirmed))UpdateConfirmAll();};rows.Add(row);
                 }
                 var combo=new FrameworkElementFactory(typeof(ComboBox));combo.SetValue(ComboBox.ItemsSourceProperty,new[]{new SteamDefinition{Name="— Sin equivalente —"}}.Concat(definitions.OrderBy(d=>d.Name,StringComparer.CurrentCultureIgnoreCase).ThenBy(d=>d.ApiId,StringComparer.OrdinalIgnoreCase)).ToList());combo.SetValue(ComboBox.IsTextSearchEnabledProperty,true);combo.SetBinding(ComboBox.SelectedItemProperty,new Binding(nameof(MappingRow.Target)){Mode=BindingMode.TwoWay,UpdateSourceTrigger=UpdateSourceTrigger.PropertyChanged});combo.SetValue(ComboBox.ForegroundProperty,System.Windows.Media.Brushes.Black);combo.SetValue(ComboBox.BackgroundProperty,System.Windows.Media.Brushes.White);
+                combo.SetValue(FrameworkElement.HeightProperty,23d);combo.SetValue(FrameworkElement.MinHeightProperty,0d);combo.SetValue(FrameworkElement.VerticalAlignmentProperty,VerticalAlignment.Center);combo.SetValue(Control.PaddingProperty,new Thickness(5,0,5,0));combo.SetValue(FrameworkElement.MarginProperty,new Thickness(0));
                 targetColumn.CellTemplate=new DataTemplate{VisualTree=combo};
                 string title=searchResults.SelectedItem is SteamGameMatch match && match.AppId==id?match.Name:targetName(id);loadedTargetName=title;
                 info.Text="Destino: "+title+" · AppID "+id+" · "+definitions.Count+" logros · "+rows.Count(r=>r.Target!=null)+"/"+rows.Count+" sugerencias"+localizationNote+". Revisá edición, DLC y requisitos antes de confirmar.";save.IsEnabled=prepare.IsEnabled=confirmExact.IsEnabled=confirmSelected.IsEnabled=true;
             }
             catch(Exception ex){info.Text=ex.Message;definitions.Clear();loadedId=0;}
-            finally{busy=false;grid.IsEnabled=true;searchButton.IsEnabled=searchText.IsEnabled=searchResults.IsEnabled=language.IsEnabled=fetch.IsEnabled=appId.IsEnabled=true;}
+            finally{busy=false;UpdateConfirmAll();grid.IsEnabled=true;searchButton.IsEnabled=searchText.IsEnabled=searchResults.IsEnabled=language.IsEnabled=fetch.IsEnabled=appId.IsEnabled=true;}
         }
         void Save(bool build)
         {
