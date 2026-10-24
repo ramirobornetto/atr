@@ -31,8 +31,8 @@
   <SolidColorBrush x:Key="InputForeground" Color="#FFFFFF" />
 
     <SolidColorBrush x:Key="Bg" Color="#0A1421" />
-    <SolidColorBrush x:Key="Panel" Color="#99080808" />
-    <SolidColorBrush x:Key="Inset" Color="#A6040404" />
+    <SolidColorBrush x:Key="Panel" Color="#73080808" />
+    <SolidColorBrush x:Key="Inset" Color="#8C040404" />
     <SolidColorBrush x:Key="Accent" Color="#00E5FF" />
     <SolidColorBrush x:Key="Muted" Color="#A5BCCE" />
 <Style x:Key="OriginToggle" TargetType="ToggleButton">

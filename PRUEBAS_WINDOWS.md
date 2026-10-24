@@ -223,3 +223,8 @@ El entorno de desarrollo compila WPF pero no ejecuta una sesión gráfica Window
 ## Revisión visual 0.17.3
 
 - Ajustes horizontal y vertical del Plan sin línea ni glow, incluso al pasar el mouse. El cursor cambia y se conserva el arrastre de las dimensiones.
+
+
+## Revisión visual 0.17.4
+
+- Principales al 55 % e interiores al 45 % de transparencia; revisar legibilidad sobre zonas claras y oscuras del fondo. Textos y controles mantienen su opacidad.

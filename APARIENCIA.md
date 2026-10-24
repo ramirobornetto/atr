@@ -68,3 +68,5 @@ Desde 0.17.1, `Panel`, `Inset` y `BackgroundShade` usan negro neutro. El estilo 
 Desde 0.17.2, `Panel` usa `#99080808`: 60 % opaco y 40 % transparente. `Inset` conserva su transparencia anterior. El estilo `GridSplitter` dibuja una línea de 1 unidad WPF sobre la zona de agarre transparente de 6; su brillo está definido en `SplitterLine`.
 
 Desde 0.17.3 los separadores son completamente transparentes: se mantiene una zona de agarre de 6 unidades, sin línea ni glow. El cursor indica dónde se puede ajustar la tabla.
+
+Desde 0.17.4, `Panel` usa `#73080808` (aproximadamente 55 % transparente) e `Inset` usa `#8C040404` (aproximadamente 45 % transparente). Los paneles anidados superponen sus fondos.
