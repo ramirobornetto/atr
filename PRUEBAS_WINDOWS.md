@@ -241,3 +241,8 @@ El entorno de desarrollo compila WPF pero no ejecuta una sesión gráfica Window
 - Paneles principales e interiores sin contorno gris; misma transparencia y fondo. Los botones, casillas y selección conservan sus bordes funcionales.
 - DESCRIPCION.md y TUTORIAL.md presentes en el ZIP y accesibles desde los enlaces del README.
 - Fondo un 10 % más oscuro aproximadamente; revisar legibilidad y conservación de transparencias 55/45.
+
+
+## Revisión visual 0.17.7
+
+- Cuadro de Logs azul oscuro al 60 % de transparencia, con texto sólido y legible.
