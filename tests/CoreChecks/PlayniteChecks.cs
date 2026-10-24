@@ -22,7 +22,7 @@ static class PlayniteChecks
         Check(local.Achievements.Single(a=>a.ApiId=="L1").DisplayName=="Edited L1" && local.Achievements.Single(a=>a.ApiId=="L1").OriginalUnix==0,"PA display overrides and explicit cleared dates are respected without dropping unlocks");
         Check(loaded.All(g=>g.AppId!=300 && g.AppId!=500),"friends and games with no unlocked achievements do not become replay sources");
         Check(loaded.Count(g=>g.AppId==600)==2 && loaded.Where(g=>g.AppId==600).Select(g=>g.StorageKey).Distinct().Count()==2,"ambiguous multiple current profiles remain separate rather than selecting another account's progress");
-        Check(File.Exists(path+"-wal") && loaded.Count==4,"read-only SQLite reader sees committed WAL data without requiring a checkpoint");
+        Check(File.Exists(path+"-wal") && loaded.Count==8,"read-only SQLite reader sees committed WAL data without requiring a checkpoint");
         var plans=LegacyPlanner.Calculate(local.Achievements,LegacyPlanner.OriginalSpan(local.Achievements));
         Check(plans.Values.Max(x=>x.OffsetSeconds)==60 && local.Achievements.All(a=>a.OriginalUnix==0),"undated plans use editable suggested intervals without fabricating original dates or epoch-length waits");
         local.Achievements[1].ManualGapSeconds=17;plans=LegacyPlanner.Calculate(local.Achievements,60);

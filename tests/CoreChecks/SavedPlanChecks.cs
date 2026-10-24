@@ -112,6 +112,12 @@ esac
         cancellation.Cancel();
         try {waitingRun.GetAwaiter().GetResult();throw new Exception("Expected replay cancellation");}
         catch(OperationCanceledException){Check(File.ReadAllLines(Path.Combine(dir,"commands")).Length==3,"Cancelling a coordinated replay issues no further unlocks");}
+        File.WriteAllText(cli,"#!/bin/sh\nprintf '{\"success\" : false,\"error\":\"License rejected\"}'\n");
+        int progress=0;var errors=new List<string>();
+        var denied=new LegacyReplayer(new ReplayEvents{Log=errors.Add,Progress=(n,_,_)=>progress=n});
+        try{denied.Run(new List<ScheduleItem>{new ScheduleItem{Achievement=new AchievementRecord{ApiId="DENIED"}}},cli,SamCliMode.Modern,42,"Rejected",false,false,0,CancellationToken.None).GetAwaiter().GetResult();throw new Exception("Expected rejection");}
+        catch(InvalidOperationException){Check(progress==0 && !errors.Any(line=>line.Contains("Migración completada")),"SAM refusal stops replay without advancing progress or announcing completion");}
+
 
     }
 }

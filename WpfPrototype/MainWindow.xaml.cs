@@ -42,6 +42,9 @@ namespace AchievementTimelineReplay.Wpf
         string sourceStatus;
         public string SourceStatus {get=>sourceStatus;set{sourceStatus=value;PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(nameof(SourceStatus)));}}
         internal GameEntry Game { get; set; }
+        internal HistoryGroup Group;
+        public string SourceDetails => Group?.Details??Source;
+        public string DisplayGameId => Game.SteamTarget?Game.AppId.ToString():Game.ExternalGameId;
     }
     public sealed class AchievementView : INotifyPropertyChanged
     {
@@ -68,6 +71,13 @@ namespace AchievementTimelineReplay.Wpf
 
     public partial class MainWindow : Window
     {
+        readonly List<GameEntry> allHistories=new List<GameEntry>();
+        Dictionary<string,string> historyChoices=new Dictionary<string,string>();
+        bool rebuildingGroups,loadingHistoryChoice,deferGroups;
+        string shownBaseline;
+        string planPinnedSourceKey;
+        string sourceChangeNotice,sourceNoticeKey;
+        static string HistoryChoicesPath=>Path.Combine(LegacyTools.DataDirectory,"history-choices.json");
         readonly ObservableCollection<GameRow> games=new ObservableCollection<GameRow>();
         readonly ObservableCollection<AchievementView> achievementRows=new ObservableCollection<AchievementView>();
         readonly List<AchievementRecord> order=new List<AchievementRecord>();
@@ -104,7 +114,7 @@ namespace AchievementTimelineReplay.Wpf
         string lastLibrarySummary="";
         readonly PlanStore planStore=new PlanStore(Path.Combine(LegacyTools.DataDirectory,"Plans"));
         bool CanEditPlan => currentGame!=null && currentGame.HasLocalHistory && !scanning && !preparing && !checkingUpdates && (!running || !ReferenceEquals(currentGame,executingGame));
-        bool CanQueryPlan => CanEditPlan && !querying;
+        bool CanQueryPlan => CanEditPlan && !querying && (!running || currentGame.AppId!=executingGame?.AppId);
         bool scanning;
         bool running;
         bool initialized;
@@ -127,13 +137,14 @@ namespace AchievementTimelineReplay.Wpf
             SamPath.Text=settings.TryGetValue("sam",out var sam) && !String.IsNullOrWhiteSpace(sam) ? sam : LegacyTools.DetectSam();
             recoverUpdateDrafts=File.Exists(UpdateReadyPath);
             try{sourceOptions=SourceSelection.Load(SourceOptionsPath);}catch(Exception ex){Log("Preferencias de fuentes: "+ex.Message);}
+            try{historyChoices=HistoryGroups.LoadChoices(HistoryChoicesPath);}catch(Exception ex){Log("Selección de historiales: "+ex.Message);}
             BuildSourceControls();
             initialized=true;
             games.CollectionChanged+=(sender,args)=>ApplyLibraryFilter();
             ApplyLibraryFilter();
             GoTo("Escaneo");
             UpdateButtons();
-            Log("WPF v0.9.0 iniciada. Motor derivado de v0.5.3. No se ha modificado Steam.");
+            Log("WPF v0.10.0 iniciada. Motor derivado de v0.5.3. No se ha modificado Steam.");
             LoadSavedLibrary();
             if(!String.IsNullOrWhiteSpace(SamPath.Text)) _=ValidateSamAsync(false);
         }
@@ -157,6 +168,7 @@ namespace AchievementTimelineReplay.Wpf
         void GoTo(string screen)
         {
             activePage=screen;
+            if(screen=="Biblioteca")planPinnedSourceKey=null;
             if(initialized && screen=="Biblioteca"){RefreshLibraryAvailability();UpdateButtons();}
             EscaneoPanel.Visibility=screen=="Escaneo" ? Visibility.Visible : Visibility.Collapsed;
             BibliotecaPanel.Visibility=screen=="Biblioteca" ? Visibility.Visible : Visibility.Collapsed;
@@ -206,31 +218,65 @@ namespace AchievementTimelineReplay.Wpf
         GameRow LibraryRow(GameEntry game) => new GameRow{Game=game,GameName=game.GameName,AppId=game.AppId,Source=game.SourceLabel,Origin=ReadLibraryOrigin(game),Count=game.HasLocalHistory?AchievementCounts.Format(game):"— / "+game.TotalAchievements,Snapshot=game.HasSnapshot?"Protegido ✓":"No disponible"};
         GameRow AdoptImportedGame(GameEntry game)
         {
-            var row=games.FirstOrDefault(r=>r.Game.StorageKey==game.StorageKey);
-            if(row==null){row=LibraryRow(game);games.Add(row);return row;}
-            var existing=row.Game;bool hadHistory=existing.HasLocalHistory;
-            SavedPlan previousPA=null;
-            if(PlayniteHistory.IsPA(game) && hadHistory)
+            var existing=allHistories.FirstOrDefault(g=>g.StorageKey==game.StorageKey || (PlayniteHistory.IsPA(game) && PlayniteHistory.IsPA(g) && !g.PAGroupKey.Contains("|source:") && g.PAProvider==game.PAProvider && g.StorageKey==game.AlternatePlanKey));
+            SavedPlan draft=null;
+            if(existing!=null)
             {
-                if(ReferenceEquals(currentGame,existing))previousPA=PlanStore.Capture(existing,order,ReadPlanParameters());
-                else if(browsedPlans.TryGetValue(existing,out var prior))previousPA=PlanStore.Capture(existing,prior.Records,prior.Parameters);
+                if(ReferenceEquals(currentGame,existing) && existing.HasLocalHistory)draft=PlanStore.Capture(existing,order,ReadPlanParameters());
+                else if(browsedPlans.TryGetValue(existing,out var previous))draft=PlanStore.Capture(existing,previous.Records,previous.Parameters);
+                allHistories.Remove(existing);browsedPlans.Remove(existing);
             }
-            existing.Achievements=game.Achievements;existing.HasLocalHistory=game.HasLocalHistory;existing.HasSnapshot=game.HasSnapshot;existing.IsDemo=game.IsDemo;
-            existing.UsesCurrentSnapshot=game.UsesCurrentSnapshot;existing.SourceLabel=game.SourceLabel;row.Source=game.SourceLabel;existing.PAAccountId=game.PAAccountId;
-            existing.PAGroupKey=game.PAGroupKey;existing.PAProvider=game.PAProvider;existing.PAOrigin=game.PAOrigin;existing.AlternatePlanKey=game.AlternatePlanKey;
-            existing.DemoGameName=game.DemoGameName;existing.GameName=game.GameName;existing.TotalAchievements=game.TotalAchievements;existing.SchemaPath=game.SchemaPath;
-            existing.CatalogIssue=null;existing.RetainedFromCatalog=false;existing.SourceMissing=false;existing.RequiresAccountRefresh=false;
-            existing.DetectedOrigin=game.DetectedOrigin;existing.OriginEvidence=game.OriginEvidence;
-            row.GameName=game.GameName;row.Count=AchievementCounts.Format(existing);row.Origin=ReadLibraryOrigin(existing);
-            CollectionViewSource.GetDefaultView(games).Refresh();
-            if(previousPA!=null)
+            allHistories.Add(game);
+            if(draft!=null)browsedPlans[game]=new BrowsedPlan{Records=PlanStore.Restore(game,draft).Records,Parameters=draft.Parameters};
+            if(ReferenceEquals(currentGame,existing)){currentGame=null;order.Clear();achievementRows.Clear();}
+            if(!deferGroups)RebuildHistoryGroups(game.StorageKey);
+            return games.FirstOrDefault(r=>r.Group.Sources.Any(g=>g.StorageKey==game.StorageKey));
+        }
+        void RebuildHistoryGroups(string preferred=null)
+        {
+            preferred??=currentGame?.StorageKey;
+            if(currentGame?.HasLocalHistory==true)browsedPlans[currentGame]=new BrowsedPlan{Records=order.ToList(),Parameters=ReadPlanParameters()};
+            rebuildingGroups=true;
+            try
             {
-                browsedPlans[existing]=new BrowsedPlan{Records=PlanStore.Restore(existing,previousPA).Records,Parameters=previousPA.Parameters};
-                if(ReferenceEquals(currentGame,existing)){currentGame=null;order.Clear();achievementRows.Clear();}
+                var groups=HistoryGroups.Build(allHistories,historyChoices);games.Clear();
+                foreach(var group in groups)
+                {
+                    if(group.Selected.AlternatePlanKey==null && !File.Exists(planStore.FilePath(group.Selected)))group.Selected.AlternatePlanKey=group.Sources.FirstOrDefault(g=>g!=group.Selected && planStore.Exists(g))?.StorageKey;
+                    var row=LibraryRow(group.Selected);row.Group=group;row.Source=group.Summary;games.Add(row);
+                }
+                var changed=games.FirstOrDefault(r=>r.Group.Sources.Any(g=>g.StorageKey==preferred || g.AlternatePlanKey==preferred));
+                sourceNoticeKey=changed?.Game.StorageKey;
+                sourceChangeNotice=changed!=null && !changed.Group.Manual && changed.Game.StorageKey!=preferred?"El modo automático eligió "+HistoryGroup.Label(changed.Game)+". Los borradores y planes anteriores se conservan por fuente.":null;
+                currentGame=null;order.Clear();achievementRows.Clear();
+                GamesGrid.SelectedItem=GamesGrid.Items.OfType<GameRow>().FirstOrDefault(r=>r.Group.Sources.Any(g=>g.StorageKey==preferred))??GamesGrid.Items.OfType<GameRow>().FirstOrDefault();
             }
-            if(!hadHistory && ReferenceEquals(currentGame,existing)){currentGame=null;order.Clear();achievementRows.Clear();browsedPlans.Remove(existing);}
-            else if(ReferenceEquals(currentGame,existing))HeaderGame.Text=existing.GameName;
-            return row;
+            finally{rebuildingGroups=false;}
+            ApplyLibraryFilter();GameChanged(GamesGrid,null);
+        }
+        void PopulateHistoryChoices()
+        {
+            loadingHistoryChoice=true;
+            try
+            {
+                HistorySourceChoice.Items.Clear();var row=games.FirstOrDefault(r=>r.Group.Sources.Contains(currentGame));if(row==null)return;
+                HistorySourceChoice.Items.Add(new ComboBoxItem{Content="Automático — más desbloqueados",Tag="auto"});
+                foreach(var source in row.Group.Sources)HistorySourceChoice.Items.Add(new ComboBoxItem{Content=HistoryGroup.Label(source)+" · "+source.Achievements.Count+"/"+source.TotalAchievements,Tag=source.StorageKey,ToolTip=source.StatsPath});
+                string selected=row.Group.Manual?currentGame.StorageKey:"auto";
+                HistorySourceChoice.SelectedItem=HistorySourceChoice.Items.Cast<ComboBoxItem>().FirstOrDefault(i=>(string)i.Tag==selected);
+            }
+            finally{loadingHistoryChoice=false;}
+        }
+        void HistorySourceChanged(object sender,SelectionChangedEventArgs e)
+        {
+            if(!initialized || loadingHistoryChoice || rebuildingGroups || currentGame==null || scanning || preparing || checkingUpdates || (running && ReferenceEquals(currentGame,executingGame)) || querying || HistorySourceChoice.SelectedItem is not ComboBoxItem choice)return;
+            if(currentGame.HasLocalHistory && (!CommitPlanEdits() || !GapLimitValid())){PopulateHistoryChoices();return;}
+            var row=games.FirstOrDefault(r=>r.Group.Sources.Contains(currentGame));if(row==null)return;
+            string signature=PlanStore.Signature(PlanStore.Capture(currentGame,order,ReadPlanParameters()));
+            if(currentGame.HasLocalHistory && (signature!=shownBaseline || planStore.Exists(currentGame)) && MessageBox.Show(this,"Cambiará el historial mostrado. El borrador actual se conserva para esta fuente y los planes guardados no se sobrescriben. ¿Cambiar de fuente?","Historial de origen",MessageBoxButton.YesNo,MessageBoxImage.Question)!=MessageBoxResult.Yes){PopulateHistoryChoices();return;}
+            foreach(var source in row.Group.Sources)historyChoices[source.StorageKey]=(string)choice.Tag;
+            try{HistoryGroups.SaveChoices(HistoryChoicesPath,historyChoices);}catch(Exception ex){Log("No se pudo guardar la selección de fuente: "+ex.Message);}
+            planPinnedSourceKey=currentGame.StorageKey;RebuildHistoryGroups(currentGame.StorageKey);PersistLibrary();
         }
         void RefreshLibraryAvailability()
         {
@@ -250,7 +296,8 @@ namespace AchievementTimelineReplay.Wpf
             var saved=libraryStore.Load();foreach(var warning in saved.Warnings)Log("Biblioteca guardada: "+warning);
             if(saved.Catalog==null)return;
             lastLibraryScan=saved.Catalog.LastScanAtUtc;lastLibrarySummary=saved.Catalog.Summary??"";
-            foreach(var game in saved.Games){OriginDetector.Apply(game,SteamPath.Text.Trim());games.Add(LibraryRow(game));}
+            foreach(var game in saved.Games){OriginDetector.Apply(game,SteamPath.Text.Trim());allHistories.Add(game);}
+            RebuildHistoryGroups();
             RefreshLibraryAvailability();LibraryStamp.Text="Catálogo guardado: "+saved.Catalog.SavedAtUtc.LocalDateTime.ToString("dd/MM/yyyy HH:mm")+" · Último escaneo: "+(lastLibraryScan?.LocalDateTime.ToString("dd/MM/yyyy HH:mm")??"solo importaciones manuales")+(saved.UsedBackup?" · Recuperado de copia anterior":"");
             ScanResult.Text="Biblioteca guardada cargada sin escanear. Usá Actualizar biblioteca para revisar los archivos actuales."+(String.IsNullOrEmpty(lastLibrarySummary)?"":"\nResumen del último escaneo guardado:\n"+lastLibrarySummary);
             SetStatus(ScanResult.Text);Log(ScanResult.Text);
@@ -260,7 +307,7 @@ namespace AchievementTimelineReplay.Wpf
         {
             try
             {
-                libraryStore.Save(games.Select(r=>r.Game),SteamPath.Text.Trim(),lastLibraryScan,lastLibrarySummary);
+                libraryStore.Save(allHistories,SteamPath.Text.Trim(),lastLibraryScan,lastLibrarySummary);
                 RefreshLibraryAvailability();LibraryStamp.Text="Catálogo guardado · Último escaneo: "+(lastLibraryScan?.LocalDateTime.ToString("dd/MM/yyyy HH:mm")??"solo importaciones manuales");return true;
             }
             catch(Exception ex){Log("No se pudo guardar la biblioteca: "+ex.Message);SetStatus("Biblioteca cargada, pero no se pudo guardar el catálogo. Revisá Logs.");return false;}
@@ -298,7 +345,7 @@ namespace AchievementTimelineReplay.Wpf
         {
             if(!initialized)return;
             var view=CollectionViewSource.GetDefaultView(games);string query=LibrarySearch.Text.Trim();
-            view.Filter=item=>item is GameRow row && sourceOptions.Shows(row.Origin) && (query.Length==0 || row.GameName.IndexOf(query,StringComparison.CurrentCultureIgnoreCase)>=0 || row.AppId.ToString().Contains(query,StringComparison.OrdinalIgnoreCase));
+            view.Filter=item=>item is GameRow row && ((planPinnedSourceKey!=null && row.Group.Sources.Any(g=>g.StorageKey==planPinnedSourceKey)) || (sourceOptions.Shows(row.Origin) && (query.Length==0 || row.Group.Sources.Any(g=>g.GameName.IndexOf(query,StringComparison.CurrentCultureIgnoreCase)>=0) || row.DisplayGameId.Contains(query,StringComparison.OrdinalIgnoreCase))));
             int shown=view.Cast<object>().Count();LibraryCount.Text="Mostrando "+shown+" de "+games.Count;
             foreach(var pair in originToggles)pair.Value.Content=pair.Key+" · "+games.Count(r=>SourceSelection.LibraryCategory(r.Origin)==pair.Key);
             LibraryEmptyMessage.Visibility=shown==0?Visibility.Visible:Visibility.Collapsed;
@@ -310,8 +357,8 @@ namespace AchievementTimelineReplay.Wpf
             if(MessageBox.Show(this,"¿Borrar toda la biblioteca guardada? Se eliminarán el catálogo y su respaldo; deberás escanear o importar de nuevo. No borra archivos de logros, snapshots, planes guardados ni orígenes personalizados. Los borradores sin guardar se descartarán.","Borrar biblioteca",MessageBoxButton.YesNo,MessageBoxImage.Warning)!=MessageBoxResult.Yes)return;
             try
             {
-                libraryStore.Clear();games.Clear();order.Clear();achievementRows.Clear();browsedPlans.Clear();savedSignatures.Clear();currentGame=null;
-                lastLibraryScan=null;lastLibrarySummary="";GameChanged(GamesGrid,null);HeaderGame.Text="Sin juego seleccionado";HeaderGameInfo.Text="Elegí un historial";PlanHistoryPath.Text="";UnknownDatesNotice.Visibility=Visibility.Collapsed;
+                libraryStore.Clear();allHistories.Clear();games.Clear();order.Clear();achievementRows.Clear();browsedPlans.Clear();savedSignatures.Clear();currentGame=null;
+                lastLibraryScan=null;lastLibrarySummary="";HistorySourceChoice.Items.Clear();HistorySelectionNotice.Visibility=Visibility.Collapsed;GameChanged(GamesGrid,null);HeaderGame.Text="Sin juego seleccionado";HeaderGameInfo.Text="Elegí un historial";PlanHistoryPath.Text="";UnknownDatesNotice.Visibility=Visibility.Collapsed;
                 LibraryStamp.Text="Biblioteca borrada. Escaneá o importá nuevamente para obtener los juegos.";
                 ApplyLibraryFilter();UpdateButtons();SetStatus(LibraryStamp.Text);Log(LibraryStamp.Text);
             }
@@ -320,8 +367,9 @@ namespace AchievementTimelineReplay.Wpf
         void RemoveLibraryClick(object sender,RoutedEventArgs e)
         {
             if(checkingUpdates || scanning || running || preparing || querying || GamesGrid.SelectedItem is not GameRow row)return;
-            if(MessageBox.Show(this,"¿Quitar este historial de la biblioteca guardada? No borra archivos de origen, snapshots, planes ni etiquetas. Puede reaparecer al escanear si su archivo sigue en una ruta conocida.","Quitar de biblioteca",MessageBoxButton.YesNo,MessageBoxImage.Question)!=MessageBoxResult.Yes)return;
-            games.Remove(row);browsedPlans.Remove(row.Game);savedSignatures.Remove(row.Game);PersistLibrary();UpdateButtons();
+            if(MessageBox.Show(this,"¿Quitar este juego y sus fuentes de la biblioteca guardada? No borra archivos de origen, snapshots, planes ni etiquetas. Puede reaparecer al escanear si su archivo sigue en una ruta conocida.","Quitar de biblioteca",MessageBoxButton.YesNo,MessageBoxImage.Question)!=MessageBoxResult.Yes)return;
+            foreach(var source in row.Group.Sources){allHistories.Remove(source);browsedPlans.Remove(source);savedSignatures.Remove(source);}
+            currentGame=null;order.Clear();RebuildHistoryGroups();PersistLibrary();UpdateButtons();
         }
         async void ScanClick(object sender,RoutedEventArgs e)
         {
@@ -336,7 +384,7 @@ namespace AchievementTimelineReplay.Wpf
             bool scanSteam=(selection.Scans("Steam") || selection.Scans("SteamIdra/LuaTools")) && Directory.Exists(Path.Combine(steam,"appcache","stats"));
             if(!SourceSelection.ScanSources.Any(selection.Scans)){MessageBox.Show(this,"Activá al menos un origen en Escaneo.","Escaneo",MessageBoxButton.OK,MessageBoxImage.Information);return;}
             if(currentGame!=null && (!CommitPlanEdits() || !GapLimitValid()))return;
-            var knownGames=games.Select(r=>r.Game).ToList();string previousSelection=currentGame?.StorageKey;
+            var knownGames=allHistories.ToList();string previousSelection=currentGame?.StorageKey;
             var drafts=new Dictionary<string,SavedPlan>(StringComparer.OrdinalIgnoreCase);
             try
             {
@@ -377,13 +425,22 @@ namespace AchievementTimelineReplay.Wpf
                         foreach(var path in paths)
                         {
                             token.ThrowIfCancellationRequested();
-                            try{all.AddRange(PlayniteHistory.Load(path,Log,token));}
+                            try
+                            {
+                                var imported=PlayniteHistory.Load(path,Log,token,true).Where(g=>selection.Allows(g,steam)).ToList();
+                                foreach(var fresh in imported)
+                                {
+                                    var old=knownGames.FirstOrDefault(g=>PlayniteHistory.IsPA(g) && !g.PAGroupKey.Contains("|source:") && g.Platform==fresh.Platform && g.AppId==fresh.AppId && g.PAProvider==fresh.PAProvider && g.PAGroupKey.Split('|')[0]==fresh.PAGroupKey.Split('|')[0]);
+                                    if(old!=null)fresh.AlternatePlanKey=old.StorageKey;
+                                }
+                                all.AddRange(imported);
+                            }
                             catch(OperationCanceledException){throw;}
                             catch(Exception ex){Log("PA: "+ex.Message);}
                         }
                     }
                     // Compare PA against current native progress, preserving its first snapshot separately.
-                    foreach(var direct in all.Where(g=>!PlayniteHistory.IsPA(g) && !g.UsesCurrentSnapshot).ToList())
+                    foreach(var direct in all.Where(g=>!PlayniteHistory.IsPA(g) && !PlatformMapping.IsMapped(g) && !g.UsesCurrentSnapshot).ToList())
                     {
                         var paMatches=all.Where(g=>PlayniteHistory.IsPA(g) && g.AppId==direct.AppId).ToList();if(paMatches.Count==0)continue;
                         try
@@ -397,7 +454,7 @@ namespace AchievementTimelineReplay.Wpf
                         catch(Exception ex){Log("Comparación de progreso directo con PA: "+ex.Message);}
                     }
                     var seen=new HashSet<string>(all.Select(g=>g.StorageKey),StringComparer.OrdinalIgnoreCase);
-                    foreach(var known in knownGames.Where(g=>!String.IsNullOrEmpty(g.HistoryId) && !PlayniteHistory.IsPA(g)))
+                    foreach(var known in knownGames.Where(g=>!String.IsNullOrEmpty(g.HistoryId) && !PlayniteHistory.IsPA(g) && !PlatformMapping.IsMapped(g)))
                     {
                         token.ThrowIfCancellationRequested();if(seen.Contains(known.StorageKey) || !selection.Allows(known,steam) || !File.Exists(known.StatsPath))continue;
                         try
@@ -423,31 +480,35 @@ namespace AchievementTimelineReplay.Wpf
                             }
                     }
                     foreach(var known in knownGames)
+                    {
+                        if(PlayniteHistory.IsPA(known) && all.Any(g=>g.AlternatePlanKey==known.StorageKey))continue;
                         if(LibraryStore.ShouldRetainAfterScan(known,selection.Allows(known,steam)) && seen.Add(known.StorageKey)){known.RetainedFromCatalog=true;all.Add(known);}
+                    }
                     GameNames.Resolve(all.Where(g=>!String.IsNullOrEmpty(g.HistoryId) && !PlayniteHistory.IsPA(g) && !g.RetainedFromCatalog),Log,token);
                     foreach(var game in all.Where(PlayniteHistory.IsPA))
                     {
                         game.AlternatePlanKey??=knownGames.FirstOrDefault(g=>g.StorageKey==game.StorageKey)?.AlternatePlanKey;
                         if(!game.RetainedFromCatalog)PlayniteHistory.ProtectCurrent(game,Path.Combine(LegacyTools.DataDirectory,"Snapshots"));
                     }
-                    return PlayniteHistory.Deduplicate(all,Log).OrderBy(g=>g.GameName,StringComparer.CurrentCultureIgnoreCase).ToList();
+                    return all.DistinctBy(g=>g.StorageKey).OrderBy(g=>g.GameName,StringComparer.CurrentCultureIgnoreCase).ToList();
                 },token);
                 token.ThrowIfCancellationRequested();
-                games.Clear();achievementRows.Clear();order.Clear();browsedPlans.Clear();savedSignatures.Clear();currentGame=null;
+                rebuildingGroups=true;games.Clear();rebuildingGroups=false;allHistories.Clear();achievementRows.Clear();order.Clear();browsedPlans.Clear();savedSignatures.Clear();currentGame=null;
                 foreach(var g in found)
                 {
                     if(g.HasLocalHistory && (drafts.TryGetValue(g.StorageKey,out var draft) || (g.AlternatePlanKey!=null && drafts.TryGetValue(g.AlternatePlanKey,out draft))))
                         try{browsedPlans[g]=new BrowsedPlan{Records=PlanStore.Restore(g,draft).Records,Parameters=draft.Parameters};}catch(Exception ex){Log("Borrador no restaurado: "+ex.Message);}
-                    games.Add(LibraryRow(g));
+                    allHistories.Add(g);
                 }
+                RebuildHistoryGroups(previousSelection);
                 ApplyLibraryFilter();
-                ScanResult.Text="Actualización terminada: "+games.Count+" historiales en biblioteca ("+found.Count(g=>g.RetainedFromCatalog)+" conservados del catálogo).\n"+(scanSteam?scanner.Summary.Format("Steam"):"Steam/BIN: desactivado o appcache/stats no disponible")+(scanGoldberg?"\n"+goldbergSummary.Format("Goldberg/GBE"):"")+(scanIni?"\n"+iniSummary.Format("CODEX/RUNE"):"")+(scanPA?"\nPA: "+found.Count(PlayniteHistory.IsPA)+" historiales elegidos en biblioteca. Los desbloqueos sin fecha se conservan; el log detalla los proveedores.":"");
+                ScanResult.Text="Actualización terminada: "+games.Count+" juegos/perfiles · "+allHistories.Count+" fuentes ("+found.Count(g=>g.RetainedFromCatalog)+" conservados del catálogo).\n"+(scanSteam?scanner.Summary.Format("Steam"):"Steam/BIN: desactivado o appcache/stats no disponible")+(scanGoldberg?"\n"+goldbergSummary.Format("Goldberg/GBE"):"")+(scanIni?"\n"+iniSummary.Format("CODEX/RUNE"):"")+(scanPA?"\nPA: "+found.Count(PlayniteHistory.IsPA)+" historiales elegidos en biblioteca. Los desbloqueos sin fecha se conservan; el log detalla los proveedores.":"");
                 SetStatus(ScanResult.Text);
                 Log(ScanResult.Text);
                 ScanProgress.IsIndeterminate=false;ScanProgress.Maximum=1;ScanProgress.Value=1;
                 lastLibraryScan=DateTimeOffset.UtcNow;lastLibrarySummary=ScanResult.Text;PersistLibrary();
                 GoTo("Biblioteca");
-                GamesGrid.SelectedItem=GamesGrid.Items.OfType<GameRow>().FirstOrDefault(r=>r.Game.StorageKey==previousSelection || r.Game.AlternatePlanKey==previousSelection)??GamesGrid.Items.OfType<GameRow>().FirstOrDefault();
+                GamesGrid.SelectedItem=GamesGrid.Items.OfType<GameRow>().FirstOrDefault(r=>r.Group.Sources.Any(g=>g.StorageKey==previousSelection || g.AlternatePlanKey==previousSelection))??GamesGrid.Items.OfType<GameRow>().FirstOrDefault();
             }
             catch(OperationCanceledException)
             {
@@ -525,28 +586,70 @@ namespace AchievementTimelineReplay.Wpf
             scanning=true;scanCancellation=new CancellationTokenSource();var token=scanCancellation.Token;UpdateButtons();ScanProgress.IsIndeterminate=true;
             try
             {
-                var imported=await Task.Run(()=>PlayniteHistory.Load(dialog.FileName,Log,token),token);token.ThrowIfCancellationRequested();
-                foreach(var game in imported){PlayniteHistory.ProtectCurrent(game,Path.Combine(LegacyTools.DataDirectory,"Snapshots"));AdoptImportedGame(game);}
-                if(!sourceOptions.PAPaths.Contains(dialog.FileName,StringComparer.OrdinalIgnoreCase) && sourceOptions.PAPaths.Count<64){sourceOptions.PAPaths.Add(dialog.FileName);SaveSourceOptions();}
-                var unified=PlayniteHistory.Deduplicate(games.Select(r=>r.Game).ToList(),Log);
-                foreach(var loser in games.Where(r=>!unified.Contains(r.Game)).ToList())
+                var imported=await Task.Run(()=>PlayniteHistory.Load(dialog.FileName,Log,token,true),token);token.ThrowIfCancellationRequested();
+                deferGroups=true;
+                foreach(var game in imported)
                 {
-                    var winner=unified.FirstOrDefault(g=>g.AlternatePlanKey==loser.Game.StorageKey);
-                    if(winner!=null)
-                    {
-                        SavedPlan draft=ReferenceEquals(currentGame,loser.Game)?PlanStore.Capture(loser.Game,order,ReadPlanParameters()):browsedPlans.TryGetValue(loser.Game,out var prior)?PlanStore.Capture(loser.Game,prior.Records,prior.Parameters):null;
-                        if(draft!=null)browsedPlans[winner]=new BrowsedPlan{Records=PlanStore.Restore(winner,draft).Records,Parameters=draft.Parameters};
-                    }
-                    games.Remove(loser);browsedPlans.Remove(loser.Game);
+                    var old=allHistories.FirstOrDefault(g=>PlayniteHistory.IsPA(g) && !g.PAGroupKey.Contains("|source:") && g.PAProvider==game.PAProvider && g.Platform==game.Platform && g.AppId==game.AppId && g.PAGroupKey.Split('|')[0]==game.PAGroupKey.Split('|')[0]);
+                    if(old!=null)game.AlternatePlanKey=old.StorageKey;
                 }
-                foreach(var row in games)row.Origin=ReadLibraryOrigin(row.Game);
-                ApplyLibraryFilter();
+                try{foreach(var game in imported){PlayniteHistory.ProtectCurrent(game,Path.Combine(LegacyTools.DataDirectory,"Snapshots"));AdoptImportedGame(game);}}
+                finally{deferGroups=false;}
+                if(!sourceOptions.PAPaths.Contains(dialog.FileName,StringComparer.OrdinalIgnoreCase) && sourceOptions.PAPaths.Count<64){sourceOptions.PAPaths.Add(dialog.FileName);SaveSourceOptions();}
+                RebuildHistoryGroups();
                 ScanResult.Text="PA: "+imported.Count+" historiales importados. Los logros sin fecha se conservaron. Actualizar biblioteca compara también las fuentes directas.";
                 PersistLibrary();SetStatus(ScanResult.Text);Log(ScanResult.Text);GoTo("Biblioteca");
             }
             catch(OperationCanceledException){SetStatus("Importación PA cancelada.");}
             catch(Exception ex){Log(ex.ToString());MessageBox.Show(this,ex.Message,"PA",MessageBoxButton.OK,MessageBoxImage.Information);}
             finally{scanning=false;scanCancellation.Dispose();scanCancellation=null;ScanProgress.IsIndeterminate=false;GameChanged(GamesGrid,null);UpdateButtons();}
+        }
+        void MapPlatformClick(object sender,RoutedEventArgs e)
+        {
+            if(!CanEditPlan || querying || currentGame.SteamTarget || !CommitPlanEdits())return;
+            var source=currentGame;var parameters=ReadPlanParameters();
+            var names=new Dictionary<uint,string>();querying=true;UpdateButtons();
+            try
+            {
+                async Task<List<SteamDefinition>> Load(uint appId)
+                {
+                    var known=allHistories.FirstOrDefault(g=>g.SteamTarget && g.AppId==appId);if(known!=null)names[appId]=known.GameName;
+                    return await Task.Run(()=>
+                    {
+                        foreach(string path in allHistories.Where(PlayniteHistory.IsPA).Select(g=>g.StatsPath).Append(source.StatsPath).Distinct(StringComparer.OrdinalIgnoreCase).Where(File.Exists))
+                            try{using var db=new ReadOnlySqlite(path);var title=db.Query("SELECT GameName FROM Games WHERE ProviderKey IN ('Steam','Local') AND ProviderGameId="+appId).FirstOrDefault();if(title!=null && !String.IsNullOrWhiteSpace(title["GameName"]))names[appId]=title["GameName"];}catch(Exception ex){Log("Nombre del destino PA: "+ex.Message);}
+                        string schema=Path.Combine(SteamPath.Dispatcher.Invoke(()=>SteamPath.Text.Trim()),"appcache","stats","UserGameStatsSchema_"+appId+".bin");
+                        if(File.Exists(schema)){var definitions=PlatformMapping.FromSchema(schema,appId);if(definitions.Count>0)return definitions;}
+                        foreach(string path in allHistories.Where(PlayniteHistory.IsPA).Select(g=>g.StatsPath).Append(source.StatsPath).Distinct(StringComparer.OrdinalIgnoreCase).Where(File.Exists))
+                        {
+                            var definitions=PlatformMapping.FromPA(path,appId);
+                            if(definitions.Count>0)
+                            {
+                                using var db=new ReadOnlySqlite(path);var title=db.Query("SELECT GameName FROM Games WHERE ProviderKey IN ('Steam','Local') AND ProviderGameId="+appId).FirstOrDefault();
+                                if(title!=null && !String.IsNullOrWhiteSpace(title["GameName"]))names[appId]=title["GameName"];
+                                return definitions;
+                            }
+                        }
+                        string cli=SamPath.Dispatcher.Invoke(()=>SamPath.Text.Trim());
+                        if(samMode!=SamCliMode.Modern)throw new InvalidDataException("No hay esquema local ni caché PA del destino. Validá el CLI moderno de SAM para consultarlo.");
+                        var result=activeReplayer!=null?activeReplayer.QueryOtherGame(cli,appId):SamRunner.List(cli,SamCliMode.Modern,appId);
+                        if(SamRunner.Failed(result))throw new InvalidDataException("SAM rechazó la consulta del destino: "+result.StdErr+" "+result.StdOut);
+                        return PlatformMapping.FromSam(result.StdOut);
+                    });
+                }
+                var window=new PlatformMappingWindow(source.WithRecords(order),Path.Combine(LegacyTools.DataDirectory,"Mappings"),Load,id=>names.TryGetValue(id,out var title)?title:"AppID "+id+" (verificá el nombre y edición en Steam)"){Owner=this};
+                if(window.ShowDialog()==true && window.Result!=null)
+                {
+                    var mapped=window.Result;bool existingMapped=allHistories.Any(g=>g.StorageKey==mapped.StorageKey);PlayniteHistory.ProtectCurrent(mapped,Path.Combine(LegacyTools.DataDirectory,"Snapshots"));
+                    AdoptImportedGame(mapped);if(!existingMapped)browsedPlans[mapped]=new BrowsedPlan{Records=mapped.Achievements.Select(a=>a.Clone()).ToList(),Parameters=parameters};
+                    var destinationGroup=games.First(r=>r.Group.Sources.Contains(mapped)).Group;
+                    foreach(var entry in destinationGroup.Sources)historyChoices[entry.StorageKey]=mapped.StorageKey;
+                    HistoryGroups.SaveChoices(HistoryChoicesPath,historyChoices);planPinnedSourceKey=mapped.StorageKey;RebuildHistoryGroups(mapped.StorageKey);
+                    PersistLibrary();SetStatus("Plan Steam preparado con equivalencias confirmadas. Revisá tiempos y Consultar Steam antes de iniciar.");GoTo("Plan");
+                }
+            }
+            catch(Exception ex){Log(ex.ToString());MessageBox.Show(this,ex.Message,"Correspondencias",MessageBoxButton.OK,MessageBoxImage.Information);}
+            finally{querying=false;UpdateButtons();}
         }
         async void ImportIniClick(object sender,RoutedEventArgs e)
         {
@@ -645,7 +748,7 @@ namespace AchievementTimelineReplay.Wpf
         }
         void GameChanged(object sender,SelectionChangedEventArgs e)
         {
-            if(!initialized || scanning || preparing)return;
+            if(!initialized || rebuildingGroups || scanning || preparing)return;
             var next=(GamesGrid.SelectedItem as GameRow)?.Game;
             if(ReferenceEquals(next,currentGame))return;
             // Navegar conserva el plan mostrado. La ejecución retiene su propia lista
@@ -676,16 +779,17 @@ namespace AchievementTimelineReplay.Wpf
                 if(saved)order.AddRange(previous.Records);
                 else foreach(var a in currentGame.Achievements.OrderBy(x=>x.OriginalUnix>0?x.OriginalUnix:Int64.MaxValue))order.Add(a.Clone());
                 HeaderGame.Text=currentGame.GameName;
+                HistorySelectionNotice.Text=sourceNoticeKey==currentGame.StorageKey?sourceChangeNotice??"":"";HistorySelectionNotice.Visibility=String.IsNullOrEmpty(HistorySelectionNotice.Text)?Visibility.Collapsed:Visibility.Visible;
                 PlanHistoryPath.Text=currentGame.StatsPath;
                 int unknownDates=order.Count(a=>a.OriginalUnix==0);
                 UnknownDatesNotice.Visibility=unknownDates>0?Visibility.Visible:Visibility.Collapsed;
                 UnknownDatesNotice.Text=unknownDates+" logros sin fecha. El plan sugiere 60 s por intervalo desconocido; podés modificarlo.";
-                HeaderGameInfo.Text=(currentGame.IsDemo?"DEMO · ":"")+"AppID "+currentGame.AppId+" · "+order.Count+" logros · "+(currentGame.HasSnapshot?"Snapshot protegido":"Sin snapshot")+(order.Any(a=>a.OriginalUnix==0)?" · "+order.Count(a=>a.OriginalUnix==0)+" sin fecha":"");
+                HeaderGameInfo.Text=(currentGame.IsDemo?"DEMO · ":"")+(currentGame.SteamTarget?"AppID "+currentGame.AppId:currentGame.Platform+" · ID "+currentGame.ExternalGameId)+" · "+order.Count+" logros · "+(currentGame.HasSnapshot?"Snapshot protegido":"Sin snapshot")+(order.Any(a=>a.OriginalUnix==0)?" · "+order.Count(a=>a.OriginalUnix==0)+" sin fecha":"");
                 if(!running)ExecutionGame.Text=currentGame.GameName;
                 ApplyPlanParameters(saved?previous.Parameters:new PlanParameters{DurationSeconds=LegacyPlanner.OriginalSpan(order)});
                 Log("Cargado "+currentGame.GameName+" ["+currentGame.AppId+"]: "+order.Count+" logros.");
                 RefreshPlan();
-                LoadOrigin();
+                LoadOrigin();PopulateHistoryChoices();shownBaseline=PlanStore.Signature(PlanStore.Capture(currentGame,order,ReadPlanParameters()));
 
                 if(saved && previous.Selected!=null)
                 {
@@ -695,7 +799,7 @@ namespace AchievementTimelineReplay.Wpf
             }
             else
             {
-                UnknownDatesNotice.Visibility=Visibility.Collapsed;PlanHistoryPath.Text="";HeaderGame.Text="Sin juego seleccionado";HeaderGameInfo.Text="Elegí un historial";
+                HistorySelectionNotice.Visibility=Visibility.Collapsed;UnknownDatesNotice.Visibility=Visibility.Collapsed;PlanHistoryPath.Text="";HeaderGame.Text="Sin juego seleccionado";HeaderGameInfo.Text="Elegí un historial";
                 if(!running)ExecutionGame.Text="No hay ningún plan preparado";
                 SelectOrigin("Sin clasificar");OriginStatus.Text="";
             }
@@ -735,7 +839,7 @@ namespace AchievementTimelineReplay.Wpf
                 var row=games.FirstOrDefault(g=>ReferenceEquals(g.Game,currentGame));
                 if(row!=null)row.Origin=ReadLibraryOrigin(currentGame);
                 SetStatus("Origen actualizado para "+currentGame.GameName+". No modifica archivos de logros ni Steam.");
-                ApplyLibraryFilter();
+                if(activePage=="Plan")planPinnedSourceKey=currentGame.StorageKey;ApplyLibraryFilter();
             }
             catch(Exception ex){LoadOrigin();MessageBox.Show(this,ex.Message,"No se pudo guardar el origen",MessageBoxButton.OK,MessageBoxImage.Warning);}
         }
@@ -1022,7 +1126,7 @@ namespace AchievementTimelineReplay.Wpf
         }
         async void QuerySteamClick(object sender,RoutedEventArgs e)
         {
-            if(!CanQueryPlan || currentGame.IsDemo)return;
+            if(!CanQueryPlan || currentGame.IsDemo || !currentGame.SteamTarget)return;
             var game=currentGame;
             string cli=SamPath.Text.Trim();
             if(samMode!=SamCliMode.Modern || !File.Exists(cli))
@@ -1053,7 +1157,7 @@ namespace AchievementTimelineReplay.Wpf
         }
         void OpenSamClick(object sender,RoutedEventArgs e)
         {
-            if(checkingUpdates || currentGame==null || currentGame.IsDemo)return;
+            if(checkingUpdates || currentGame==null || currentGame.IsDemo || !currentGame.SteamTarget)return;
             string cli=SamPath.Text.Trim(),folder=Path.GetDirectoryName(cli),gui=null;
             try {if(Directory.Exists(folder)) gui=Directory.GetFiles(folder,"*.exe").FirstOrDefault(f=>Path.GetFileName(f).Contains("samrewritten",StringComparison.OrdinalIgnoreCase) && !Path.GetFileName(f).Contains("cli",StringComparison.OrdinalIgnoreCase));}catch{}
             if(gui==null) {MessageBox.Show(this,"No encontré la interfaz gráfica de SamRewritten junto al CLI. Abrí SAM y buscá el AppID "+currentGame.AppId,"Abrir SAM",MessageBoxButton.OK,MessageBoxImage.Information);return;}
@@ -1062,7 +1166,7 @@ namespace AchievementTimelineReplay.Wpf
         }
         async void StartReplayClick(object sender,RoutedEventArgs e)
         {
-            if(checkingUpdates||running||scanning||querying||preparing||currentGame==null || currentGame.IsDemo || !currentGame.HasLocalHistory || !GapLimitValid())return;
+            if(checkingUpdates||running||scanning||querying||preparing||currentGame==null || currentGame.IsDemo || !currentGame.SteamTarget || !currentGame.HasLocalHistory || !GapLimitValid())return;
             RefreshLibraryAvailability();
             if(currentGame.RequiresAccountRefresh || !currentGame.HasSnapshot || !currentGame.HasLocalHistory)
             {MessageBox.Show(this,"Actualizá la biblioteca antes de ejecutar: falta un snapshot válido o cambió la cuenta Steam.","Biblioteca",MessageBoxButton.OK,MessageBoxImage.Information);UpdateButtons();return;}
@@ -1131,7 +1235,7 @@ namespace AchievementTimelineReplay.Wpf
                     ReplayStatus.Text="Migración completada.";SetStatus("Migración completada.");
                 }
                 catch(OperationCanceledException){Log("=== Migración cancelada por el usuario ===");ReplayStatus.Text="Cancelado.";SetStatus("Migración cancelada.");}
-                catch(Exception ex){Log("ERROR: "+ex);ReplayStatus.Text="ERROR: "+ex.Message;MessageBox.Show(this,ex.Message,"Error de migración",MessageBoxButton.OK,MessageBoxImage.Error);}
+                catch(Exception ex){Log("ERROR: "+ex);ReplayStatus.Text="ERROR: "+ex.Message;SetStatus("Migración detenida: "+ex.Message);MessageBox.Show(this,ex.Message,"Error de migración",MessageBoxButton.OK,MessageBoxImage.Error);}
                 finally {running=false;activeReplayer=null;executingGame=null;activeSchedule=null;replayCancellation.Dispose();replayCancellation=null;UpdateButtons();}
             }
             finally {preparing=false;UpdateButtons();}
@@ -1146,7 +1250,7 @@ namespace AchievementTimelineReplay.Wpf
         {
             if(!initialized)return;
             bool available=currentGame!=null && currentGame.HasLocalHistory;
-            bool live=available && currentGame.HasSnapshot && !currentGame.IsDemo && !currentGame.RequiresAccountRefresh;
+            bool live=available && currentGame.SteamTarget && currentGame.HasSnapshot && !currentGame.IsDemo && !currentGame.RequiresAccountRefresh;
             ScanButton.IsEnabled=!checkingUpdates && !scanning && !running && !querying && !preparing;
             CancelScanButton.IsEnabled=scanning;
             RefreshLibraryButton.IsEnabled=ScanButton.IsEnabled;
@@ -1169,7 +1273,8 @@ namespace AchievementTimelineReplay.Wpf
             GamesGrid.IsEnabled=!scanning && !preparing;
             SteamPath.IsEnabled=SamPath.IsEnabled=ValidateSamButton.IsEnabled=BrowseSamButton.IsEnabled=BrowseSteamButton.IsEnabled=!checkingUpdates && !running && !scanning && !querying && !preparing;
             RestoreOrderButton.IsEnabled=ClearTimingsButton.IsEnabled=RestoreOriginalButton.IsEnabled=CanEditPlan;
-            OriginChoice.IsEnabled=CanEditPlan;
+            OriginChoice.IsEnabled=CanEditPlan;HistorySourceChoice.IsEnabled=currentGame!=null && !scanning && !preparing && !checkingUpdates && !querying && (!running || !ReferenceEquals(currentGame,executingGame));
+            MapPlatformButton.IsEnabled=CanEditPlan && !currentGame.SteamTarget && !querying;MapPlatformButton.Visibility=available && !currentGame.SteamTarget?Visibility.Visible:Visibility.Collapsed;
             SavePlanButton.IsEnabled=CanEditPlan && GapLimitValid();
             LoadPlanButton.IsEnabled=CanEditPlan && planStore.Exists(currentGame);
             EditingStatus.Text=running?"En ejecución: "+executingGame?.GameName+(ReferenceEquals(currentGame,executingGame)?" · Este plan está bloqueado.":" · Podés preparar este otro juego."):"Editando borrador. Guardar plan conserva los cambios al cerrar.";

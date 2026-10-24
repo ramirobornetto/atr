@@ -40,6 +40,12 @@ namespace AchievementTimelineReplay {
     internal sealed class GameEntry
     {
         public uint AppId;
+        public string Platform="Steam";
+        public string ExternalGameId;
+        public string ProfileKey;
+        public string MappedSourceKey;
+        public string MappedFromPlatform;
+        public bool SteamTarget => Platform=="Steam" && AppId>0;
         public uint AccountId;
         public string HistoryId;
         public string PAGroupKey;
@@ -69,6 +75,9 @@ namespace AchievementTimelineReplay {
         public string StatsPath;
         public string SchemaPath;
         public List<AchievementRecord> Achievements = new List<AchievementRecord>();
+
+        public GameEntry WithRecords(IEnumerable<AchievementRecord> records)
+        {var copy=(GameEntry)MemberwiseClone();copy.Achievements=records.Select(a=>a.Clone()).ToList();return copy;}
 
         public override string ToString()
         {

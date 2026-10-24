@@ -30,7 +30,7 @@ namespace AchievementTimelineReplay
             return 0;
         }
         public static GameEntry Choose(IEnumerable<GameEntry> games)=>games.OrderByDescending(g=>g.Achievements.Select(a=>a.ApiId).Distinct(StringComparer.OrdinalIgnoreCase).Count()).ThenByDescending(g=>g.Achievements.Count(a=>a.OriginalUnix>0)).ThenByDescending(g=>g.PAProvider=="Manual").ThenBy(g=>g.PAProvider,StringComparer.Ordinal).First();
-        public static List<GameEntry> Load(string cachePath,Action<string> log,CancellationToken token=default)
+        public static List<GameEntry> Load(string cachePath,Action<string> log,CancellationToken token=default,bool retainAll=false)
         {
             log??=_=>{};cachePath=Path.GetFullPath(cachePath);
             var customizations=new Dictionary<string,JsonElement>(StringComparer.OrdinalIgnoreCase);
@@ -47,27 +47,34 @@ namespace AchievementTimelineReplay
             }
             using var cache=new ReadOnlySqlite(cachePath);
             // Current-user progress only: friends' achievements must never become replay sources.
-            var rows=cache.Query(@"SELECT g.PlayniteGameId,g.ProviderKey,g.ProviderGameId,g.GameName,u.Id AS UserId,u.ProviderKey AS UserProvider,u.ExternalUserId,
+            var rows=cache.Query(@"SELECT g.PlayniteGameId,g.ProviderKey,g.ProviderGameId,g.ProviderGameKey,g.GameName,u.Id AS UserId,u.ProviderKey AS UserProvider,u.ExternalUserId,
                 p.Id AS ProgressId,d.ApiName,d.DisplayName,d.Description,a.Unlocked,a.UnlockTimeUtc
                 FROM Games g JOIN UserGameProgress p ON p.GameId=g.Id JOIN Users u ON u.Id=p.UserId
                 JOIN AchievementDefinitions d ON d.GameId=g.Id
                 LEFT JOIN UserAchievements a ON a.UserGameProgressId=p.Id AND a.AchievementDefinitionId=d.Id
-                WHERE (u.IsCurrentUser=1 OR (g.ProviderKey='Local' AND u.ProviderKey='Local' AND u.FriendSource IS NULL)) AND g.ProviderKey IN ('Steam','Manual','Local')",token);
+                WHERE (u.IsCurrentUser=1 OR (g.ProviderKey='Local' AND u.ProviderKey='Local' AND u.FriendSource IS NULL)) AND g.ProviderKey IN ('Steam','Manual','Local','Xbox','Epic','GOG','PSN','PlayStation')",token);
             var candidates=new List<GameEntry>();
             foreach(var bucket in rows.GroupBy(r=>r["ProgressId"]))
             {
                 token.ThrowIfCancellationRequested();var first=bucket.First();string provider=first["ProviderKey"],guid=first["PlayniteGameId"];
-                if(!Guid.TryParse(guid,out var parsedGuid) || !UInt32.TryParse(first["ProviderGameId"],out uint appId) || appId==0){log("PA: historial sin AppID Steam o identidad de juego válidos; no se adivinó el destino.");continue;}
+                string platform=provider=="PSN"?"PlayStation":provider=="Steam" || provider=="Manual" || provider=="Local"?"Steam":provider;
+                uint.TryParse(first["ProviderGameId"],out uint appId);string externalId=first["ProviderGameKey"]??first["ProviderGameId"];
+                if(!Guid.TryParse(guid,out var parsedGuid) || (platform=="Steam" && appId==0) || (platform!="Steam" && String.IsNullOrWhiteSpace(externalId))){log("PA: historial sin AppID Steam o identidad de juego válidos; no se adivinó el destino.");continue;}
                 JsonElement manual=default;
                 if(provider=="Manual" && (!links.TryGetValue(guid,out manual) || Text(manual,"SourceKey")!="Steam" || Text(manual,"SourceGameId")!=appId.ToString(CultureInfo.InvariantCulture))){log("PA Manual: falta un vínculo Steam válido para este juego; conservá game_custom_data.db junto a la caché.");continue;}
+                if(platform!="Steam")appId=0;
+                string profile=Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(first["UserProvider"]+"|"+(first["ExternalUserId"]??first["UserId"])))).Substring(0,24);
                 string group=parsedGuid.ToString("D");
                 // Ambiguous multiple current Steam profiles remain separate from manual/local.
                 if(rows.Where(r=>r["PlayniteGameId"]==guid && r["ProviderKey"]=="Steam").Select(r=>r["UserId"]).Distinct().Skip(1).Any())group+="|"+first["UserProvider"]+"|"+Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(first["ExternalUserId"]??first["UserId"]))).Substring(0,24);
+                if(platform!="Steam")group+="|game:"+Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(externalId))).Substring(0,16);
+                if(platform!="Steam" && !retainAll)group+="|platform:"+platform;
+                if(retainAll)group+="|platform:"+platform+"|source:"+provider+"|"+profile;
                 var steamUsers=rows.Where(r=>String.Equals(r["PlayniteGameId"],guid,StringComparison.OrdinalIgnoreCase) && r["ProviderKey"]=="Steam").Select(r=>r["ExternalUserId"]).Distinct().ToList();
                 uint steamAccount=0;
                 string external=provider=="Steam"?first["ExternalUserId"]:steamUsers.Count==1?steamUsers[0]:null;
                 if(UInt64.TryParse(external,out var steam64) && steam64>76561197960265728UL && steam64-76561197960265728UL<=UInt32.MaxValue)steamAccount=(uint)(steam64-76561197960265728UL);
-                var game=new GameEntry{AppId=appId,PAAccountId=steamAccount,AccountId=0,HistoryId=Identity(cachePath,group),PAGroupKey=group,PAProvider=provider,GameName=first["GameName"]??"AppID "+appId,StatsPath=cachePath,SchemaPath=File.Exists(customPath)?customPath:null,SourceLabel="achievement_cache.db (PA / "+provider+")",DetectedOrigin="PA",HasLocalHistory=true};
+                var game=new GameEntry{AppId=appId,Platform=platform,ExternalGameId=platform=="Steam"?null:externalId,ProfileKey=profile,PAAccountId=steamAccount,AccountId=0,HistoryId=Identity(cachePath,group),PAGroupKey=group,PAProvider=provider,GameName=first["GameName"]??"AppID "+appId,StatsPath=cachePath,SchemaPath=File.Exists(customPath)?customPath:null,SourceLabel="achievement_cache.db (PA / "+provider+")",DetectedOrigin=platform=="Steam"?"PA":platform,HasLocalHistory=true};
                 var seen=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 foreach(var row in bucket)
                 {
@@ -120,8 +127,9 @@ namespace AchievementTimelineReplay
                 game.TotalAchievements=seen.Count;
                 game.Achievements=game.Achievements.OrderBy(a=>a.OriginalUnix>0?a.OriginalUnix:Int64.MaxValue).ThenBy(a=>a.ApiId,StringComparer.Ordinal).ToList();
                 game.IsDemo=game.Achievements.Count>0 && game.Achievements.All(a=>a.ApiId.StartsWith("ATR_DEMO_",StringComparison.Ordinal));
-                if(game.Achievements.Count>0)candidates.Add(game);
+                if(game.Achievements.Count>0 || retainAll)candidates.Add(game);
             }
+            if(retainAll)return candidates.Where(g=>g.Achievements.Count>0 || candidates.Any(other=>other.Achievements.Count>0 && HistoryGroups.Compatible(g,other) && g.PAGroupKey.Split('|')[0]==other.PAGroupKey.Split('|')[0])).ToList();
             var result=new List<GameEntry>();
             foreach(var group in candidates.GroupBy(g=>g.StorageKey))
             {

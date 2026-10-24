@@ -1,8 +1,8 @@
 # Achievement Timeline Replay
 
-## Descargar v0.9.0 para Windows x64
+## Descargar v0.10.0 para Windows x64
 
-[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.9.0_Windows_x64.zip)
+[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.10.0_Windows_x64.zip)
 
 Extraer **todo el ZIP** en una carpeta nueva y abrir `AchievementTimelineReplay.Wpf.exe`. No se necesita compilar ni instalar .NET. Mantener las DLL y demás archivos junto al ejecutable. Steam y SamRewritten se seleccionan en la aplicación, como antes; no vienen incluidos.
 
@@ -197,3 +197,11 @@ La papelera roja borra el catálogo y su respaldo tras confirmar. Su «?» expli
 Nuevo lector PA de Steam, Manual con fuente Steam y Local. Detección de la instalación habitual, importación de bases portables y rutas recordadas. Se elige el historial con más desbloqueos y se conservan logros sin fecha o con fecha inválida: «Sin fecha», con intervalos sugeridos editables en el nuevo plan. Las fechas originales no se inventan.
 
 La comparación con archivos directos exige evidencia de historial coincidente y respeta perfiles ambiguos. Los primeros snapshots y planes se conservan; PA y las fuentes directas que pasan a seguimiento actual usan vistas de snapshot separadas. Nuevo icono del ejecutable y ventana proporcionado por el usuario. Ver [PA.md](PA.md) para criterios, formatos y pruebas de Windows.
+
+## v0.10.0 — fuentes seleccionables y plataformas PA
+
+Biblioteca muestra una fila por juego/perfil confirmado y conserva todas sus fuentes. Historial de origen permite selección automática por desbloqueos o manual, con cantidades y ayuda en Fuente. Se guardan preferencias, borradores y planes por fuente. Se corrige el caso Steam directo + PA/Steam + PA/Local equivalentes con GUIDs diferentes.
+
+PA añade lectura de Xbox, Epic, GOG y PlayStation, bajo una única opción PA en Escaneo y con filtros por plataforma en Biblioteca. Los IDs externos nunca se envían como AppID Steam. Preparar equivalencias con Steam permite revisar sugerencias, confirmar asociaciones y guardarlas antes de crear el plan. Los destinos duplicados o ausentes se rechazan y los logros sin fecha se conservan. SAM sigue siendo quien acepta o rechaza operaciones; sus errores detienen el plan sin anunciar éxito.
+
+Ver [PLATAFORMAS.md](PLATAFORMAS.md) para uso, agrupación, correspondencias y límites de validación.

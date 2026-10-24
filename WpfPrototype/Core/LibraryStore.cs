@@ -10,6 +10,11 @@ namespace AchievementTimelineReplay
     internal sealed class LibraryEntry
     {
         public uint AppId {get;set;}
+        public string Platform {get;set;}="Steam";
+        public string ExternalGameId {get;set;}
+        public string ProfileKey {get;set;}
+        public string MappedSourceKey {get;set;}
+        public string MappedFromPlatform {get;set;}
         public uint AccountId {get;set;}
         public string HistoryId {get;set;}
         public string PAGroupKey {get;set;}
@@ -66,19 +71,20 @@ namespace AchievementTimelineReplay
         }
         static GameEntry Model(LibraryEntry entry)
         {
-            if(entry==null || entry.AppId==0 || String.IsNullOrWhiteSpace(entry.GameName) || entry.GameName.Length>1000 || String.IsNullOrWhiteSpace(entry.StatsPath) || entry.StatsPath.Length>32768 || (entry.SchemaPath?.Length??0)>32768 || !Path.IsPathFullyQualified(entry.StatsPath) || entry.TotalAchievements<0 || entry.TotalAchievements>100000 || (!String.IsNullOrEmpty(entry.SchemaPath) && !Path.IsPathFullyQualified(entry.SchemaPath)) || (entry.DemoGameName?.Length??0)>200)
+            if(entry==null || (entry.AppId==0 && (entry.Platform=="Steam" || String.IsNullOrEmpty(entry.ExternalGameId))) || String.IsNullOrWhiteSpace(entry.GameName) || entry.GameName.Length>1000 || String.IsNullOrWhiteSpace(entry.StatsPath) || entry.StatsPath.Length>32768 || (entry.SchemaPath?.Length??0)>32768 || !Path.IsPathFullyQualified(entry.StatsPath) || entry.TotalAchievements<0 || entry.TotalAchievements>100000 || (!String.IsNullOrEmpty(entry.SchemaPath) && !Path.IsPathFullyQualified(entry.SchemaPath)) || (entry.DemoGameName?.Length??0)>200)
                 throw new InvalidDataException("Entrada de biblioteca inválida.");
             if(entry.Labels!=null && (entry.Labels.Count>50000 || entry.Labels.Any(p=>String.IsNullOrWhiteSpace(p.Key) || p.Key.Length>512 || p.Value==null || (p.Value.Name?.Length??0)>10000 || (p.Value.Description?.Length??0)>50000)))throw new InvalidDataException("Metadatos de biblioteca inválidos.");
-            if((entry.PAGroupKey?.Length??0)>200 || (entry.PAProvider!=null && entry.PAProvider!="Steam" && entry.PAProvider!="Manual" && entry.PAProvider!="Local") || (entry.AlternatePlanKey!=null && !System.Text.RegularExpressions.Regex.IsMatch(entry.AlternatePlanKey,@"^(?:(?:goldberg|codex_ini|pa)_[A-F0-9]{24}|[0-9]+)_"+entry.AppId+"$")))throw new InvalidDataException("Identidad PA/plan relacionado inválida.");
+            if((entry.PAGroupKey?.Length??0)>200 || (entry.PAProvider!=null && entry.PAProvider!="Steam" && entry.PAProvider!="Manual" && entry.PAProvider!="Local" && entry.PAProvider!="Xbox" && entry.PAProvider!="Epic" && entry.PAProvider!="GOG" && entry.PAProvider!="PSN" && entry.PAProvider!="PlayStation") || (entry.AlternatePlanKey!=null && !System.Text.RegularExpressions.Regex.IsMatch(entry.AlternatePlanKey,@"^(?:(?:goldberg|codex_ini|pa|mapped)_[A-F0-9]{24}|[0-9]+)_"+entry.AppId+"$")))throw new InvalidDataException("Identidad PA/plan relacionado inválida.");
             if(entry.PAOrigin!=null && !SourceSelection.LibrarySources.Contains(entry.PAOrigin))throw new InvalidDataException("Origen PA inválido.");
+            if(!new[]{"Steam","Xbox","Epic","GOG","PlayStation"}.Contains(entry.Platform) || (entry.ExternalGameId?.Length??0)>512 || (entry.ProfileKey?.Length??0)>128 || (entry.MappedSourceKey!=null && !System.Text.RegularExpressions.Regex.IsMatch(entry.MappedSourceKey,@"^pa_[A-F0-9]{24}_0$")))throw new InvalidDataException("Plataforma o vínculo de correspondencias inválido.");
             string id=entry.HistoryId;
             if(!String.IsNullOrEmpty(id))
             {
-                if(id!=GoldbergHistory.Identity(entry.StatsPath) && id!=IniHistory.Identity(entry.StatsPath) && !(id.StartsWith("pa_",StringComparison.Ordinal) && !String.IsNullOrWhiteSpace(entry.PAGroupKey) && entry.PAProvider!=null && id==PlayniteHistory.Identity(entry.StatsPath,entry.PAGroupKey)))throw new InvalidDataException("La identidad del historial no coincide con su ruta.");
+                if(id!=GoldbergHistory.Identity(entry.StatsPath) && id!=IniHistory.Identity(entry.StatsPath) && !(id.StartsWith("mapped_",StringComparison.Ordinal) && entry.MappedSourceKey!=null && entry.AppId>0 && entry.Platform=="Steam" && id==PlatformMapping.Identity(entry.StatsPath,entry.MappedSourceKey,entry.AppId)) && !(id.StartsWith("pa_",StringComparison.Ordinal) && !String.IsNullOrWhiteSpace(entry.PAGroupKey) && entry.PAProvider!=null && id==PlayniteHistory.Identity(entry.StatsPath,entry.PAGroupKey)))throw new InvalidDataException("La identidad del historial no coincide con su ruta.");
                 if(entry.AccountId!=0)throw new InvalidDataException("La fuente local no corresponde a una cuenta Steam.");
             }
             else if(!String.Equals(Path.GetFileName(entry.StatsPath),$"UserGameStats_{entry.AccountId}_{entry.AppId}.bin",StringComparison.OrdinalIgnoreCase))throw new InvalidDataException("Archivo Steam y cuenta/AppID no coinciden.");
-            return new GameEntry{AppId=entry.AppId,AccountId=entry.AccountId,HistoryId=String.IsNullOrEmpty(id)?null:id,PAGroupKey=entry.PAGroupKey,PAProvider=entry.PAProvider,PAOrigin=entry.PAOrigin,PAAccountId=entry.PAAccountId,UsesCurrentSnapshot=entry.UsesCurrentSnapshot,AlternatePlanKey=entry.AlternatePlanKey,GameName=entry.GameName,StatsPath=entry.StatsPath,SchemaPath=entry.SchemaPath,TotalAchievements=entry.TotalAchievements,DemoGameName=entry.DemoGameName,IsDemo=entry.IsDemo,RetainedFromCatalog=entry.RetainedFromCatalog,SourceLabel=id?.StartsWith("pa_",StringComparison.Ordinal)==true?"achievement_cache.db (PA / "+entry.PAProvider+")":String.IsNullOrEmpty(id)?"UserGameStats (.bin)":id.StartsWith("goldberg_",StringComparison.Ordinal)?"achievements.json (Goldberg/GBE)":"achievements.ini (CODEX/RUNE)"};
+            return new GameEntry{AppId=entry.AppId,Platform=entry.Platform,ExternalGameId=entry.ExternalGameId,ProfileKey=entry.ProfileKey,MappedSourceKey=entry.MappedSourceKey,MappedFromPlatform=entry.MappedFromPlatform,AccountId=entry.AccountId,HistoryId=String.IsNullOrEmpty(id)?null:id,PAGroupKey=entry.PAGroupKey,PAProvider=entry.PAProvider,PAOrigin=entry.PAOrigin,PAAccountId=entry.PAAccountId,UsesCurrentSnapshot=entry.UsesCurrentSnapshot,AlternatePlanKey=entry.AlternatePlanKey,GameName=entry.GameName,StatsPath=entry.StatsPath,SchemaPath=entry.SchemaPath,TotalAchievements=entry.TotalAchievements,DemoGameName=entry.DemoGameName,IsDemo=entry.IsDemo,RetainedFromCatalog=entry.RetainedFromCatalog,SourceLabel=entry.MappedSourceKey!=null?"PA / "+entry.MappedFromPlatform+" → Steam":id?.StartsWith("pa_",StringComparison.Ordinal)==true?"achievement_cache.db (PA / "+entry.PAProvider+")":String.IsNullOrEmpty(id)?"UserGameStats (.bin)":id.StartsWith("goldberg_",StringComparison.Ordinal)?"achievements.json (Goldberg/GBE)":"achievements.ini (CODEX/RUNE)"};
         }
         void LoadSnapshot(GameEntry game)
         {
@@ -96,12 +102,12 @@ namespace AchievementTimelineReplay
                 if(root.TryGetProperty("IsDemo",out var demo) && demo.ValueKind==JsonValueKind.True)game.IsDemo=true;
             }
             var records=root.GetProperty("Achievements");
-            if(records.ValueKind!=JsonValueKind.Array || records.GetArrayLength()==0 || records.GetArrayLength()>50000)throw new InvalidDataException("Snapshot sin logros válidos.");
+            if(records.ValueKind!=JsonValueKind.Array || (records.GetArrayLength()==0 && !PlayniteHistory.IsPA(game)) || records.GetArrayLength()>50000)throw new InvalidDataException("Snapshot sin logros válidos.");
             var seen=new HashSet<string>(StringComparer.OrdinalIgnoreCase);var achievements=new List<AchievementRecord>();
             foreach(var record in records.EnumerateArray())
             {
                 string api=record.GetProperty("ApiId").GetString();long unix=record.GetProperty("OriginalUnix").GetInt64();
-                if(String.IsNullOrWhiteSpace(api) || api.Length>512 || !seen.Add(api) || unix<0 || (unix==0 && !PlayniteHistory.IsPA(game)) || unix>253402300799)throw new InvalidDataException("Logro de snapshot inválido o duplicado.");
+                if(String.IsNullOrWhiteSpace(api) || api.Length>512 || !seen.Add(api) || unix<0 || (unix==0 && !PlayniteHistory.IsPA(game) && !PlatformMapping.IsMapped(game)) || unix>253402300799)throw new InvalidDataException("Logro de snapshot inválido o duplicado.");
                 string title=record.TryGetProperty("DisplayName",out var name) && name.ValueKind==JsonValueKind.String?name.GetString():api;
                 string description=record.TryGetProperty("Description",out var desc) && desc.ValueKind==JsonValueKind.String?desc.GetString():"";
                 if((title?.Length??0)>10000 || (description?.Length??0)>50000)throw new InvalidDataException("Metadatos del snapshot demasiado grandes.");
@@ -152,7 +158,7 @@ namespace AchievementTimelineReplay
             var catalog=new LibraryCatalog{SavedAtUtc=DateTimeOffset.UtcNow,LastScanAtUtc=lastScan,SteamRoot=steamRoot,Summary=summary??""};
             foreach(var game in games.GroupBy(g=>g.StorageKey,StringComparer.OrdinalIgnoreCase).Select(g=>g.First()))
             {
-                var entry=new LibraryEntry{AppId=game.AppId,AccountId=game.AccountId,HistoryId=game.HistoryId,PAGroupKey=game.PAGroupKey,PAProvider=game.PAProvider,PAOrigin=game.PAOrigin,PAAccountId=game.PAAccountId,UsesCurrentSnapshot=game.UsesCurrentSnapshot,AlternatePlanKey=game.AlternatePlanKey,GameName=game.GameName,StatsPath=Path.GetFullPath(game.StatsPath),SchemaPath=String.IsNullOrEmpty(game.SchemaPath)?null:Path.GetFullPath(game.SchemaPath),TotalAchievements=game.TotalAchievements,IsDemo=game.IsDemo,DemoGameName=game.DemoGameName,RetainedFromCatalog=game.RetainedFromCatalog};
+                var entry=new LibraryEntry{AppId=game.AppId,Platform=game.Platform,ExternalGameId=game.ExternalGameId,ProfileKey=game.ProfileKey,MappedSourceKey=game.MappedSourceKey,MappedFromPlatform=game.MappedFromPlatform,AccountId=game.AccountId,HistoryId=game.HistoryId,PAGroupKey=game.PAGroupKey,PAProvider=game.PAProvider,PAOrigin=game.PAOrigin,PAAccountId=game.PAAccountId,UsesCurrentSnapshot=game.UsesCurrentSnapshot,AlternatePlanKey=game.AlternatePlanKey,GameName=game.GameName,StatsPath=Path.GetFullPath(game.StatsPath),SchemaPath=String.IsNullOrEmpty(game.SchemaPath)?null:Path.GetFullPath(game.SchemaPath),TotalAchievements=game.TotalAchievements,IsDemo=game.IsDemo,DemoGameName=game.DemoGameName,RetainedFromCatalog=game.RetainedFromCatalog};
                 if(game.HistoryId?.StartsWith("goldberg_",StringComparison.Ordinal)==true && game.HasLocalHistory)
                     entry.Labels=game.Achievements.ToDictionary(a=>a.ApiId,a=>new LibraryLabel{Name=a.DisplayName,Description=a.Description});
                 Model(entry);catalog.Entries.Add(entry);

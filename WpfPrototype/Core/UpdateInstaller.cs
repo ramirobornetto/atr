@@ -25,7 +25,7 @@ namespace AchievementTimelineReplay
     }
     internal static class UpdateInstaller
     {
-        static readonly HashSet<string> Reserved=new HashSet<string>(new[]{"Library","Plans","Snapshots","Origins","Updates","UpdateDrafts","settings.txt"},StringComparer.OrdinalIgnoreCase);
+        static readonly HashSet<string> Reserved=new HashSet<string>(new[]{"Library","Plans","Snapshots","Origins","Updates","UpdateDrafts","Mappings","history-choices.json","source-options.json","settings.txt"},StringComparer.OrdinalIgnoreCase);
         public static void Verify(string package,string sha256,long expectedSize)
         {
             if(new FileInfo(package).Length!=expectedSize)throw new InvalidDataException("El tamaño del ZIP de actualización no coincide.");

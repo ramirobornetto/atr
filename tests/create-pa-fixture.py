@@ -5,15 +5,15 @@ root=Path(sys.argv[1]);root.mkdir(parents=True,exist_ok=True)
 work=root/'writer';work.mkdir()
 c=sqlite3.connect(work/'achievement_cache.db');c.execute('pragma journal_mode=wal')
 c.executescript('''
-CREATE TABLE Games(Id INTEGER PRIMARY KEY,ProviderKey TEXT,ProviderGameId INTEGER,PlayniteGameId TEXT,GameName TEXT);
+CREATE TABLE Games(Id INTEGER PRIMARY KEY,ProviderKey TEXT,ProviderGameId INTEGER,PlayniteGameId TEXT,GameName TEXT,ProviderGameKey TEXT);
 CREATE TABLE Users(Id INTEGER PRIMARY KEY,ProviderKey TEXT,ExternalUserId TEXT,IsCurrentUser INTEGER,FriendSource TEXT);
 CREATE TABLE UserGameProgress(Id INTEGER PRIMARY KEY,GameId INTEGER,UserId INTEGER);
 CREATE TABLE AchievementDefinitions(Id INTEGER PRIMARY KEY,GameId INTEGER,ApiName TEXT,DisplayName TEXT,Description TEXT);
 CREATE TABLE UserAchievements(UserGameProgressId INTEGER,AchievementDefinitionId INTEGER,Unlocked INTEGER,UnlockTimeUtc TEXT);
 ''')
-c.executemany('insert into Users values(?,?,?,?,?)',[(1,'Steam','test-user',1,None),(2,'Manual','manual',1,None),(3,'Local','local',0,None),(4,'Steam','friend',0,'Steam'),(5,'Steam','second-test-user',1,None)])
+c.executemany('insert into Users values(?,?,?,?,?)',[(1,'Steam','test-user',1,None),(2,'Manual','manual',1,None),(3,'Local','local',0,None),(4,'Steam','friend',0,'Steam'),(5,'Steam','second-test-user',1,None),(6,'Xbox','xbox-test-user',1,None),(7,'Epic','epic-test-user',1,None),(8,'GOG','gog-test-user',1,None),(9,'PSN','psn-test-user',1,None)])
 def add(game,provider,appid,guid,progress,user,entries):
- c.execute('insert or ignore into Games values(?,?,?,?,?)',(game,provider,appid,guid,f'Fixture {appid}'))
+ c.execute('insert or ignore into Games(Id,ProviderKey,ProviderGameId,PlayniteGameId,GameName) values(?,?,?,?,?)',(game,provider,appid,guid,f'Fixture {appid}'))
  c.execute('insert into UserGameProgress values(?,?,?)',(progress,game,user))
  for index,(api,unlocked,date) in enumerate(entries):
   key=game*100+index
@@ -28,6 +28,12 @@ add(5,'Steam',500,'00000000-0000-0000-0000-000000000005',5,1,[('LOCKED',0,None)]
 g6='00000000-0000-0000-0000-000000000006'
 add(6,'Steam',600,g6,6,1,[('P1',1,'2024-01-01T00:00:00Z'),('P2',0,None)])
 add(6,'Steam',600,g6,7,5,[('P1',1,'2024-02-01T00:00:00Z'),('P2',1,'2024-02-02T00:00:00Z')])
+add(7,'Xbox',2089483628,'00000000-0000-0000-0000-000000000007',8,6,[('XBOX_1',1,None),('XBOX_2',1,'2024-01-01T00:00:00Z')])
+add(8,'Epic',None,'00000000-0000-0000-0000-000000000008',9,7,[('EPIC_1',1,None)])
+c.execute("update Games set ProviderGameKey='epic-opaque-key' where Id=8")
+add(9,'GOG',123456,'00000000-0000-0000-0000-000000000009',10,8,[('GOG_1',1,None)])
+add(10,'PSN',None,'00000000-0000-0000-0000-000000000010',11,9,[('PSN_1',1,None)])
+c.execute("update Games set ProviderGameKey='NPWR_TEST' where Id=10")
 c.commit()
 # Copy while writer remains open: all committed tables/rows are in the WAL.
 for name in ['achievement_cache.db','achievement_cache.db-wal','achievement_cache.db-shm']:shutil.copy2(work/name,root/name)

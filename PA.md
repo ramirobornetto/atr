@@ -46,3 +46,7 @@ La casilla PA controla lectura, no visibilidad. Los filtros de Biblioteca usan e
 - Santodan 4.1.1.1, commit `4af6fb93367fe959868a79b077c09cca6695ef39`: mismas tablas relevantes; datos adicionales del fork se ignoran.
 - Pruebas automáticas con bases sintéticas, payloads de esquemas 8 y 9 y transacciones en WAL.
 - Prueba local del lector C# con bases reales proporcionadas por el usuario, sin publicarlas. La interfaz WPF y SQLite nativo de Windows requieren prueba final en Windows; no se ha probado una base real independiente del original de Justin Delano.
+
+## Ampliación 0.10.0
+
+Desde 0.10.0 también se leen los proveedores nativos Xbox, Epic, GOG y PSN/PlayStation como historiales externos, con identificadores separados y conversión explícita mediante correspondencias hacia Steam. La biblioteca conserva alternativas por proveedor en lugar de descartar las de menor cantidad. Las reglas y el recorrido actualizado se describen en PLATAFORMAS.md; las limitaciones anteriores sobre importación exclusiva de Steam corresponden a 0.9.0.

@@ -33,3 +33,7 @@ Las casillas de Escaneo controlan la importación por formato/ubicación detecta
 Si un origen no se escanea, sus entradas anteriores se conservan, incluso con archivos faltantes. Para quitar automáticamente archivos faltantes, escanear con ese origen habilitado. CODEX, RUNE, Goldberg y GSE tienen controles independientes; una etiqueta manual no modifica el criterio usado para localizar sus archivos.
 
 La papelera roja **Borrar biblioteca** elimina `catalog.json` y `catalog.previous.json`, y vacía la vista tras confirmar. No borra originales, snapshots, planes ni etiquetas de origen; se pueden recuperar escaneando o importando las mismas rutas. Descarta los borradores no guardados. No restablece los filtros ni las opciones de escaneo. Si quedan filtros apagados, los juegos reimportados seguirán ocultos hasta activarlos.
+
+## Fuentes agrupadas (0.10.0)
+
+El catálogo conserva todas las fuentes y la vista agrupa juegos/perfiles confirmados. Fuente muestra la selección automática/manual y el número de alternativas, con detalle al pasar el cursor. Historial de origen en el plan cambia la fuente activa; los borradores y planes siguen separados. Los filtros de Biblioteca usan el Origen visible de la fuente seleccionada. Al cambiar de fuente puede cambiar su filtro, sin eliminar ningún historial. Ver PLATAFORMAS.md.

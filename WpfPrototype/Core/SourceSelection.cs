@@ -9,7 +9,7 @@ namespace AchievementTimelineReplay
     internal sealed class SourceSelection
     {
         public static readonly string[] ScanSources={"Steam","SteamIdra/LuaTools","Goldberg","GSE","CODEX","RUNE","CODEX/RUNE compatible","PA"};
-        public static readonly string[] LibrarySources=ScanSources.Concat(new[]{"OnlineFix","Otro","Sin clasificar"}).ToArray();
+        public static readonly string[] LibrarySources=ScanSources.Concat(new[]{"Xbox","Epic","GOG","PlayStation","OnlineFix","Otro","Sin clasificar"}).ToArray();
         public List<string> PAPaths {get;set;}=new List<string>();
         public Dictionary<string,bool> Scan {get;set;}=new Dictionary<string,bool>();
         public Dictionary<string,bool> Visible {get;set;}=new Dictionary<string,bool>();
@@ -20,7 +20,7 @@ namespace AchievementTimelineReplay
         public bool Allows(GameEntry game,string steamRoot)
         {
             // Scan eligibility follows the file's detected format/location, never a manual label.
-            if(PlayniteHistory.IsPA(game))return Scans("PA");
+            if(PlayniteHistory.IsPA(game) || PlatformMapping.IsMapped(game))return Scans("PA");
             if(String.IsNullOrEmpty(game.HistoryId))return AllowsSteam(game.AppId,steamRoot);
             OriginDetector.Apply(game,steamRoot);return Scans(game.DetectedOrigin??"CODEX/RUNE compatible");
         }

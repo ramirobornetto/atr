@@ -176,9 +176,28 @@ namespace AchievementTimelineReplay
         }
         public static bool Failed(ProcessResult r)
         {
-            string text=(r.StdOut+"\n"+r.StdErr).ToLowerInvariant();
-            return r.TimedOut || r.ExitCode != 0 || text.Contains("\"success\": false") || text.Contains("\"success\":false") || text.Contains("failed to ");
+            if(r.TimedOut || r.ExitCode!=0)return true;
+            bool Rejected(JsonElement node)
+            {
+                if(node.ValueKind==JsonValueKind.False)return true;
+                if(node.ValueKind==JsonValueKind.Array)return node.EnumerateArray().Any(Rejected);
+                if(node.ValueKind!=JsonValueKind.Object)return false;
+                foreach(var field in node.EnumerateObject())
+                {
+                    string key=field.Name.ToLowerInvariant();var value=field.Value;
+                    if(key=="success" && value.ValueKind==JsonValueKind.False)return true;
+                    if(key=="status" && value.ValueKind==JsonValueKind.String && new[]{"error","failed","denied","failure"}.Contains(value.GetString()?.ToLowerInvariant()))return true;
+                    if((key=="error" || key=="errors") && (value.ValueKind==JsonValueKind.Object || value.ValueKind==JsonValueKind.True || (value.ValueKind==JsonValueKind.Array && value.GetArrayLength()>0) || (value.ValueKind==JsonValueKind.String && !String.IsNullOrWhiteSpace(value.GetString()))))return true;
+                    if((key=="results" || key=="result") && Rejected(value))return true;
+                }
+                return false;
+            }
+            bool parsed=false;
+            try{using var doc=JsonDocument.Parse(r.StdOut);parsed=doc.RootElement.ValueKind==JsonValueKind.Object || doc.RootElement.ValueKind==JsonValueKind.Array;if(Rejected(doc.RootElement))return true;}catch(JsonException){}
+            bool ErrorText(string text)=>Regex.IsMatch(text??"",@"^\s*(error|fatal)\b|permission denied|access denied|not owned|does not own|no license|not subscribed|failed to ",RegexOptions.IgnoreCase|RegexOptions.Multiline);
+            return ErrorText(r.StdErr) || (!parsed && ErrorText(r.StdOut));
         }
+
         public static bool IsUnlocked(string state) => state=="Desbloqueado" || (state?.StartsWith("✓ ",StringComparison.Ordinal)??false);
         public static int ApplySteamStates(IEnumerable<AchievementRecord> achievements,Dictionary<string,string> states,bool omitUnlocked)
         {
