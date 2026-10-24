@@ -175,3 +175,11 @@ El entorno de desarrollo compila WPF pero no ejecuta una sesión gráfica Window
 - Notas explicativas en cursiva, sin cambiar rótulos, títulos, tablas ni texto de los globos.
 - Logo lateral nítido usando el PNG de 256 × 256 en escalas 100/125/150 %.
 - Barra de título sin WPF. Revisar distribución a ventana mínima.
+
+
+## Revisión visual 0.16.4
+
+- Importaciones a la izquierda en orden Goldberg / Codex-Rune / Playnite Achievements; conexiones Epic / Xbox a la derecha.
+- Campos de tiempos de alto 24: comprobar edición, valores largos y separación de Espera inicial.
+- Reparación y registro de tiempo, cada uno en su renglón debajo de Espera inicial, con sus ayudas.
+- Logo centrado de 144 × 144 y navegación accesible a tamaño mínimo de ventana y escalas 100/125/150 %.

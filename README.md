@@ -1,8 +1,8 @@
 # Achievement Timeline Replay
 
-## Descargar v0.16.3 para Windows x64
+## Descargar v0.16.4 para Windows x64
 
-[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.16.3_Windows_x64.zip)
+[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.16.4_Windows_x64.zip)
 
 Extraer **todo el ZIP** en una carpeta nueva y abrir `AchievementTimelineReplay.Wpf.exe`. No se necesita compilar ni instalar .NET. Mantener las DLL y demás archivos junto al ejecutable. Steam y SamRewritten se seleccionan en la aplicación, como antes; no vienen incluidos.
 
@@ -310,3 +310,10 @@ La mejora de los mensajes sobre cachés vacías y fechas de logros permanece pen
 - Notas explicativas dentro de las ventanas en cursiva; etiquetas, datos, títulos y ayudas emergentes conservan su formato.
 - Logo lateral cargado desde PNG de 256 × 256, conservando los píxeles originales del icono en alta resolución.
 - Título de ventana sin el sufijo WPF.
+
+## v0.16.4 — orden y espaciado de controles
+
+- Importaciones en la columna izquierda (Goldberg, Codex/Rune, Playnite Achievements) y conexiones a la derecha (Epic, Xbox).
+- Campos de tiempos de alto 24 y menor ancho; espacio entre Espera inicial y su campo.
+- Modo reparación y Registrar tiempo de juego en renglones propios debajo de Espera inicial.
+- Logo lateral centrado y ampliado a 144 × 144.

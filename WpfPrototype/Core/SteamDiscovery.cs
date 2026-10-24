@@ -58,7 +58,7 @@ namespace AchievementTimelineReplay
         }
         static HttpClient Client(HttpMessageHandler handler=null)
         {
-            var client=handler==null?new HttpClient():new HttpClient(handler,false);client.Timeout=TimeSpan.FromSeconds(12);client.DefaultRequestHeaders.UserAgent.ParseAdd("AchievementTimelineReplay/0.16.3");return client;
+            var client=handler==null?new HttpClient():new HttpClient(handler,false);client.Timeout=TimeSpan.FromSeconds(12);client.DefaultRequestHeaders.UserAgent.ParseAdd("AchievementTimelineReplay/0.16.4");return client;
         }
         public static async Task<List<SteamGameMatch>> SearchAsync(string term,CancellationToken token=default,HttpMessageHandler handler=null)
         {

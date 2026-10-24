@@ -1,4 +1,4 @@
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Icon="Assets/atr.ico" x:Class="AchievementTimelineReplay.Wpf.MainWindow" Title="Achievement Timeline Replay v0.16.3" Width="1440" Height="900" MinWidth="1060" MinHeight="680" Background="{StaticResource Bg}" WindowStartupLocation="CenterScreen" FontFamily="{DynamicResource BodyFontFamily}" Foreground="White" Closing="WindowClosing">
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Icon="Assets/atr.ico" x:Class="AchievementTimelineReplay.Wpf.MainWindow" Title="Achievement Timeline Replay v0.16.4" Width="1440" Height="900" MinWidth="1060" MinHeight="680" Background="{StaticResource Bg}" WindowStartupLocation="CenterScreen" FontFamily="{DynamicResource BodyFontFamily}" Foreground="White" Closing="WindowClosing">
   <Grid Margin="14">
     <Grid.ColumnDefinitions>
       <ColumnDefinition Width="232" />
@@ -7,7 +7,7 @@
     <Border Grid.Column="0" CornerRadius="12" Background="{StaticResource Panel}" Margin="0,0,12,0" Padding="15">
       <DockPanel LastChildFill="True">
         <StackPanel DockPanel.Dock="Top">
-          <Image Source="Assets/atr-logo.png" Width="72" Height="72" Stretch="Uniform" HorizontalAlignment="Left" Margin="5,4,0,22" ToolTip="Achievement Timeline Replay" AutomationProperties.Name="Logo de Achievement Timeline Replay" RenderOptions.BitmapScalingMode="HighQuality" />
+          <Image Source="Assets/atr-logo.png" Width="144" Height="144" Stretch="Uniform" HorizontalAlignment="Center" Margin="0,4,0,22" ToolTip="Achievement Timeline Replay" AutomationProperties.Name="Logo de Achievement Timeline Replay" RenderOptions.BitmapScalingMode="HighQuality" />
           <Button x:Name="NavScan" Tag="Escaneo" Style="{StaticResource NavButton}" Content="◎   Escaneo" Click="Navigate" />
           <Button x:Name="NavLibrary" Tag="Biblioteca" Style="{StaticResource NavButton}" Content="▦   Biblioteca" Click="Navigate" />
           <Button x:Name="NavPlan" Tag="Plan" Style="{StaticResource NavButton}" Content="☷   Plan de desbloqueo" Click="Navigate" />
@@ -104,13 +104,22 @@
                   </StackPanel>
                   <StackPanel Grid.Column="2" HorizontalAlignment="Left">
                     <TextBlock Text="Importar y conectar" FontWeight="SemiBold" FontSize="16" Margin="0,0,0,12" />
-                    <UniformGrid Columns="2" Rows="3" HorizontalAlignment="Left">
-                      <Button x:Name="ImportGoldbergButton" Content="Goldberg" Click="ImportGoldbergClick" Margin="0,3,12,7" Style="{StaticResource CompactButton}" ToolTip="Importa un archivo achievements.json de Goldberg o GSE." HorizontalAlignment="Left" />
-                      <Button x:Name="ImportIniButton" Content="Codex/Rune" HorizontalAlignment="Left" Click="ImportIniClick" Margin="0,3,12,7" Style="{StaticResource CompactButton}" ToolTip="Importa un archivo achievements.ini de CODEX, RUNE o un formato compatible." />
-                      <Button x:Name="ImportPAButton" Content="Playnite Achievements" Click="ImportPAClick" HorizontalAlignment="Left" Margin="0,3,12,7" Style="{StaticResource CompactButton}" ToolTip="Importa los historiales de achievement_cache.db de Playnite Achievements." />
-                      <Button x:Name="ConnectEpicButton" Content="Conectar Epic" Click="ConnectEpicClick" HorizontalAlignment="Left" Margin="0,3,12,7" Style="{StaticResource CompactButton}" ToolTip="Vincula tu cuenta de Epic para consultar sus logros desbloqueados." />
-                      <Button x:Name="ConnectXboxButton" Content="Conectar Xbox" Click="ConnectXboxClick" HorizontalAlignment="Left" Margin="0,3,12,7" Style="{StaticResource CompactButton}" ToolTip="Vincula tu cuenta Microsoft para consultar sus logros de Xbox Live." />
-                    </UniformGrid>
+                    <Grid HorizontalAlignment="Left">
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                      </Grid.ColumnDefinitions>
+                      <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                      </Grid.RowDefinitions>
+                      <Button x:Name="ImportGoldbergButton" Content="Goldberg" Click="ImportGoldbergClick" Margin="0,3,12,7" Style="{StaticResource CompactButton}" ToolTip="Importa un archivo achievements.json de Goldberg o GSE." HorizontalAlignment="Left" Grid.Column="0" Grid.Row="0" />
+                      <Button x:Name="ImportIniButton" Content="Codex/Rune" HorizontalAlignment="Left" Click="ImportIniClick" Margin="0,3,12,7" Style="{StaticResource CompactButton}" ToolTip="Importa un archivo achievements.ini de CODEX, RUNE o un formato compatible." Grid.Column="0" Grid.Row="1" />
+                      <Button x:Name="ImportPAButton" Content="Playnite Achievements" Click="ImportPAClick" HorizontalAlignment="Left" Margin="0,3,12,7" Style="{StaticResource CompactButton}" ToolTip="Importa los historiales de achievement_cache.db de Playnite Achievements." Grid.Column="0" Grid.Row="2" />
+                      <Button x:Name="ConnectEpicButton" Content="Conectar Epic" Click="ConnectEpicClick" HorizontalAlignment="Left" Margin="0,3,12,7" Style="{StaticResource CompactButton}" ToolTip="Vincula tu cuenta de Epic para consultar sus logros desbloqueados." Grid.Column="1" Grid.Row="0" />
+                      <Button x:Name="ConnectXboxButton" Content="Conectar Xbox" Click="ConnectXboxClick" HorizontalAlignment="Left" Margin="0,3,12,7" Style="{StaticResource CompactButton}" ToolTip="Vincula tu cuenta Microsoft para consultar sus logros de Xbox Live." Grid.Column="1" Grid.Row="1" />
+                    </Grid>
                   </StackPanel>
                 </Grid>
               </ScrollViewer>
@@ -297,11 +306,11 @@
                   <StackPanel Grid.Column="2">
                     <WrapPanel Margin="0,0,0,7">
                       <TextBlock Text="Duración automática  " VerticalAlignment="Center" />
-                      <TextBox x:Name="DurationHours" Width="48" TextChanged="DurationChanged" Text="0" Height="{DynamicResource PlanNumberHeight}" Padding="4,2" />
+                      <TextBox x:Name="DurationHours" Width="44" TextChanged="DurationChanged" Text="0" Height="{DynamicResource PlanNumberHeight}" Padding="3,1" />
                       <TextBlock Text="h" VerticalAlignment="Center" Margin="3,0,9,0" />
-                      <TextBox x:Name="DurationMinutes" Width="36" TextChanged="DurationChanged" Text="0" Height="{DynamicResource PlanNumberHeight}" Padding="4,2" />
+                      <TextBox x:Name="DurationMinutes" Width="32" TextChanged="DurationChanged" Text="0" Height="{DynamicResource PlanNumberHeight}" Padding="3,1" />
                       <TextBlock Text="m" VerticalAlignment="Center" Margin="3,0,9,0" />
-                      <TextBox x:Name="DurationSeconds" Width="36" TextChanged="DurationChanged" Text="0" Height="{DynamicResource PlanNumberHeight}" Padding="4,2" />
+                      <TextBox x:Name="DurationSeconds" Width="32" TextChanged="DurationChanged" Text="0" Height="{DynamicResource PlanNumberHeight}" Padding="3,1" />
                       <TextBlock Text="s" VerticalAlignment="Center" Margin="3,0,16,0" />
                       <TextBlock x:Name="OriginalDuration" Foreground="{StaticResource Muted}" VerticalAlignment="Center" />
                       <TextBlock x:Name="EffectiveDuration" Foreground="{StaticResource Accent}" VerticalAlignment="Center" Margin="16,0,0,0" />
@@ -309,7 +318,7 @@
                     <WrapPanel Margin="0,0,0,7">
                       <CheckBox x:Name="LimitLongGaps" Content="Limitar esperas automáticas largas" Checked="GapLimitChanged" Unchecked="GapLimitChanged" />
                       <TextBlock Text="Máximo por espera (min)" VerticalAlignment="Center" Margin="8,0,4,0" />
-                      <TextBox x:Name="MaxGapMinutes" Text="30" Width="56" TextChanged="DurationChanged" Height="{DynamicResource PlanNumberHeight}" Padding="4,2" />
+                      <TextBox x:Name="MaxGapMinutes" Text="30" Width="50" TextChanged="DurationChanged" Height="{DynamicResource PlanNumberHeight}" Padding="3,1" />
                       <TextBlock Text=" ? " Foreground="{StaticResource Accent}" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" Focusable="True" ToolTipService.ShowDuration="30000" AutomationProperties.Name="Información sobre el límite de esperas">
                         <TextBlock.ToolTip>
                           <ToolTip>
@@ -321,7 +330,7 @@
                     <TextBlock x:Name="GapLimitValidation" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="4,0,0,7" FontStyle="Italic" />
                     <WrapPanel>
                       <TextBlock Text="Espera inicial (s)" VerticalAlignment="Center" />
-                      <TextBox x:Name="InitialDelay" Width="48" Text="10" TextChanged="DurationChanged" Height="{DynamicResource PlanNumberHeight}" Padding="4,2" />
+                      <TextBox x:Name="InitialDelay" Width="44" Text="10" TextChanged="DurationChanged" Height="{DynamicResource PlanNumberHeight}" Padding="3,1" Margin="8,0,0,0" />
                       <TextBlock Text=" ? " Foreground="{StaticResource Accent}" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" Focusable="True" ToolTipService.ShowDuration="30000">
                         <TextBlock.ToolTip>
                           <ToolTip>
@@ -329,6 +338,8 @@
                           </ToolTip>
                         </TextBlock.ToolTip>
                       </TextBlock>
+                    </WrapPanel>
+                    <WrapPanel Margin="0,4,0,0">
                       <CheckBox x:Name="LockFirst" Content="Modo reparación: bloquear antes" />
                       <TextBlock Text=" ? " Foreground="{StaticResource Accent}" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" Focusable="True" ToolTipService.ShowDuration="30000">
                         <TextBlock.ToolTip>
@@ -337,6 +348,8 @@
                           </ToolTip>
                         </TextBlock.ToolTip>
                       </TextBlock>
+                    </WrapPanel>
+                    <WrapPanel Margin="0,4,0,0">
                       <CheckBox x:Name="IdleDuringMigration" IsChecked="True" Content="Registrar tiempo de juego (SAM idle)" />
                       <TextBlock Text=" ? " Foreground="{StaticResource Accent}" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" Focusable="True" ToolTipService.ShowDuration="30000">
                         <TextBlock.ToolTip>
@@ -412,7 +425,7 @@
             <ColumnDefinition Width="Auto" />
           </Grid.ColumnDefinitions>
           <TextBlock x:Name="GlobalStatus" VerticalAlignment="Center" Text="Listo. Escaneá tu biblioteca para comenzar." Foreground="{StaticResource Muted}" TextTrimming="CharacterEllipsis" FontStyle="Italic" />
-          <TextBlock Grid.Column="1" Text="v0.16.3" Foreground="{StaticResource Accent}" VerticalAlignment="Center" />
+          <TextBlock Grid.Column="1" Text="v0.16.4" Foreground="{StaticResource Accent}" VerticalAlignment="Center" />
         </Grid>
       </Border>
     </Grid>
