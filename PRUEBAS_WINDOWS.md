@@ -155,3 +155,14 @@ La compilación y las pruebas de servicios/SAM simulado se ejecutan en el entorn
 - Guardar/cargar planes, reordenar y calcular duración deben mantener el comportamiento anterior; los cambios son de presentación y selección, no de fechas ni identidad de archivos.
 
 El entorno de desarrollo compila WPF pero no ejecuta una sesión gráfica Windows; la distribución final de píxeles requiere esa revisión manual.
+
+
+## Revisión visual 0.16.2
+
+- Biblioteca: actualizar y borrar inmediatamente después del título; detalle debajo.
+- Barra lateral: logo visible; encabezado sin subtítulo.
+- Cambiar entre las cinco pestañas: datos del juego solo visibles en Biblioteca, Plan y Ejecución.
+- Plan: botones junto al título; Origen a la izquierda de Historial de origen; selectores de alto 28 y anchos 185/260.
+- Origen: mismas opciones que los filtros de Biblioteca. Un origen antiguo oculto se presenta como Otro sin guardar cambios hasta una edición explícita.
+- Pasar por varias ayudas, incluidas casillas creadas dinámicamente y ventanas secundarias: demora de 0,3 s.
+- Revisar títulos largos, ventana mínima y escalas de Windows 100/125/150 %; las filas pueden envolver controles cuando falta espacio.

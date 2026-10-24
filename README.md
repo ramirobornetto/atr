@@ -1,8 +1,8 @@
 # Achievement Timeline Replay
 
-## Descargar v0.16.1 para Windows x64
+## Descargar v0.16.2 para Windows x64
 
-[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.16.1_Windows_x64.zip)
+[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.16.2_Windows_x64.zip)
 
 Extraer **todo el ZIP** en una carpeta nueva y abrir `AchievementTimelineReplay.Wpf.exe`. No se necesita compilar ni instalar .NET. Mantener las DLL y demás archivos junto al ejecutable. Steam y SamRewritten se seleccionan en la aplicación, como antes; no vienen incluidos.
 
@@ -292,3 +292,13 @@ Los ajustes visuales comunes están comentados al comienzo de [`WpfPrototype/App
 - Apariencia compartida en `Appearance.xaml`, con altura normal de 34 y búsqueda de Biblioteca de 30; guía en `APARIENCIA.md`.
 
 La mejora de los mensajes sobre cachés vacías y fechas de logros permanece pendiente.
+
+## v0.16.2 — distribución de Biblioteca y Plan
+
+- Actualizar y borrar biblioteca junto al título, sin alineación al extremo derecho.
+- Encabezado sin subtítulo y logo de ATR en la parte superior de la barra lateral.
+- Nombre y datos del juego en el encabezado solo en Biblioteca, Plan y Ejecución.
+- Consultar estado en Steam y Abrir en SAM junto al nombre del juego en Plan.
+- Selectores de origen e historial en la misma fila, más angostos y con altura 28.
+- Opciones de origen tomadas de los mismos filtros de Biblioteca; categorías antiguas se muestran como Otro sin modificar datos guardados.
+- Ayudas con demora de aparición de 300 ms en toda la aplicación.

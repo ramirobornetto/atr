@@ -148,7 +148,7 @@ namespace AchievementTimelineReplay.Wpf
             ApplyLibraryFilter();
             GoTo("Escaneo");
             UpdateButtons();
-            Log("WPF v0.16.1 iniciada. Motor derivado de v0.5.3. No se ha modificado Steam.");
+            Log("WPF v0.16.2 iniciada. Motor derivado de v0.5.3. No se ha modificado Steam.");
             LoadSavedLibrary();
             if(!String.IsNullOrWhiteSpace(SamPath.Text)) _=ValidateSamAsync(false);
         }
@@ -179,6 +179,7 @@ namespace AchievementTimelineReplay.Wpf
             PlanPanel.Visibility=screen=="Plan" ? Visibility.Visible : Visibility.Collapsed;
             ExecutionPanel.Visibility=screen=="Ejecucion" ? Visibility.Visible : Visibility.Collapsed;
             LogsPanel.Visibility=screen=="Logs" ? Visibility.Visible : Visibility.Collapsed;
+            HeaderGameDetails.Visibility=screen=="Biblioteca" || screen=="Plan" || screen=="Ejecucion" ? Visibility.Visible : Visibility.Collapsed;
             foreach(var b in new[]{NavScan,NavLibrary,NavPlan,NavExecution,NavLogs})
             {
                 bool selected=Convert.ToString(b.Tag)==screen;
@@ -342,6 +343,8 @@ namespace AchievementTimelineReplay.Wpf
         }
         void BuildSourceControls()
         {
+            foreach(string source in SourceSelection.LibraryFilterSources)
+                OriginChoice.Items.Add(new ComboBoxItem{Content=SourceSelection.DisplayOrigin(source)});
             foreach(string source in SourceSelection.ScanSources)
             {
                 var check=new CheckBox{Content=SourceSelection.DisplayOrigin(source),IsChecked=sourceOptions.Scans(source),Margin=new Thickness(0,3,18,3),Tag=source};
@@ -954,9 +957,9 @@ namespace AchievementTimelineReplay.Wpf
         }
         void SelectOrigin(string label)
         {
-            label=SourceSelection.DisplayOrigin(label);
+            label=SourceSelection.DisplayOrigin(SourceSelection.LibraryCategory(label));
             var item=OriginChoice.Items.Cast<ComboBoxItem>().FirstOrDefault(i=>Convert.ToString(i.Content)==label);
-            if(item==null){item=new ComboBoxItem{Content=label};OriginChoice.Items.Add(item);}
+            if(item==null)item=OriginChoice.Items.Cast<ComboBoxItem>().First(i=>Convert.ToString(i.Content)=="Otro");
             selectingOrigin=true;
             try {OriginChoice.SelectedItem=item;}
             finally {selectingOrigin=false;}
