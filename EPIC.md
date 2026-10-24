@@ -46,3 +46,14 @@ No compartir códigos ni `session.dat`. Los historiales también son datos perso
 Se implementaron la conexión, renovación, consultas paginadas, lectura de logros, persistencia, perfiles separados y correspondencias con Steam. Las pruebas automatizadas usan respuestas simuladas. **El acceso real a Epic y la interfaz de conexión todavía deben validarse en Windows con una cuenta del usuario.** La compatibilidad con todos los títulos no está verificada.
 
 Se tomó como referencia el protocolo de PlayniteAchievements, disponible bajo MIT; ver [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+
+## v0.14.1 — acceso denegado y sesión
+
+Se alinean las cabeceras con el flujo compatible con launcher utilizado por PA. Cada fallo indica si ocurrió en autenticación, renovación, biblioteca, esquema, progreso o catálogo, además de HTTP 401/403/429. Solo se exponen códigos públicos conocidos del error, nunca sus cuerpos completos.
+
+Un 401 en una consulta de datos renueva la sesión y repite la consulta como máximo una vez, conservando la cuenta. Un 403 de un título se registra y permite intentar los demás títulos; un 403 de biblioteca impide enumerar y detiene esa fase. No se vuelve a intentar el recurso 403 ni se ignora un límite 429. Si solo falla la obtención del nombre del catálogo, los desbloqueos ya recuperados se conservan con su identificador.
+
+Los errores se reflejan como incidencias en el resumen. La cuenta ya se pudo vincular y su biblioteca enumerar en una prueba real del usuario, pero el acceso a los logros aún requiere validación con esta corrección. No se atribuye un rechazo genérico automáticamente a una sesión vencida.
+
+La diferencia con PA al vincular es de interfaz: PA dispone de un navegador integrado; ATR usa el navegador externo y un código temporal. La contraseña siempre se introduce en Epic. Esta corrección no añade un navegador integrado.

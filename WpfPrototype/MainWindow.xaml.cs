@@ -147,7 +147,7 @@ namespace AchievementTimelineReplay.Wpf
             ApplyLibraryFilter();
             GoTo("Escaneo");
             UpdateButtons();
-            Log("WPF v0.14.0 iniciada. Motor derivado de v0.5.3. No se ha modificado Steam.");
+            Log("WPF v0.14.1 iniciada. Motor derivado de v0.5.3. No se ha modificado Steam.");
             LoadSavedLibrary();
             if(!String.IsNullOrWhiteSpace(SamPath.Text)) _=ValidateSamAsync(false);
         }
@@ -422,6 +422,7 @@ namespace AchievementTimelineReplay.Wpf
                 var scanner=new LegacyScanner(Log);
                 var goldbergSummary=new ScanSummary();
                 var iniSummary=new ScanSummary();
+                int epicErrors=0;string epicStop=null;
                 var found=await Task.Run(()=>
                 {
                     var all=new List<GameEntry>();
@@ -492,6 +493,7 @@ namespace AchievementTimelineReplay.Wpf
                         {
                             using var api=new EpicProfile();var connection=new EpicConnection(Path.Combine(LegacyTools.DataDirectory,"Epic"));
                             var session=connection.SessionAsync(api,token).GetAwaiter().GetResult();
+                            api.RenewSession=ct=>connection.SessionAsync(api,ct);
                             var assets=api.GamesAsync(session,token).GetAwaiter().GetResult();int completed=0;
                             foreach(var asset in assets)
                             {
@@ -504,12 +506,13 @@ namespace AchievementTimelineReplay.Wpf
                                     EpicProfile.SaveHistory(history,Path.Combine(LegacyTools.DataDirectory,"Snapshots"));all.Add(history);
                                 }
                                 catch(OperationCanceledException){throw;}
-                                catch(EpicServiceException ex){Log("Epic: "+ex.Message+" Se detiene la consulta; se conservan los historiales anteriores.");break;}
-                                catch(Exception ex){Log("Epic · "+(asset.Title??asset.AppName)+": "+ex.Message+" Se conserva el historial anterior, si existe.");}
+                                catch(EpicServiceException ex) when(ex.StatusCode==403){epicErrors++;Log("Epic · "+(asset.Title??asset.AppName)+": "+ex.Message+" Se continúa con otros títulos.");}
+                                catch(EpicServiceException ex){epicErrors++;epicStop=ex.Message;Log("Epic: "+ex.Message+" Se detiene la consulta; se conservan los historiales anteriores.");break;}
+                                catch(Exception ex){epicErrors++;Log("Epic · "+(asset.Title??asset.AppName)+": "+ex.Message+" Se conserva el historial anterior, si existe.");}
                             }
                         }
                         catch(OperationCanceledException){throw;}
-                        catch(Exception ex){Log("Epic: "+ex.Message+" Los historiales guardados se conservan.");}
+                        catch(Exception ex){epicErrors++;epicStop=ex.Message;Log("Epic: "+ex.Message+" Los historiales guardados se conservan.");}
                     }
                     phases.Begin("Consolidación");
                     // Compare PA against current native progress, preserving its first snapshot separately.
@@ -577,7 +580,7 @@ namespace AchievementTimelineReplay.Wpf
                 }
                 RebuildHistoryGroups(previousSelection);
                 ApplyLibraryFilter();
-                ScanResult.Text="Actualización terminada: "+games.Count+" juegos/perfiles · "+allHistories.Count+" fuentes ("+found.Count(g=>g.RetainedFromCatalog)+" conservados del catálogo).\n"+(scanSteam?scanner.Summary.Format("Steam"):"Steam/BIN: desactivado o appcache/stats no disponible")+(scanGoldberg?"\n"+goldbergSummary.Format("Goldberg/GBE"):"")+(scanIni?"\n"+iniSummary.Format("CODEX/RUNE"):"")+(selection.Scans("Xbox (perfil)")?"\nXbox Live (perfil): "+found.Count(XboxProfile.IsXbox)+" historiales en biblioteca; revisá Logs para consultas fallidas.":"")+(selection.Scans("Epic (perfil)")?"\nEpic (perfil): "+found.Count(EpicProfile.IsEpic)+" historiales en biblioteca; revisá Logs para consultas fallidas.":"")+(scanPA?"\nPA: "+found.Count(PlayniteHistory.IsPA)+" historiales elegidos en biblioteca. Los desbloqueos sin fecha se conservan; el log detalla los proveedores.":"");
+                ScanResult.Text=(epicErrors>0?"Actualización terminada con incidencias: ":"Actualización terminada: ")+games.Count+" juegos/perfiles · "+allHistories.Count+" fuentes ("+found.Count(g=>g.RetainedFromCatalog)+" conservados del catálogo).\n"+(scanSteam?scanner.Summary.Format("Steam"):"Steam/BIN: desactivado o appcache/stats no disponible")+(scanGoldberg?"\n"+goldbergSummary.Format("Goldberg/GBE"):"")+(scanIni?"\n"+iniSummary.Format("CODEX/RUNE"):"")+(selection.Scans("Xbox (perfil)")?"\nXbox Live (perfil): "+found.Count(XboxProfile.IsXbox)+" historiales en biblioteca; revisá Logs para consultas fallidas.":"")+(selection.Scans("Epic (perfil)")?"\nEpic (perfil): "+found.Count(EpicProfile.IsEpic)+" historiales en biblioteca · "+epicErrors+" errores"+(epicStop==null?"":" · fase detenida: "+epicStop)+". Revisá Logs para el detalle.":"")+(scanPA?"\nPA: "+found.Count(PlayniteHistory.IsPA)+" historiales elegidos en biblioteca. Los desbloqueos sin fecha se conservan; el log detalla los proveedores.":"");
                 SetStatus(ScanResult.Text);
                 Log(ScanResult.Text);
                 lastLibraryScan=DateTimeOffset.UtcNow;lastLibrarySummary=ScanResult.Text;

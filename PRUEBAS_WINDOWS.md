@@ -120,3 +120,12 @@ Las pruebas automáticas usan SAM simulado y no sustituyen estas verificaciones 
 7. Actualizar ATR: preservar Epic/session.dat, copias de logros, snapshots, planes e informes. Desconectar solo elimina la sesión de ATR.
 
 Pendiente de validación manual real: inicio de sesión y respuestas de Epic en Windows. Las pruebas automatizadas cubren respuestas simuladas, no una cuenta real.
+
+
+## v0.14.1 — acceso Epic
+
+- Con la sesión ya vinculada, actualizar y reescanear Epic sin volver a conectar inicialmente. Comprobar si se recupera DREDGE.
+- Si falla, verificar que Logs indique operación y HTTP 401/403/429; compartir solo esas líneas y códigos públicos, sin códigos de acceso ni session.dat.
+- Un título 403 no debe detener los demás. Un 401 renueva una sola vez y, si persiste, detiene. Un 429 detiene sin reintentos.
+- Un fallo de nombre en el catálogo conserva los desbloqueos recuperados. El resumen debe indicar incidencias cuando corresponda.
+- La validación de acceso real a logros sigue pendiente; las nuevas pruebas de errores y renovación usan respuestas simuladas.

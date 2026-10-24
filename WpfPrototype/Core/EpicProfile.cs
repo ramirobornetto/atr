@@ -15,7 +15,8 @@ using System.Threading.Tasks;
 namespace AchievementTimelineReplay
 {
     internal sealed class EpicServiceException : InvalidOperationException
-    {public EpicServiceException(string message):base(message){}}
+    {public int StatusCode {get;}
+        public EpicServiceException(string message,int statusCode=0):base(message){StatusCode=statusCode;}}
     internal sealed class EpicSession
     {
         public string AccessToken {get;set;}
@@ -37,11 +38,38 @@ namespace AchievementTimelineReplay
         const string GraphUrl="https://launcher.store.epicgames.com/graphql";
         const string SchemaQuery=@"query Achievement($SandboxId: String!, $Locale: String!) { Achievement { productAchievementsRecordBySandbox(sandboxId: $SandboxId, locale: $Locale) { productId achievements { achievement { name unlockedDisplayName unlockedDescription } } } } }";
         const string PlayerQuery=@"query playerProfileAchievementsByProductId($EpicAccountId: String!, $ProductId: String!) { PlayerProfile { playerProfile(epicAccountId: $EpicAccountId) { productAchievements(productId: $ProductId) { ... on PlayerProductAchievementsResponseSuccess { data { playerAchievements { playerAchievement { achievementName unlocked unlockDate } } } } } } } }";
+        const string LauncherUserAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) EpicGamesLauncher ATR/0.14.1";
         readonly HttpClient http;
+        public Func<CancellationToken,Task<EpicSession>> RenewSession;
+        static void Headers(HttpRequestMessage request,EpicSession session)
+        {
+            request.Headers.UserAgent.ParseAdd(LauncherUserAgent);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            request.Headers.AcceptLanguage.ParseAdd("es-ES");
+            request.Headers.Authorization=new AuthenticationHeaderValue("bearer",session.AccessToken);
+        }
+        static string PublicCode(JsonElement root)
+        {
+            string code=Text(root,"errorCode");
+            if(code==null && root.ValueKind==JsonValueKind.Object && root.TryGetProperty("numericErrorCode",out var numeric) && numeric.ValueKind==JsonValueKind.Number)code=numeric.GetRawText();
+            return Regex.IsMatch(code??"",@"^(?:errors?\.[A-Za-z0-9_.-]{1,150}|[0-9]{1,12}|[A-Z][A-Z0-9_]{1,80})$")?code:null;
+        }
+        static async Task<string> ErrorDetail(HttpResponseMessage response,CancellationToken token)
+        {
+            if(response.Content.Headers.ContentType?.MediaType=="text/html")return " Respuesta HTML del servicio.";
+            try
+            {
+                using var stream=await response.Content.ReadAsStreamAsync(token).ConfigureAwait(false);using var memory=new MemoryStream();var buffer=new byte[1024];int n;
+                while(memory.Length<8192 && (n=await stream.ReadAsync(buffer,token).ConfigureAwait(false))>0)memory.Write(buffer,0,n);
+                using var doc=JsonDocument.Parse(memory.ToArray());string code=PublicCode(doc.RootElement);return code==null?"":" Código Epic: "+code+".";
+            }
+            catch(OperationCanceledException){throw;}
+            catch{return "";}
+        }
         public EpicProfile(HttpMessageHandler handler=null)
         {
             http=handler==null?new HttpClient(new HttpClientHandler{AllowAutoRedirect=false}):new HttpClient(handler);
-            http.Timeout=TimeSpan.FromSeconds(35);http.DefaultRequestHeaders.UserAgent.ParseAdd("ATR/0.14.0");
+            http.Timeout=TimeSpan.FromSeconds(35);http.DefaultRequestHeaders.UserAgent.ParseAdd("ATR/0.14.1");
         }
         internal static string Text(JsonElement e,string key)=>e.ValueKind==JsonValueKind.Object && e.TryGetProperty(key,out var v) && v.ValueKind==JsonValueKind.String?v.GetString():null;
         static JsonElement At(JsonElement e,params string[] keys)
@@ -55,12 +83,17 @@ namespace AchievementTimelineReplay
             if(!Regex.IsMatch(input,@"^[A-Za-z0-9_-]{16,512}$"))throw new InvalidDataException("Pegá el valor authorizationCode, no una contraseña, URL ni un token de sesión.");
             return input;
         }
-        async Task<JsonDocument> Send(HttpRequestMessage request,CancellationToken token)
+        async Task<JsonDocument> Send(HttpRequestMessage request,CancellationToken token,string operation)
         {
             using var response=await http.SendAsync(request,token).ConfigureAwait(false);
-            if(response.StatusCode==HttpStatusCode.Unauthorized || response.StatusCode==HttpStatusCode.Forbidden)throw new EpicServiceException("Epic rechazó la sesión o sus permisos. Volvé a conectar la cuenta.");
-            if((int)response.StatusCode==429)throw new EpicServiceException("Epic limitó las consultas. Esperá unos minutos antes de volver a escanear.");
-            if(!response.IsSuccessStatusCode)throw new InvalidOperationException("La consulta a Epic falló (HTTP "+(int)response.StatusCode+"). Si estabas conectando, obtené un código nuevo.");
+            if(!response.IsSuccessStatusCode)
+            {
+                string detail=await ErrorDetail(response,token).ConfigureAwait(false);int status=(int)response.StatusCode;
+                if(status==401)throw new EpicServiceException("Epic rechazó la sesión en "+operation+" (HTTP 401). Volvé a conectar si la renovación no lo resuelve."+detail,status);
+                if(status==403)throw new EpicServiceException("Epic denegó la consulta de "+operation+" (HTTP 403). La sesión puede ser válida; el servicio rechazó el acceso."+detail,status);
+                if(status==429)throw new EpicServiceException("Epic limitó las consultas de "+operation+" (HTTP 429). Esperá unos minutos antes de reescanear."+detail,status);
+                throw new InvalidOperationException("La consulta Epic de "+operation+" falló (HTTP "+status+")."+detail);
+            }
             if(response.Content.Headers.ContentLength>16*1024*1024)throw new InvalidDataException("Respuesta Epic demasiado grande.");
             using var stream=await response.Content.ReadAsStreamAsync(token).ConfigureAwait(false);using var memory=new MemoryStream();var buffer=new byte[8192];int count;
             while((count=await stream.ReadAsync(buffer,token).ConfigureAwait(false))>0){if(memory.Length+count>16*1024*1024)throw new InvalidDataException("Respuesta Epic demasiado grande.");memory.Write(buffer,0,count);}
@@ -70,21 +103,38 @@ namespace AchievementTimelineReplay
         {
             fields["token_type"]="eg1";using var request=new HttpRequestMessage(HttpMethod.Post,TokenUrl){Content=new FormUrlEncodedContent(fields)};
             request.Headers.Authorization=new AuthenticationHeaderValue("Basic",ClientAuthorization);
-            using var doc=await Send(request,token).ConfigureAwait(false);var root=doc.RootElement;
+            using var doc=await Send(request,token,fields.ContainsKey("code")?"autenticación":"renovación de sesión").ConfigureAwait(false);var root=doc.RootElement;
             var session=new EpicSession{AccessToken=Text(root,"access_token"),RefreshToken=Text(root,"refresh_token"),AccountId=Text(root,"account_id"),DisplayName=Text(root,"displayName")};
             if(String.IsNullOrWhiteSpace(session.AccessToken) || String.IsNullOrWhiteSpace(session.RefreshToken) || !Regex.IsMatch(session.AccountId??"",@"^[a-fA-F0-9]{32}$"))throw new InvalidDataException("Epic no devolvió una sesión renovable con una cuenta válida.");return session;
         }
         public Task<EpicSession> LoginAsync(string code,CancellationToken token)=>Token(new Dictionary<string,string>{{"grant_type","authorization_code"},{"code",AuthorizationCode(code)}},token);
         public Task<EpicSession> RefreshAsync(string refresh,CancellationToken token)=>Token(new Dictionary<string,string>{{"grant_type","refresh_token"},{"refresh_token",refresh}},token);
-        async Task<JsonDocument> Get(string url,EpicSession session,CancellationToken token)
-        {using var request=new HttpRequestMessage(HttpMethod.Get,url);request.Headers.Authorization=new AuthenticationHeaderValue("Bearer",session.AccessToken);return await Send(request,token).ConfigureAwait(false);}
+        async Task<JsonDocument> Authorized(Func<HttpRequestMessage> factory,EpicSession session,string operation,CancellationToken token)
+        {
+            for(int attempt=0;;attempt++)
+            {
+                using var request=factory();Headers(request,session);
+                try{return await Send(request,token,operation).ConfigureAwait(false);}
+                catch(EpicServiceException ex) when(ex.StatusCode==401 && attempt==0 && RenewSession!=null)
+                {
+                    var refreshed=await RenewSession(token).ConfigureAwait(false);
+                    if(!String.Equals(refreshed.AccountId,session.AccountId,StringComparison.OrdinalIgnoreCase))throw new EpicServiceException("La renovación devolvió otro perfil Epic; conectá explícitamente la cuenta correcta.");
+                    session.AccessToken=refreshed.AccessToken;session.RefreshToken=refreshed.RefreshToken;
+                }
+            }
+        }
+        Task<JsonDocument> Get(string url,EpicSession session,CancellationToken token)
+            =>Authorized(()=>new HttpRequestMessage(HttpMethod.Get,url),session,url.StartsWith(LibraryUrl,StringComparison.Ordinal)?"biblioteca":"catálogo",token);
         async Task<JsonDocument> Graph(string query,object variables,EpicSession session,CancellationToken token)
         {
-            using var request=new HttpRequestMessage(HttpMethod.Post,GraphUrl){Content=new StringContent(JsonSerializer.Serialize(new{query,variables}),Encoding.UTF8,"application/json")};
-            request.Headers.Authorization=new AuthenticationHeaderValue("Bearer",session.AccessToken);request.Headers.AcceptLanguage.ParseAdd("es-ES");
-            var doc=await Send(request,token).ConfigureAwait(false);
+            string operation=query==SchemaQuery?"esquema de logros":"progreso de logros";
+            string payload=JsonSerializer.Serialize(new{query,variables});
+            var doc=await Authorized(()=>new HttpRequestMessage(HttpMethod.Post,GraphUrl){Content=new StringContent(payload,Encoding.UTF8,"application/json")},session,operation,token).ConfigureAwait(false);
             if(doc.RootElement.TryGetProperty("errors",out var errors) && errors.ValueKind==JsonValueKind.Array && errors.GetArrayLength()>0)
-            {doc.Dispose();throw new InvalidOperationException("Epic devolvió un error al consultar los logros. No se reemplazó el historial guardado por un resultado vacío.");}
+            {
+                var codes=errors.EnumerateArray().Select(e=>PublicCode(At(e,"extensions"))??PublicCode(e)).Where(c=>c!=null).Distinct().Take(3).ToList();
+                doc.Dispose();throw new InvalidOperationException("Epic devolvió un error GraphQL en "+operation+(codes.Count==0?"":" ("+String.Join(", ",codes)+")")+". No se reemplazó el historial guardado por un resultado vacío.");
+            }
             return doc;
         }
         public async Task<List<EpicGame>> GamesAsync(EpicSession session,CancellationToken token)
@@ -124,6 +174,7 @@ namespace AchievementTimelineReplay
                     using var title=await Get(url,session,token).ConfigureAwait(false);string name=Text(At(title.RootElement,asset.CatalogId),"title");if(!String.IsNullOrWhiteSpace(name))game.GameName=name;
                 }
                 catch(OperationCanceledException){throw;}
+                catch(EpicServiceException ex) when(ex.StatusCode!=429){log?.Invoke("Epic: "+ex.Message+" Se conservan los desbloqueos con el identificador del juego.");}
                 catch(EpicServiceException){throw;}
                 catch(Exception){log?.Invoke("Epic: nombre de catálogo no disponible; se conserva el identificador del juego.");}
             }

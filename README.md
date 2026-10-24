@@ -1,8 +1,8 @@
 # Achievement Timeline Replay
 
-## Descargar v0.14.0 para Windows x64
+## Descargar v0.14.1 para Windows x64
 
-[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.14.0_Windows_x64.zip)
+[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.14.1_Windows_x64.zip)
 
 Extraer **todo el ZIP** en una carpeta nueva y abrir `AchievementTimelineReplay.Wpf.exe`. No se necesita compilar ni instalar .NET. Mantener las DLL y demás archivos junto al ejecutable. Steam y SamRewritten se seleccionan en la aplicación, como antes; no vienen incluidos.
 
@@ -253,3 +253,10 @@ Los logros del desplegable de Steam se ordenan alfabéticamente por nombre. Se e
 Nuevo **Conectar Epic…** y fuente independiente **Epic (perfil)**, desactivada inicialmente. Inicio de sesión en el navegador oficial, código temporal y sesión protegida con Windows; lectura paginada de biblioteca, catálogo de logros y desbloqueos de la cuenta. Solo incluye títulos con desbloqueos, también sin fecha; mantiene perfiles separados y permite preparar correspondencias Steam. No modifica Epic ni lee las sesiones de otras aplicaciones.
 
 La conexión utiliza un flujo compatible con el launcher, no requiere Entra y debe validarse con una cuenta real. No garantiza todos los logros EOS. Instrucciones y límites: [EPIC.md](EPIC.md). Las pruebas de servicios remotos usan respuestas simuladas.
+
+
+## v0.14.1 — consultas Epic y diagnóstico de acceso
+
+Las consultas Epic usan cabeceras compatibles con las del lector PA (cliente launcher, Accept JSON e idioma). Un 403 de un título no detiene los demás; un nombre de catálogo denegado no descarta desbloqueos ya leídos. Un 401 permite renovar la sesión una sola vez y repetir esa consulta; no hay reintentos automáticos para 403 ni límites 429.
+
+Los mensajes identifican operación, código HTTP y, cuando existe, un código público de error Epic. No muestran cuerpos privados ni tokens. El resumen indica incidencias/fase detenida en lugar de presentar cero juegos como una consulta limpia. El flujo de navegador/código temporal no cambia. La validación real de logros sigue pendiente con la cuenta del usuario; la vinculación y lectura de biblioteca ya fueron confirmadas por él.
