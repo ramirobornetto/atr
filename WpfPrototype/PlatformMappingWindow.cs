@@ -38,7 +38,7 @@ namespace AchievementTimelineReplay.Wpf
         readonly Button searchButton=new Button{Content="Buscar juego en Steam"},confirmExact=new Button{Content="Confirmar coincidencias exactas"},confirmSelected=new Button{Content="Confirmar seleccionadas"};
         readonly ComboBox language=new ComboBox{Width=125,Margin=new Thickness(8)};
         readonly TextBox appId=new TextBox{Width=130,Margin=new Thickness(8)};
-        readonly TextBlock info=new TextBlock{TextWrapping=TextWrapping.Wrap,Margin=new Thickness(8)};
+        readonly TextBlock info=new TextBlock{FontStyle=FontStyles.Italic,TextWrapping=TextWrapping.Wrap,Margin=new Thickness(8)};
         readonly CheckBox edition=new CheckBox{Content="Confirmo que el AppID corresponde al juego y edición correctos en Steam",Margin=new Thickness(8)};
         readonly ObservableCollection<MappingRow> rows=new ObservableCollection<MappingRow>();
         readonly DataGridTemplateColumn targetColumn=new DataGridTemplateColumn{Header="Equivalente Steam",Width=new DataGridLength(3,DataGridLengthUnitType.Star),MinWidth=160};
@@ -58,7 +58,7 @@ namespace AchievementTimelineReplay.Wpf
             var layout=new DockPanel{Margin=new Thickness(12)};Content=layout;
             var header=new StackPanel();DockPanel.SetDock(header,Dock.Top);layout.Children.Add(header);
             header.Children.Add(new TextBlock{Text="Origen: "+source.GameName+" · "+source.Platform+" · "+source.Achievements.Count+" desbloqueados",FontSize=19,Margin=new Thickness(8),TextWrapping=TextWrapping.Wrap});
-            header.Children.Add(new TextBlock{Text="Buscá el juego de Steam por nombre, elegí la edición y revisá las sugerencias. Las sugerencias por nombre o descripción no se confirman automáticamente. Solo pasarán al plan los logros confirmados; no se escribe en la plataforma de origen.",TextWrapping=TextWrapping.Wrap,Margin=new Thickness(8)});
+            header.Children.Add(new TextBlock{FontStyle=FontStyles.Italic,Text="Buscá el juego de Steam por nombre, elegí la edición y revisá las sugerencias. Las sugerencias por nombre o descripción no se confirman automáticamente. Solo pasarán al plan los logros confirmados; no se escribe en la plataforma de origen.",TextWrapping=TextWrapping.Wrap,Margin=new Thickness(8)});
             searchText.Text=source.GameName;var searchBar=new WrapPanel();searchBar.Children.Add(searchText);searchBar.Children.Add(searchButton);searchBar.Children.Add(searchResults);header.Children.Add(searchBar);
             language.Items.Add(new ComboBoxItem{Content="Español",Tag="spanish"});language.Items.Add(new ComboBoxItem{Content="English",Tag="english"});language.SelectedIndex=System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName=="es"?0:1;
             var input=new WrapPanel();input.Children.Add(new TextBlock{Text="AppID Steam:",VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(8)});input.Children.Add(appId);input.Children.Add(new TextBlock{Text="Idioma:",VerticalAlignment=VerticalAlignment.Center});input.Children.Add(language);input.Children.Add(fetch);header.Children.Add(input);header.Children.Add(info);header.Children.Add(edition);

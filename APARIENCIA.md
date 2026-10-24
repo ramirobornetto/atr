@@ -7,6 +7,7 @@ Abrí `WpfPrototype/Appearance.xaml` en Visual Studio. Los valores del comienzo 
 | Nombre | Qué modifica | Valor inicial |
 | --- | --- | --- |
 | ControlHeight | Alto de botones, campos de una línea y desplegables cerrados | 34 |
+| PlanNumberHeight | Alto de los campos numéricos de tiempos en Plan | 28 |
 | PlanDropdownHeight | Alto de los selectores de origen e historial en Plan | 28 |
 | LibrarySearchHeight | Alto del campo de búsqueda en Biblioteca | 30 |
 | TableControlHeight | Alto de los desplegables dentro de correspondencias | 23 |

@@ -148,7 +148,7 @@ namespace AchievementTimelineReplay.Wpf
             ApplyLibraryFilter();
             GoTo("Escaneo");
             UpdateButtons();
-            Log("WPF v0.16.2 iniciada. Motor derivado de v0.5.3. No se ha modificado Steam.");
+            Log("WPF v0.16.3 iniciada. Motor derivado de v0.5.3. No se ha modificado Steam.");
             LoadSavedLibrary();
             if(!String.IsNullOrWhiteSpace(SamPath.Text)) _=ValidateSamAsync(false);
         }
@@ -347,7 +347,7 @@ namespace AchievementTimelineReplay.Wpf
                 OriginChoice.Items.Add(new ComboBoxItem{Content=SourceSelection.DisplayOrigin(source)});
             foreach(string source in SourceSelection.ScanSources)
             {
-                var check=new CheckBox{Content=SourceSelection.DisplayOrigin(source),IsChecked=sourceOptions.Scans(source),Margin=new Thickness(0,3,18,3),Tag=source};
+                var check=new CheckBox{Content=SourceSelection.DisplayOrigin(source),IsChecked=sourceOptions.Scans(source),Margin=new Thickness(0,3,8,3),Tag=source};
                 check.Checked+=ScanSourceChanged;check.Unchecked+=ScanSourceChanged;scanSourceChecks[source]=check;ScanSourcesPanel.Children.Add(check);
                 check.ToolTip=ScanSourceDirectory(source);
                 check.ToolTipOpening+=(s,e)=>check.ToolTip=ScanSourceDirectory(source);
@@ -970,9 +970,10 @@ namespace AchievementTimelineReplay.Wpf
             {
                 var origin=originStore.Load(currentGame);
                 SelectOrigin(origin??currentGame.DetectedOrigin??"Sin clasificar");
+                OriginStatus.Visibility=Visibility.Collapsed;
                 OriginStatus.Text=origin==null?(currentGame.DetectedOrigin==null?"Sin origen asignado.":currentGame.OriginEvidence??"Origen detectado; podés corregirlo manualmente."):"Origen manual guardado para esta cuenta y juego.";
             }
-            catch(Exception ex){SelectOrigin("Sin clasificar");OriginStatus.Text="No se pudo leer el origen: "+ex.Message;}
+            catch(Exception ex){SelectOrigin("Sin clasificar");OriginStatus.Visibility=Visibility.Visible;OriginStatus.Text="No se pudo leer el origen: "+ex.Message;}
         }
         void OriginChanged(object sender,SelectionChangedEventArgs e)
         {
@@ -1469,6 +1470,7 @@ namespace AchievementTimelineReplay.Wpf
             MapPlatformButton.IsEnabled=CanEditPlan && !currentGame.SteamTarget && !querying;MapPlatformButton.Visibility=available && !currentGame.SteamTarget?Visibility.Visible:Visibility.Collapsed;
             SavePlanButton.IsEnabled=CanEditPlan && GapLimitValid();
             LoadPlanButton.IsEnabled=CanEditPlan && planStore.Exists(currentGame);
+            EditingStatus.Visibility=running?Visibility.Visible:Visibility.Collapsed;
             EditingStatus.Text=running?"En ejecución: "+executingGame?.GameName+(ReferenceEquals(currentGame,executingGame)?" · Este plan está bloqueado.":" · Podés preparar este otro juego."):"Editando borrador. Guardar plan conserva los cambios al cerrar.";
             NavScan.IsEnabled=NavLibrary.IsEnabled=NavPlan.IsEnabled=NavExecution.IsEnabled=NavLogs.IsEnabled=true;
         }

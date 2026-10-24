@@ -166,3 +166,12 @@ El entorno de desarrollo compila WPF pero no ejecuta una sesión gráfica Window
 - Origen: mismas opciones que los filtros de Biblioteca. Un origen antiguo oculto se presenta como Otro sin guardar cambios hasta una edición explícita.
 - Pasar por varias ayudas, incluidas casillas creadas dinámicamente y ventanas secundarias: demora de 0,3 s.
 - Revisar títulos largos, ventana mínima y escalas de Windows 100/125/150 %; las filas pueden envolver controles cuando falta espacio.
+
+
+## Revisión visual 0.16.3
+
+- Escaneo: dos columnas de fuentes y dos de botones; fondo del bloque ajustado al contenido, sin ocupar el espacio vacío inferior. Goldberg no se estira.
+- Plan: notas de borrador y origen guardado ocultas, campos de duración/esperas de alto 28 y menor ancho. Verificar valores largos y edición normal.
+- Notas explicativas en cursiva, sin cambiar rótulos, títulos, tablas ni texto de los globos.
+- Logo lateral nítido usando el PNG de 256 × 256 en escalas 100/125/150 %.
+- Barra de título sin WPF. Revisar distribución a ventana mínima.

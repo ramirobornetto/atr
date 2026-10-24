@@ -13,7 +13,7 @@ namespace AchievementTimelineReplay.Wpf
     internal sealed class EpicBrowserWindow : Window
     {
         readonly WebView2 browser=new WebView2();
-        readonly TextBlock status=new TextBlock{Text="Abriendo Epic…",Margin=new Thickness(8)};
+        readonly TextBlock status=new TextBlock{FontStyle=FontStyles.Italic,Text="Abriendo Epic…",Margin=new Thickness(8)};
         bool closed,expectedCallback;
         string authorizationCode;
         public bool UseExternal {get;private set;}

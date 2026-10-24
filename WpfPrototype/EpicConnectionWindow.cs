@@ -12,7 +12,7 @@ namespace AchievementTimelineReplay.Wpf
     {
         readonly EpicConnection connection;
         readonly PasswordBox code=new PasswordBox{Margin=new Thickness(8),MaxLength=8192};
-        readonly TextBlock status=new TextBlock{Margin=new Thickness(8),TextWrapping=TextWrapping.Wrap};
+        readonly TextBlock status=new TextBlock{FontStyle=FontStyles.Italic,Margin=new Thickness(8),TextWrapping=TextWrapping.Wrap};
         readonly StackPanel manual=new StackPanel{Visibility=Visibility.Collapsed};
         readonly Button login=new Button{Content="Iniciar sesión en Epic"},external=new Button{Content="Usar navegador externo"},disconnect=new Button{Content="Desconectar"},cancel=new Button{Content="Cancelar"},paste=new Button{Content="Pegar código y conectar"};
         public bool ConnectedNow {get;private set;}
@@ -24,9 +24,9 @@ namespace AchievementTimelineReplay.Wpf
             Background=(System.Windows.Media.Brush)Application.Current.FindResource("Bg");Foreground=System.Windows.Media.Brushes.White;
             var panel=new StackPanel{Margin=new Thickness(20)};Content=new ScrollViewer{Content=panel,VerticalScrollBarVisibility=ScrollBarVisibility.Auto};
             panel.Children.Add(new TextBlock{Text="Epic Games · perfil y logros",FontSize=22,Margin=new Thickness(8)});
-            panel.Children.Add(new TextBlock{Text="Ingresá en el sitio oficial de Epic dentro de la ventana de conexión. ATR completará la vinculación automáticamente. No modifica tus logros ni tus partidas en Epic.",TextWrapping=TextWrapping.Wrap,Margin=new Thickness(8)});
+            panel.Children.Add(new TextBlock{FontStyle=FontStyles.Italic,Text="Ingresá en el sitio oficial de Epic dentro de la ventana de conexión. ATR completará la vinculación automáticamente. No modifica tus logros ni tus partidas en Epic.",TextWrapping=TextWrapping.Wrap,Margin=new Thickness(8)});
             var buttons=new WrapPanel();buttons.Children.Add(login);buttons.Children.Add(external);buttons.Children.Add(disconnect);buttons.Children.Add(cancel);panel.Children.Add(buttons);panel.Children.Add(status);panel.Children.Add(manual);
-            manual.Children.Add(new TextBlock{Text="Alternativa con navegador externo: ingresá en Epic, obtené el código temporal y pegalo para conectar. Podés pegar el JSON completo que contiene authorizationCode.",TextWrapping=TextWrapping.Wrap,Margin=new Thickness(8)});
+            manual.Children.Add(new TextBlock{FontStyle=FontStyles.Italic,Text="Alternativa con navegador externo: ingresá en Epic, obtené el código temporal y pegalo para conectar. Podés pegar el JSON completo que contiene authorizationCode.",TextWrapping=TextWrapping.Wrap,Margin=new Thickness(8)});
             var get=new Button{Content="Obtener código en Epic"};get.Click+=(s,e)=>Open(EpicProfile.CodeUrl);manual.Children.Add(get);manual.Children.Add(code);
             var connect=new Button{Content="Conectar con el código"};var finish=new WrapPanel();finish.Children.Add(paste);finish.Children.Add(connect);manual.Children.Add(finish);cancel.IsEnabled=false;
             try{status.Text=connection.Connected?"Cuenta conectada: "+(connection.Read().DisplayName??"Epic")+". Podés escanear Epic.":"Sin cuenta conectada.";}catch{status.Text="La sesión guardada no está disponible. Iniciá sesión nuevamente.";}

@@ -10,7 +10,7 @@ namespace AchievementTimelineReplay.Wpf
     internal sealed class XboxConnectionWindow : Window
     {
         readonly XboxConnection connection;
-        readonly TextBlock status=new TextBlock{Margin=new Thickness(8),TextWrapping=TextWrapping.Wrap};
+        readonly TextBlock status=new TextBlock{FontStyle=FontStyles.Italic,Margin=new Thickness(8),TextWrapping=TextWrapping.Wrap};
         readonly TextBox code=new TextBox{Margin=new Thickness(8),IsReadOnly=true,FontSize=23,Visibility=Visibility.Collapsed};
         readonly Button login=new Button{Content="Conectar cuenta Microsoft"},logout=new Button{Content="Desconectar"},cancel=new Button{Content="Cancelar conexión"};
         readonly Button open=new Button{Content="Abrir Microsoft"},copy=new Button{Content="Copiar código"};
@@ -23,7 +23,7 @@ namespace AchievementTimelineReplay.Wpf
             Background=(System.Windows.Media.Brush)Application.Current.FindResource("Bg");Foreground=System.Windows.Media.Brushes.White;
             var panel=new StackPanel{Margin=new Thickness(20)};Content=new ScrollViewer{Content=panel,VerticalScrollBarVisibility=ScrollBarVisibility.Auto};
             panel.Children.Add(new TextBlock{Text="Xbox · perfil y logros",FontSize=22,Margin=new Thickness(8)});
-            panel.Children.Add(new TextBlock{Text="Conectá tu cuenta en la página oficial de Microsoft. ATR solo consulta tu historial: no desbloquea logros en Xbox ni cambia tus partidas. No necesita Playnite.",TextWrapping=TextWrapping.Wrap,Margin=new Thickness(8)});
+            panel.Children.Add(new TextBlock{FontStyle=FontStyles.Italic,Text="Conectá tu cuenta en la página oficial de Microsoft. ATR solo consulta tu historial: no desbloquea logros en Xbox ni cambia tus partidas. No necesita Playnite.",TextWrapping=TextWrapping.Wrap,Margin=new Thickness(8)});
             var buttons=new WrapPanel();buttons.Children.Add(login);buttons.Children.Add(logout);buttons.Children.Add(cancel);panel.Children.Add(buttons);panel.Children.Add(status);panel.Children.Add(code);panel.Children.Add(open);panel.Children.Add(copy);
             open.Visibility=copy.Visibility=Visibility.Collapsed;cancel.IsEnabled=false;
             try{status.Text=connection.Connected?"Sesión guardada para este usuario de Windows.":"Sin cuenta conectada.";}catch(Exception ex){status.Text=ex.Message;}

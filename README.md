@@ -1,8 +1,8 @@
 # Achievement Timeline Replay
 
-## Descargar v0.16.2 para Windows x64
+## Descargar v0.16.3 para Windows x64
 
-[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.16.2_Windows_x64.zip)
+[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.16.3_Windows_x64.zip)
 
 Extraer **todo el ZIP** en una carpeta nueva y abrir `AchievementTimelineReplay.Wpf.exe`. No se necesita compilar ni instalar .NET. Mantener las DLL y demás archivos junto al ejecutable. Steam y SamRewritten se seleccionan en la aplicación, como antes; no vienen incluidos.
 
@@ -302,3 +302,11 @@ La mejora de los mensajes sobre cachés vacías y fechas de logros permanece pen
 - Selectores de origen e historial en la misma fila, más angostos y con altura 28.
 - Opciones de origen tomadas de los mismos filtros de Biblioteca; categorías antiguas se muestran como Otro sin modificar datos guardados.
 - Ayudas con demora de aparición de 300 ms en toda la aplicación.
+
+## v0.16.3 — paneles compactos y logo nítido
+
+- Escaneo: fuentes en dos columnas y acciones en otras dos, con bloque ajustado a su contenido y botón Goldberg con ancho natural.
+- Plan: se ocultan las notas de borrador y origen guardado; los avisos de ejecución y errores de origen siguen disponibles. Campos numéricos más pequeños (alto 28).
+- Notas explicativas dentro de las ventanas en cursiva; etiquetas, datos, títulos y ayudas emergentes conservan su formato.
+- Logo lateral cargado desde PNG de 256 × 256, conservando los píxeles originales del icono en alta resolución.
+- Título de ventana sin el sufijo WPF.

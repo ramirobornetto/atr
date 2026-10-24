@@ -6,6 +6,8 @@
   <sys:Double x:Key="ControlHeight">34</sys:Double>
   <!-- Selectores de origen e historial en Plan: más bajos que los botones. -->
   <sys:Double x:Key="PlanDropdownHeight">28</sys:Double>
+  <!-- Campos numéricos de tiempos del Plan. -->
+  <sys:Double x:Key="PlanNumberHeight">28</sys:Double>
   <!-- Búsqueda en Biblioteca: un poco más baja que los controles normales. -->
   <sys:Double x:Key="LibrarySearchHeight">30</sys:Double>
   <!-- Controles dentro de las tablas: deben caber dentro de TableRowHeight. -->
