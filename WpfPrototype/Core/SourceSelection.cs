@@ -8,18 +8,20 @@ namespace AchievementTimelineReplay
 {
     internal sealed class SourceSelection
     {
-        public static readonly string[] ScanSources={"Steam","SteamIdra/LuaTools","Goldberg","GSE","CODEX","RUNE","CODEX/RUNE compatible","PA"};
-        public static readonly string[] LibrarySources=ScanSources.Concat(new[]{"Xbox","Epic","GOG","PlayStation","OnlineFix","Otro","Sin clasificar"}).ToArray();
+        public static readonly string[] ScanSources={"Steam","SteamIdra/LuaTools","Goldberg","GSE","CODEX","RUNE","CODEX/RUNE compatible","PA","Xbox (perfil)"};
+        public static readonly string[] LibrarySources=ScanSources.Where(s=>s!="Xbox (perfil)").Concat(new[]{"Xbox","Epic","GOG","PlayStation","OnlineFix","Otro","Sin clasificar"}).ToArray();
         public List<string> PAPaths {get;set;}=new List<string>();
         public Dictionary<string,bool> Scan {get;set;}=new Dictionary<string,bool>();
         public Dictionary<string,bool> Visible {get;set;}=new Dictionary<string,bool>();
-        public bool Scans(string source) => !Scan.TryGetValue(source,out bool enabled) || enabled;
+        public bool Scans(string source) => Scan.TryGetValue(source,out bool enabled)?enabled:source!="Xbox (perfil)";
         public bool Shows(string source) => !Visible.TryGetValue(LibraryCategory(source),out bool enabled) || enabled;
-        public static string LibraryCategory(string source) => LibrarySources.Contains(source)?source:"Otro";
+        public static string LibraryCategory(string source) => LibrarySources.Contains(source)?source:source!=null && source.EndsWith(" → Steam",StringComparison.Ordinal)?LibraryCategory(source.Substring(0,source.Length-8)):"Otro";
         public bool AllowsSteam(uint appId,string steamRoot) => Scans(File.Exists(Path.Combine(steamRoot,"config","stplug-in",appId+".lua"))?"SteamIdra/LuaTools":"Steam");
         public bool Allows(GameEntry game,string steamRoot)
         {
             // Scan eligibility follows the file's detected format/location, never a manual label.
+            if(XboxProfile.IsXbox(game))return Scans("Xbox (perfil)");
+            if(PlatformMapping.IsMapped(game) && game.MappedSourceKey?.StartsWith("xbox_",StringComparison.Ordinal)==true)return Scans("Xbox (perfil)");
             if(PlayniteHistory.IsPA(game) || PlatformMapping.IsMapped(game))return Scans("PA");
             if(String.IsNullOrEmpty(game.HistoryId))return AllowsSteam(game.AppId,steamRoot);
             OriginDetector.Apply(game,steamRoot);return Scans(game.DetectedOrigin??"CODEX/RUNE compatible");

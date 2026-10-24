@@ -15,6 +15,8 @@ namespace AchievementTimelineReplay.Wpf
     {
         public AchievementRecord Source;
         public string Name=>Source.DisplayName;
+        public string SourceCode=>Source.ApiId;
+        public string TargetCode=>target?.ApiId??"";
         public string Description=>Source.Description;
         public string Date=>Source.OriginalUnix>0?LegacyTools.UnixToLocal(Source.OriginalUnix).ToString("dd/MM/yyyy HH:mm:ss"):"Sin fecha";
         SteamDefinition target;bool confirmed;
@@ -26,7 +28,7 @@ namespace AchievementTimelineReplay.Wpf
         public string TargetDescription=>target?.Description??"";
         public string Status=>target==null?(NoEquivalent?"Sin equivalente":"Sin sugerencia"):confirmed?"Confirmado":"Por revisar";
         public event PropertyChangedEventHandler PropertyChanged;
-        void Changed(){PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(nameof(Target)));PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(nameof(Confirmed)));PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(nameof(Status)));PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(nameof(TargetDescription)));PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(nameof(MatchReason)));}
+        void Changed(){PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(nameof(Target)));PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(nameof(Confirmed)));PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(nameof(Status)));PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(nameof(TargetDescription)));PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(nameof(TargetCode)));PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(nameof(MatchReason)));}
     }
     internal sealed class PlatformMappingWindow : Window
     {
@@ -72,6 +74,9 @@ namespace AchievementTimelineReplay.Wpf
                 style.Setters.Add(new Setter(FrameworkElement.ToolTipProperty,new Binding(column.Path)));
                 ((DataGridTextColumn)grid.Columns[column.Index]).ElementStyle=style;
             }
+            grid.Columns.Insert(1,new DataGridTextColumn{Header="Código de origen",Binding=new Binding(nameof(MappingRow.SourceCode)),Width=150,IsReadOnly=true});
+            grid.Columns.Insert(5,new DataGridTextColumn{Header="Código Steam",Binding=new Binding(nameof(MappingRow.TargetCode)),Width=160,IsReadOnly=true});
+            foreach(var column in grid.Columns.Where(c=>c.Header is string label && (label=="Logro de origen" || label=="Descripción de origen" || label=="Descripción Steam" || label=="Equivalente Steam")))column.MinWidth=160;
             fetch.Click+=async(s,e)=>await Fetch();save.Click+=(s,e)=>Save(false);prepare.Click+=(s,e)=>Save(true);Closing+=(s,e)=>{if(busy)e.Cancel=true;};
             appId.TextChanged+=(s,e)=>{if(loadedId!=0){RememberDraft();loadedId=0;edition.IsChecked=false;save.IsEnabled=prepare.IsEnabled=confirmExact.IsEnabled=confirmSelected.IsEnabled=false;rows.Clear();info.Text="Cambió el AppID: cargá nuevamente los logros del destino.";}};
             searchButton.Click+=async(s,e)=>await Search();
@@ -128,7 +133,7 @@ namespace AchievementTimelineReplay.Wpf
                     row.Confirmed=old?.Confirmed==true && row.Target!=null && row.Target.ApiId==old.TargetId;rows.Add(row);
                 }
                 var combo=new FrameworkElementFactory(typeof(ComboBox));combo.SetValue(ComboBox.ItemsSourceProperty,new[]{new SteamDefinition{Name="— Sin equivalente —"}}.Concat(definitions).ToList());combo.SetValue(ComboBox.IsTextSearchEnabledProperty,true);combo.SetBinding(ComboBox.SelectedItemProperty,new Binding(nameof(MappingRow.Target)){Mode=BindingMode.TwoWay,UpdateSourceTrigger=UpdateSourceTrigger.PropertyChanged});combo.SetValue(ComboBox.ForegroundProperty,System.Windows.Media.Brushes.Black);combo.SetValue(ComboBox.BackgroundProperty,System.Windows.Media.Brushes.White);
-                ((DataGridTemplateColumn)grid.Columns[3]).CellTemplate=new DataTemplate{VisualTree=combo};
+                ((DataGridTemplateColumn)grid.Columns[4]).CellTemplate=new DataTemplate{VisualTree=combo};
                 string title=searchResults.SelectedItem is SteamGameMatch match && match.AppId==id?match.Name:targetName(id);loadedTargetName=title;
                 info.Text="Destino: "+title+" · AppID "+id+" · "+definitions.Count+" logros · "+rows.Count(r=>r.Target!=null)+"/"+rows.Count+" sugerencias"+localizationNote+". Revisá edición, DLC y requisitos antes de confirmar.";save.IsEnabled=prepare.IsEnabled=confirmExact.IsEnabled=confirmSelected.IsEnabled=true;
             }

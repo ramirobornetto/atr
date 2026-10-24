@@ -62,3 +62,11 @@ La columna Motivo distingue nombre/descripción exactos y descripciones semejant
 Una fila sin propuesta se muestra como Sin sugerencia; no significa que el logro carezca de equivalente. Elegir explícitamente Sin equivalente se conserva al guardar. Las filas vacías de archivos de correspondencias anteriores pueden recibir nuevas sugerencias, sin sustituir destinos previamente elegidos ni trasladar su confirmación a otro ID. Los borradores de distintos destinos se conservan en memoria mientras la ventana permanezca abierta.
 
 Validación: casos sintéticos de los siete tipos de logro mostrados para Cuphead, conflictos numéricos/negación, ambigüedades, localización pública simulada, búsqueda sin progreso desbloqueado y caché. Las solicitudes reales a Steam Store/Community fueron bloqueadas por el proxy de este entorno de desarrollo; su funcionamiento en Windows queda pendiente de prueba. No se afirma una validación en vivo de esas páginas ni una identificación automática perfecta para todos los juegos.
+
+
+## v0.12.0
+
+- La tabla de correspondencias muestra los identificadores reales de origen y Steam en columnas separadas. No se supone que los códigos coincidan entre plataformas.
+- Los planes convertidos muestran «Xbox → Steam» (o el origen correspondiente) en Biblioteca; el historial original mantiene su etiqueta. La etiqueta visual no modifica el filtro, las identidades, los IDs ni las correspondencias guardadas.
+- Xbox directo se implementa como fuente opcional independiente de PA. Detalles y configuración pendientes de validación real: [XBOX.md](XBOX.md).
+- Los perfiles Xbox conocidos distintos se mantienen separados, incluso si sus fechas coinciden. PA/Xbox directo pueden compartir grupo cuando título y perfil coinciden. No se mezclan listas.

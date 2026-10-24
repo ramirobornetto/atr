@@ -27,7 +27,7 @@ namespace AchievementTimelineReplay.Wpf
         string origin;
         public string Origin
         {
-            get => origin;
+            get => Game!=null && PlatformMapping.IsMapped(Game)?Game.MappedFromPlatform+" → Steam":origin;
             set {if(origin!=value){origin=value;PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(nameof(Origin)));}}
         }
         string count;
@@ -144,7 +144,7 @@ namespace AchievementTimelineReplay.Wpf
             ApplyLibraryFilter();
             GoTo("Escaneo");
             UpdateButtons();
-            Log("WPF v0.11.0 iniciada. Motor derivado de v0.5.3. No se ha modificado Steam.");
+            Log("WPF v0.12.0 iniciada. Motor derivado de v0.5.3. No se ha modificado Steam.");
             LoadSavedLibrary();
             if(!String.IsNullOrWhiteSpace(SamPath.Text)) _=ValidateSamAsync(false);
         }
@@ -439,8 +439,33 @@ namespace AchievementTimelineReplay.Wpf
                             catch(Exception ex){Log("PA: "+ex.Message);}
                         }
                     }
+                    if(selection.Scans("Xbox (perfil)"))
+                    {
+                        ((IProgress<ScanStatus>)progress).Report(new ScanStatus{Indeterminate=true,Message="Consultando perfil Xbox…"});
+                        try
+                        {
+                            using var api=new XboxProfile();var connection=new XboxConnection(Path.Combine(LegacyTools.DataDirectory,"Xbox"));
+                            var session=connection.SessionAsync(api,token).GetAwaiter().GetResult();
+                            var titles=api.TitlesAsync(session,token).GetAwaiter().GetResult();int completed=0;
+                            foreach(var title in titles)
+                            {
+                                token.ThrowIfCancellationRequested();
+                                ((IProgress<ScanStatus>)progress).Report(new ScanStatus{Indeterminate=true,Message="Xbox: "+(++completed)+"/"+titles.Count+" · "+title.Name});
+                                try
+                                {
+                                    var history=api.HistoryAsync(session,title,Path.Combine(LegacyTools.DataDirectory,"Xbox","Histories"),token).GetAwaiter().GetResult();
+                                    XboxProfile.SaveHistory(history,Path.Combine(LegacyTools.DataDirectory,"Snapshots"));all.Add(history);
+                                }
+                                catch(OperationCanceledException){throw;}
+                                catch(XboxServiceException ex){Log("Xbox: "+ex.Message+" Se detiene la consulta; se conservan los historiales anteriores.");break;}
+                                catch(Exception ex){Log("Xbox · "+title.Name+": "+ex.Message+" Se conserva el historial anterior, si existe.");}
+                            }
+                        }
+                        catch(OperationCanceledException){throw;}
+                        catch(Exception ex){Log("Xbox: "+ex.Message+" Los historiales guardados se conservan.");}
+                    }
                     // Compare PA against current native progress, preserving its first snapshot separately.
-                    foreach(var direct in all.Where(g=>!PlayniteHistory.IsPA(g) && !PlatformMapping.IsMapped(g) && !g.UsesCurrentSnapshot).ToList())
+                    foreach(var direct in all.Where(g=>!PlayniteHistory.IsPA(g) && !XboxProfile.IsXbox(g) && !PlatformMapping.IsMapped(g) && !g.UsesCurrentSnapshot).ToList())
                     {
                         var paMatches=all.Where(g=>PlayniteHistory.IsPA(g) && g.AppId==direct.AppId).ToList();if(paMatches.Count==0)continue;
                         try
@@ -454,7 +479,7 @@ namespace AchievementTimelineReplay.Wpf
                         catch(Exception ex){Log("Comparación de progreso directo con PA: "+ex.Message);}
                     }
                     var seen=new HashSet<string>(all.Select(g=>g.StorageKey),StringComparer.OrdinalIgnoreCase);
-                    foreach(var known in knownGames.Where(g=>!String.IsNullOrEmpty(g.HistoryId) && !PlayniteHistory.IsPA(g) && !PlatformMapping.IsMapped(g)))
+                    foreach(var known in knownGames.Where(g=>!String.IsNullOrEmpty(g.HistoryId) && !PlayniteHistory.IsPA(g) && !XboxProfile.IsXbox(g) && !PlatformMapping.IsMapped(g)))
                     {
                         token.ThrowIfCancellationRequested();if(seen.Contains(known.StorageKey) || !selection.Allows(known,steam) || !File.Exists(known.StatsPath))continue;
                         try
@@ -484,7 +509,7 @@ namespace AchievementTimelineReplay.Wpf
                         if(PlayniteHistory.IsPA(known) && all.Any(g=>g.AlternatePlanKey==known.StorageKey))continue;
                         if(LibraryStore.ShouldRetainAfterScan(known,selection.Allows(known,steam)) && seen.Add(known.StorageKey)){known.RetainedFromCatalog=true;all.Add(known);}
                     }
-                    GameNames.Resolve(all.Where(g=>!String.IsNullOrEmpty(g.HistoryId) && !PlayniteHistory.IsPA(g) && !g.RetainedFromCatalog),Log,token);
+                    GameNames.Resolve(all.Where(g=>!String.IsNullOrEmpty(g.HistoryId) && !PlayniteHistory.IsPA(g) && !XboxProfile.IsXbox(g) && !PlatformMapping.IsMapped(g) && !g.RetainedFromCatalog),Log,token);
                     foreach(var game in all.Where(PlayniteHistory.IsPA))
                     {
                         game.AlternatePlanKey??=knownGames.FirstOrDefault(g=>g.StorageKey==game.StorageKey)?.AlternatePlanKey;
@@ -502,7 +527,7 @@ namespace AchievementTimelineReplay.Wpf
                 }
                 RebuildHistoryGroups(previousSelection);
                 ApplyLibraryFilter();
-                ScanResult.Text="Actualización terminada: "+games.Count+" juegos/perfiles · "+allHistories.Count+" fuentes ("+found.Count(g=>g.RetainedFromCatalog)+" conservados del catálogo).\n"+(scanSteam?scanner.Summary.Format("Steam"):"Steam/BIN: desactivado o appcache/stats no disponible")+(scanGoldberg?"\n"+goldbergSummary.Format("Goldberg/GBE"):"")+(scanIni?"\n"+iniSummary.Format("CODEX/RUNE"):"")+(scanPA?"\nPA: "+found.Count(PlayniteHistory.IsPA)+" historiales elegidos en biblioteca. Los desbloqueos sin fecha se conservan; el log detalla los proveedores.":"");
+                ScanResult.Text="Actualización terminada: "+games.Count+" juegos/perfiles · "+allHistories.Count+" fuentes ("+found.Count(g=>g.RetainedFromCatalog)+" conservados del catálogo).\n"+(scanSteam?scanner.Summary.Format("Steam"):"Steam/BIN: desactivado o appcache/stats no disponible")+(scanGoldberg?"\n"+goldbergSummary.Format("Goldberg/GBE"):"")+(scanIni?"\n"+iniSummary.Format("CODEX/RUNE"):"")+(selection.Scans("Xbox (perfil)")?"\nXbox (perfil): "+found.Count(XboxProfile.IsXbox)+" historiales en biblioteca; revisá Logs para consultas fallidas.":"")+(scanPA?"\nPA: "+found.Count(PlayniteHistory.IsPA)+" historiales elegidos en biblioteca. Los desbloqueos sin fecha se conservan; el log detalla los proveedores.":"");
                 SetStatus(ScanResult.Text);
                 Log(ScanResult.Text);
                 ScanProgress.IsIndeterminate=false;ScanProgress.Maximum=1;ScanProgress.Value=1;
@@ -575,6 +600,12 @@ namespace AchievementTimelineReplay.Wpf
                 SetStatus(GoldbergHistory.NeedsDefinitions(currentGame)?"Definición cargada. Algunos IDs siguen sin nombre en ese archivo.":"Nombres y descripciones cargados; el orden y los tiempos del plan se conservaron.");
             }
             catch(Exception ex){MessageBox.Show(this,ex.Message,"Definición de nombres",MessageBoxButton.OK,MessageBoxImage.Information);}
+        }
+        void ConnectXboxClick(object sender,RoutedEventArgs e)
+        {
+            if(checkingUpdates || scanning || running || querying || preparing)return;
+            var dialog=new XboxConnectionWindow(new XboxConnection(Path.Combine(LegacyTools.DataDirectory,"Xbox"))){Owner=this};
+            dialog.ShowDialog();
         }
         async void ImportPAClick(object sender,RoutedEventArgs e)
         {
@@ -1267,7 +1298,7 @@ namespace AchievementTimelineReplay.Wpf
             RefreshLibraryButton.IsEnabled=ScanButton.IsEnabled;
             RemoveLibraryButton.IsEnabled=ScanButton.IsEnabled && currentGame!=null;
             UpdateButton.IsEnabled=!checkingUpdates && !running && !scanning && !preparing && !querying;
-            ImportPAButton.IsEnabled=ImportIniButton.IsEnabled=ImportGoldbergButton.IsEnabled=ScanButton.IsEnabled;
+            ConnectXboxButton.IsEnabled=ImportPAButton.IsEnabled=ImportIniButton.IsEnabled=ImportGoldbergButton.IsEnabled=ScanButton.IsEnabled;
             foreach(var check in scanSourceChecks.Values)check.IsEnabled=ScanButton.IsEnabled;
             ClearLibraryButton.IsEnabled=ScanButton.IsEnabled && (games.Count>0 || File.Exists(libraryStore.FilePath) || File.Exists(libraryStore.BackupPath));
             DefinitionTools.Visibility=available && GoldbergHistory.NeedsDefinitions(currentGame)?Visibility.Visible:Visibility.Collapsed;

@@ -56,3 +56,18 @@ Si hay errores, adjuntar captura de consola y primer error + una captura del ár
 5. Cambiar AppID después de cargar invalida la edición hasta volver a cargar. El plan preparado debe llevar el nombre elegido en la búsqueda y solo las asociaciones confirmadas. Los datos de origen y fechas no se modifican.
 
 Pendiente anotado: la barra de progreso del escaneo completo debe cubrir todas las fuentes; no se modifica en 0.11.0.
+
+
+## v0.12.0 — códigos y Xbox directo
+
+1. Abrir un historial PA/Xbox y Preparar equivalencias: comprobar las columnas Código de origen/Código Steam y que el código Steam cambie al elegir otra opción. Confirmar que siguen funcionando las casillas y el desplegable después de agregar columnas.
+2. Preparar un plan Steam: en Biblioteca, original Xbox y convertido Xbox → Steam; ambos siguen el filtro Xbox. Reabrir la app y comprobar persistencia de etiquetas y correspondencias.
+3. Registrar ATR según XBOX.md y validar con una cuenta real. Este paso no se pudo ejecutar desde el entorno de desarrollo: no hay un Client ID propio registrado y las conexiones Microsoft están bloqueadas. La interfaz WPF y DPAPI también requieren prueba en Windows.
+4. Conectar por código de dispositivo, cancelar antes de completar, denegar consentimiento y dejar vencer el código. No deben aparecer tokens ni cuerpos de respuesta privados en Logs. Un GUID inválido no debe iniciar una solicitud.
+5. Con una sesión válida: activar solo Xbox (perfil), escanear y comparar Cuphead contra Xbox/PA, incluyendo total, estado, código y fechas. Probar perfil con más de una página de títulos y juegos de PC/One/Series; contrato Xbox 360 pendiente de prueba real.
+6. Reabrir sin conexión: biblioteca/planes disponibles desde snapshots; reescanear con Xbox desactivado no debe consultar su servicio. Una sesión vencida o un error conserva el historial anterior y se registra en Logs.
+7. Desconectar y conectar otro perfil: conservar historiales anteriores separados. Si PA y Xbox directo tienen la misma identidad, una entrada agrupada con fuentes seleccionables y prioridad por más desbloqueos.
+8. Desbloqueo sin fecha válida: mantenerlo como Sin fecha. No importar bloqueados aunque tengan una fecha engañosa. Preparar equivalencias y plan Steam sin cambiar el archivo Xbox.
+9. Actualizar ATR: conservar Xbox/connection.json, Xbox/session.dat, historiales, snapshots y planes. Borrar biblioteca sigue borrando solo los índices; desconectar elimina solo la sesión local.
+
+La barra de progreso global de las demás fuentes sigue siendo un pendiente anotado; esta versión no rediseña ese cálculo.

@@ -11,7 +11,7 @@ static class SourceChecks
     {
         string root=Path.Combine(testRoot,"sources"),lua=Path.Combine(root,"config","stplug-in");Directory.CreateDirectory(lua);
         var options=new SourceSelection();
-        Check(SourceSelection.ScanSources.All(options.Scans) && SourceSelection.LibrarySources.All(options.Shows),"first launch includes all sources and shows all library origins");
+        Check(SourceSelection.ScanSources.Where(s=>s!="Xbox (perfil)").All(options.Scans) && SourceSelection.LibrarySources.All(options.Shows),"first launch includes local sources and shows all library origins; direct online sources are opt-in");
         File.WriteAllText(Path.Combine(lua,"42.lua"),"contents deliberately never executed");
         options.Scan["Steam"]=false;
         Check(options.AllowsSteam(42,root) && !options.AllowsSteam(43,root),"Lua-only scan includes matching AppIDs and excludes BIN histories without a Lua");

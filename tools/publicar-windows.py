@@ -26,7 +26,7 @@ with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED,compresslevel=6) as z:
   if p.is_file() and p.suffix!='.pdb':z.write(p,p.relative_to(app))
  for p in (root/'muestras').rglob('*'):
   if p.is_file():z.write(p,p.relative_to(root))
- for name in ['README.md','GOLDBERG.md','CODEX_RUNE.md','ACTUALIZACIONES.md','BIBLIOTECA.md','PA.md','PLATAFORMAS.md']:z.write(root/name,name)
+ for name in ['README.md','GOLDBERG.md','CODEX_RUNE.md','ACTUALIZACIONES.md','BIBLIOTECA.md','PA.md','PLATAFORMAS.md','XBOX.md']:z.write(root/name,name)
 fixtures=downloads/f'ATR_Muestras_AAA_v{version}.zip'
 with zipfile.ZipFile(fixtures,'w',zipfile.ZIP_DEFLATED) as z:
  for p in (root/'muestras/MuestrasAAA').rglob('*'):
