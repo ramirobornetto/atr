@@ -271,7 +271,7 @@ namespace AchievementTimelineReplay
             } catch { }
         }
         static void Report(IProgress<ScanStatus> p,string text,int i=0,int n=0,bool ind=false) => p?.Report(new ScanStatus{Message=text,Current=i,Total=n,Indeterminate=ind});
-        public List<GameEntry> Scan(string steamRoot,string samPath,SamCliMode samMode,IProgress<ScanStatus> progress,CancellationToken token)
+        public List<GameEntry> Scan(string steamRoot,string samPath,SamCliMode samMode,IProgress<ScanStatus> progress,CancellationToken token,Func<uint,bool> includeApp=null)
         {
             Summary=new ScanSummary();
             string statsDir=Path.Combine(steamRoot,"appcache","stats");
@@ -314,10 +314,11 @@ namespace AchievementTimelineReplay
             for(int i=0;i<stats.Count;i++)
             {
                 token.ThrowIfCancellationRequested();
-                Summary.Reviewed++;
                 string f=stats[i];
                 var m=Regex.Match(Path.GetFileName(f),@"^UserGameStats_(\d+)_(\d+)\.bin$",RegexOptions.IgnoreCase);
-                if(!m.Success || !uint.TryParse(m.Groups[1].Value,out var account) || !uint.TryParse(m.Groups[2].Value,out var app)){Summary.InvalidIds++;log("Nombre de historial inválido: "+f);continue;}
+                if(!m.Success || !uint.TryParse(m.Groups[1].Value,out var account) || !uint.TryParse(m.Groups[2].Value,out var app)){Summary.Reviewed++;Summary.InvalidIds++;log("Nombre de historial inválido: "+f);continue;}
+                if(includeApp!=null && !includeApp(app)){Summary.FilteredSources++;continue;}
+                Summary.Reviewed++;
                 Report(progress,$"Historiales: {i+1}/{stats.Count} · AppID {app}",i+1,stats.Count);
                 string schema=Path.Combine(statsDir,"UserGameStatsSchema_"+app.ToString(CultureInfo.InvariantCulture)+".bin");
                 if(!File.Exists(schema)){Summary.NoSchema++;log("Omitido AppID "+app+": falta esquema "+schema);continue;}

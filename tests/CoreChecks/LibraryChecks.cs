@@ -80,5 +80,13 @@ static class LibraryChecks
         SamRunner.ValidateSelectedIds(restoredSteam.Achievements,current);Check(true,"fresh Steam verification accepts known cached API IDs case-insensitively");
         try{SamRunner.ValidateSelectedIds(restoredSteam.Achievements,new Dictionary<string,string>{{"OTHER","Bloqueado"}});throw new Exception("Expected unknown API rejection");}catch(InvalidDataException){Check(true,"cached achievements absent from current Steam schema cannot be executed");}
         restoredSteam.Achievements[0].Included=false;SamRunner.ValidateSelectedIds(restoredSteam.Achievements,new Dictionary<string,string>{{"OTHER","Bloqueado"}});Check(true,"deselected historical API IDs do not prevent executing a valid remaining selection");
+        var savedPlans=new PlanStore(Path.Combine(root,"plans"));savedPlans.Save(gold,PlanStore.Capture(gold,gold.Achievements,new PlanParameters()));
+        var savedOrigins=new OriginStore(Path.Combine(root,"origins"));savedOrigins.Save(gold,"Otro");
+        string planBytes=File.ReadAllText(savedPlans.FilePath(gold)),originBytes=File.ReadAllText(savedOrigins.FilePath(gold));
+        store.Clear();
+        Check(File.ReadAllText(savedPlans.FilePath(gold))==planBytes && File.ReadAllText(savedOrigins.FilePath(gold))==originBytes,"clearing the catalog leaves saved plans and manual origin files unchanged");
+        Check(!File.Exists(store.FilePath) && !File.Exists(store.BackupPath) && store.Load().Catalog==null,"clear library removes both indexes so backup cannot restore the cleared list");
+        Check(File.Exists(stats) && File.Exists(steamSnapshot) && File.ReadAllText(store.SnapshotPath(gold))==frozen,"clear library preserves original achievement files and protected snapshots");
+        store.Clear();Check(store.Load().Games.Count==0,"clearing an already empty library is safe");
     }
 }

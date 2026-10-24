@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -94,6 +95,10 @@ namespace AchievementTimelineReplay.Wpf
         LegacyReplayer activeReplayer;
         readonly OriginStore originStore=new OriginStore(Path.Combine(LegacyTools.DataDirectory,"Origins"));
         readonly LibraryStore libraryStore=new LibraryStore(Path.Combine(LegacyTools.DataDirectory,"Library"),Path.Combine(LegacyTools.DataDirectory,"Snapshots"));
+        SourceSelection sourceOptions=new SourceSelection();
+        readonly Dictionary<string,CheckBox> scanSourceChecks=new Dictionary<string,CheckBox>();
+        readonly Dictionary<string,ToggleButton> originToggles=new Dictionary<string,ToggleButton>();
+        static string SourceOptionsPath => Path.Combine(LegacyTools.DataDirectory,"source-options.json");
         DateTimeOffset? lastLibraryScan;
         string lastLibrarySummary="";
         readonly PlanStore planStore=new PlanStore(Path.Combine(LegacyTools.DataDirectory,"Plans"));
@@ -120,10 +125,14 @@ namespace AchievementTimelineReplay.Wpf
             SteamPath.Text=settings.TryGetValue("steam",out var steam) && !String.IsNullOrWhiteSpace(steam) ? steam : LegacyTools.DetectSteam();
             SamPath.Text=settings.TryGetValue("sam",out var sam) && !String.IsNullOrWhiteSpace(sam) ? sam : LegacyTools.DetectSam();
             recoverUpdateDrafts=File.Exists(UpdateReadyPath);
+            try{sourceOptions=SourceSelection.Load(SourceOptionsPath);}catch(Exception ex){Log("Preferencias de fuentes: "+ex.Message);}
+            BuildSourceControls();
             initialized=true;
+            games.CollectionChanged+=(sender,args)=>ApplyLibraryFilter();
+            ApplyLibraryFilter();
             GoTo("Escaneo");
             UpdateButtons();
-            Log("WPF v0.8.1 iniciada. Motor derivado de v0.5.3. No se ha modificado Steam.");
+            Log("WPF v0.8.3 iniciada. Motor derivado de v0.5.3. No se ha modificado Steam.");
             LoadSavedLibrary();
             if(!String.IsNullOrWhiteSpace(SamPath.Text)) _=ValidateSamAsync(false);
         }
@@ -220,7 +229,7 @@ namespace AchievementTimelineReplay.Wpf
                 row.SourceStatus=!String.IsNullOrEmpty(game.CatalogIssue)?game.CatalogIssue:!game.HasSnapshot?"Sin snapshot":game.RequiresAccountRefresh?"Otra cuenta · actualizar":game.SourceMissing?"Archivo no encontrado":game.RetainedFromCatalog?"Guardado · sin reimportar":"Disponible";
                 row.Snapshot=game.HasSnapshot?"Protegido ✓":"No disponible";
             }
-            LibraryCount.Text=games.Count+" historiales";
+            ApplyLibraryFilter();
         }
         void LoadSavedLibrary()
         {
@@ -242,6 +251,58 @@ namespace AchievementTimelineReplay.Wpf
             }
             catch(Exception ex){Log("No se pudo guardar la biblioteca: "+ex.Message);SetStatus("Biblioteca cargada, pero no se pudo guardar el catálogo. Revisá Logs.");return false;}
         }
+        void BuildSourceControls()
+        {
+            foreach(string source in SourceSelection.ScanSources)
+            {
+                var check=new CheckBox{Content=source,IsChecked=sourceOptions.Scans(source),Margin=new Thickness(0,3,18,3),Tag=source};
+                check.Checked+=ScanSourceChanged;check.Unchecked+=ScanSourceChanged;scanSourceChecks[source]=check;ScanSourcesPanel.Children.Add(check);
+                if(source=="SteamIdra/LuaTools")ScanSourcesPanel.Children.Add(new TextBlock{Text="?",Foreground=(Brush)FindResource("Accent"),VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(-12,0,16,0),ToolTip="Importa historiales BIN cuyo AppID tenga un archivo .lua en Steam/config/stplug-in. El LUA filtra: los logros y fechas se leen del BIN. Puede coincidir con un juego comprado en Steam; no acredita el origen ni la licencia."});
+                if(source=="CODEX/RUNE compatible")check.ToolTip="Incluye fuentes INI importadas manualmente cuya ruta no identifica CODEX ni RUNE. No recorre otras carpetas del disco.";
+            }
+            foreach(string source in SourceSelection.LibrarySources)
+            {
+                var toggle=new ToggleButton{Tag=source,IsChecked=sourceOptions.Shows(source),Style=(Style)FindResource("OriginToggle"),ToolTip="Mostrar u ocultar "+source+". No escanea ni elimina juegos."};
+                toggle.Checked+=LibraryOriginChanged;toggle.Unchecked+=LibraryOriginChanged;originToggles[source]=toggle;LibraryOriginsPanel.Children.Add(toggle);
+            }
+        }
+        void SaveSourceOptions()
+        {
+            try{sourceOptions.Save(SourceOptionsPath);}catch(Exception ex){Log("No se pudieron guardar las opciones de origen: "+ex.Message);}
+        }
+        void ScanSourceChanged(object sender,RoutedEventArgs e)
+        {
+            if(!initialized)return;
+            var check=(CheckBox)sender;sourceOptions.Scan[(string)check.Tag]=check.IsChecked==true;SaveSourceOptions();
+        }
+        void LibraryOriginChanged(object sender,RoutedEventArgs e)
+        {
+            if(!initialized)return;
+            var toggle=(ToggleButton)sender;sourceOptions.Visible[(string)toggle.Tag]=toggle.IsChecked==true;SaveSourceOptions();ApplyLibraryFilter();
+        }
+        void ApplyLibraryFilter()
+        {
+            if(!initialized)return;
+            var view=CollectionViewSource.GetDefaultView(games);string query=LibrarySearch.Text.Trim();
+            view.Filter=item=>item is GameRow row && sourceOptions.Shows(row.Origin) && (query.Length==0 || row.GameName.IndexOf(query,StringComparison.CurrentCultureIgnoreCase)>=0 || row.AppId.ToString().Contains(query,StringComparison.OrdinalIgnoreCase));
+            int shown=view.Cast<object>().Count();LibraryCount.Text="Mostrando "+shown+" de "+games.Count;
+            foreach(var pair in originToggles)pair.Value.Content=pair.Key+" · "+games.Count(r=>SourceSelection.LibraryCategory(r.Origin)==pair.Key);
+            LibraryEmptyMessage.Visibility=shown==0?Visibility.Visible:Visibility.Collapsed;
+            LibraryEmptyMessage.Text=games.Count==0?"La biblioteca está vacía. Incluí los orígenes deseados desde Escaneo o importá un historial.":!SourceSelection.LibrarySources.Any(sourceOptions.Shows)?"Todos los orígenes están ocultos. Activá uno o más filtros para mostrar sus juegos.":"No hay juegos que coincidan con los orígenes y la búsqueda actuales. Podés incluir otros orígenes desde Escaneo.";
+        }
+        void ClearLibraryClick(object sender,RoutedEventArgs e)
+        {
+            if(checkingUpdates || scanning || running || preparing || querying)return;
+            if(MessageBox.Show(this,"¿Borrar toda la biblioteca guardada? Se eliminarán el catálogo y su respaldo; deberás escanear o importar de nuevo. No borra archivos de logros, snapshots, planes guardados ni orígenes personalizados. Los borradores sin guardar se descartarán.","Borrar biblioteca",MessageBoxButton.YesNo,MessageBoxImage.Warning)!=MessageBoxResult.Yes)return;
+            try
+            {
+                libraryStore.Clear();games.Clear();order.Clear();achievementRows.Clear();browsedPlans.Clear();savedSignatures.Clear();currentGame=null;
+                lastLibraryScan=null;lastLibrarySummary="";GameChanged(GamesGrid,null);HeaderGame.Text="Sin juego seleccionado";HeaderGameInfo.Text="Elegí un historial";PlanHistoryPath.Text="";
+                LibraryStamp.Text="Biblioteca borrada. Escaneá o importá nuevamente para obtener los juegos.";
+                ApplyLibraryFilter();UpdateButtons();SetStatus(LibraryStamp.Text);Log(LibraryStamp.Text);
+            }
+            catch(Exception ex){MessageBox.Show(this,"No se pudo borrar el catálogo: "+ex.Message,"Biblioteca",MessageBoxButton.OK,MessageBoxImage.Warning);}
+        }
         void RemoveLibraryClick(object sender,RoutedEventArgs e)
         {
             if(checkingUpdates || scanning || running || preparing || querying || GamesGrid.SelectedItem is not GameRow row)return;
@@ -254,9 +315,11 @@ namespace AchievementTimelineReplay.Wpf
             SavePaths();
             string steam=SteamPath.Text.Trim();
             string cli=SamPath.Text.Trim();
-            bool scanGoldberg=ScanGoldbergDefaults.IsChecked==true;
-            bool scanIni=ScanIniDefaults.IsChecked==true;
-            bool scanSteam=Directory.Exists(Path.Combine(steam,"appcache","stats"));
+            var selection=new SourceSelection{Scan=new Dictionary<string,bool>(sourceOptions.Scan)};
+            bool scanGoldberg=selection.Scans("Goldberg") || selection.Scans("GSE");
+            bool scanIni=selection.Scans("CODEX") || selection.Scans("RUNE") || selection.Scans("CODEX/RUNE compatible");
+            bool scanSteam=(selection.Scans("Steam") || selection.Scans("SteamIdra/LuaTools")) && Directory.Exists(Path.Combine(steam,"appcache","stats"));
+            if(!SourceSelection.ScanSources.Any(selection.Scans)){MessageBox.Show(this,"Activá al menos un origen en Escaneo.","Escaneo",MessageBoxButton.OK,MessageBoxImage.Information);return;}
             if(currentGame!=null && (!CommitPlanEdits() || !GapLimitValid()))return;
             var knownGames=games.Select(r=>r.Game).ToList();string previousSelection=currentGame?.StorageKey;
             var drafts=new Dictionary<string,SavedPlan>(StringComparer.OrdinalIgnoreCase);
@@ -288,15 +351,15 @@ namespace AchievementTimelineReplay.Wpf
                 var iniSummary=new ScanSummary();
                 var found=await Task.Run(()=>
                 {
-                    var all=scanSteam?scanner.Scan(steam,cli,samMode,progress,token):new List<GameEntry>();
-                    if(scanGoldberg)foreach(var root in GoldbergHistory.DefaultRoots().Where(Directory.Exists))
+                    var all=scanSteam?scanner.Scan(steam,cli,samMode,progress,token,id=>selection.AllowsSteam(id,steam)):new List<GameEntry>();
+                    if(scanGoldberg)foreach(var root in GoldbergHistory.DefaultRoots().Where(root=>Directory.Exists(root) && selection.Scans(Path.GetFileName(root)=="GSE Saves"?"GSE":"Goldberg")))
                         all.AddRange(GoldbergHistory.Scan(root,steam,Path.Combine(LegacyTools.DataDirectory,"Snapshots"),Log,token,goldbergSummary));
-                    if(scanIni)foreach(var root in IniHistory.DefaultRoots().Where(Directory.Exists))
+                    if(scanIni)foreach(var root in IniHistory.DefaultRoots().Where(root=>Directory.Exists(root) && selection.Scans(Path.GetFileName(root).ToUpperInvariant())))
                         all.AddRange(IniHistory.Scan(root,steam,Path.Combine(LegacyTools.DataDirectory,"Snapshots"),Log,token,iniSummary));
                     var seen=new HashSet<string>(all.Select(g=>g.StorageKey),StringComparer.OrdinalIgnoreCase);
                     foreach(var known in knownGames.Where(g=>!String.IsNullOrEmpty(g.HistoryId)))
                     {
-                        token.ThrowIfCancellationRequested();if(seen.Contains(known.StorageKey) || !File.Exists(known.StatsPath))continue;
+                        token.ThrowIfCancellationRequested();if(seen.Contains(known.StorageKey) || !selection.Allows(known,steam) || !File.Exists(known.StatsPath))continue;
                         try
                         {
                             string schema=Path.Combine(steam,"appcache","stats","UserGameStatsSchema_"+known.AppId+".bin");
@@ -320,7 +383,7 @@ namespace AchievementTimelineReplay.Wpf
                             }
                     }
                     foreach(var known in knownGames)
-                        if(LibraryStore.ShouldRetainAfterScan(known) && seen.Add(known.StorageKey)){known.RetainedFromCatalog=true;all.Add(known);}
+                        if(LibraryStore.ShouldRetainAfterScan(known,selection.Allows(known,steam)) && seen.Add(known.StorageKey)){known.RetainedFromCatalog=true;all.Add(known);}
                     GameNames.Resolve(all.Where(g=>!String.IsNullOrEmpty(g.HistoryId)),Log,token);
                     return all.OrderBy(g=>g.GameName,StringComparer.CurrentCultureIgnoreCase).ToList();
                 },token);
@@ -332,14 +395,14 @@ namespace AchievementTimelineReplay.Wpf
                         try{browsedPlans[g]=new BrowsedPlan{Records=PlanStore.Restore(g,draft).Records,Parameters=draft.Parameters};}catch(Exception ex){Log("Borrador no restaurado: "+ex.Message);}
                     games.Add(LibraryRow(g));
                 }
-                LibraryCount.Text=games.Count+" juegos";
-                ScanResult.Text="Actualización terminada: "+games.Count+" historiales en biblioteca ("+found.Count(g=>g.RetainedFromCatalog)+" conservados del catálogo).\n"+(scanSteam?scanner.Summary.Format("Steam"):"Steam: appcache/stats no disponible")+(scanGoldberg?"\n"+goldbergSummary.Format("Goldberg/GBE"):"")+(scanIni?"\n"+iniSummary.Format("CODEX/RUNE"):"");
+                ApplyLibraryFilter();
+                ScanResult.Text="Actualización terminada: "+games.Count+" historiales en biblioteca ("+found.Count(g=>g.RetainedFromCatalog)+" conservados del catálogo).\n"+(scanSteam?scanner.Summary.Format("Steam"):"Steam/BIN: desactivado o appcache/stats no disponible")+(scanGoldberg?"\n"+goldbergSummary.Format("Goldberg/GBE"):"")+(scanIni?"\n"+iniSummary.Format("CODEX/RUNE"):"");
                 SetStatus(ScanResult.Text);
                 Log(ScanResult.Text);
                 ScanProgress.IsIndeterminate=false;ScanProgress.Maximum=1;ScanProgress.Value=1;
                 lastLibraryScan=DateTimeOffset.UtcNow;lastLibrarySummary=ScanResult.Text;PersistLibrary();
                 GoTo("Biblioteca");
-                GamesGrid.SelectedItem=games.FirstOrDefault(r=>r.Game.StorageKey==previousSelection)??games.FirstOrDefault();
+                GamesGrid.SelectedItem=GamesGrid.Items.OfType<GameRow>().FirstOrDefault(r=>r.Game.StorageKey==previousSelection)??GamesGrid.Items.OfType<GameRow>().FirstOrDefault();
             }
             catch(OperationCanceledException)
             {
@@ -384,7 +447,7 @@ namespace AchievementTimelineReplay.Wpf
                 // Existing imported sources retain drafts and their protected original.
                 scanning=false;GamesGrid.SelectedItem=row;GameChanged(GamesGrid,null);
                 ScanResult.Text=game.IsDemo?"Demostración cargada. Podés editar y guardar planes; Steam y SAM están bloqueados para esta muestra.":"Goldberg importado. Solo se añadieron logros desbloqueados con fecha válida. Revisá el log para omisiones.";
-                LibraryCount.Text=games.Count+" historiales";SetStatus(ScanResult.Text);Log(ScanResult.Text);PersistLibrary();GoTo("Plan");
+                ApplyLibraryFilter();SetStatus(ScanResult.Text);Log(ScanResult.Text);PersistLibrary();GoTo("Plan");
             }
             catch(OperationCanceledException){SetStatus("Importación Goldberg cancelada.");}
             catch(Exception ex){Log(ex.ToString());MessageBox.Show(this,ex.Message,"Goldberg",MessageBoxButton.OK,MessageBoxImage.Warning);}
@@ -432,7 +495,7 @@ namespace AchievementTimelineReplay.Wpf
                 var row=AdoptImportedGame(game);
                 scanning=false;GamesGrid.SelectedItem=row;GameChanged(GamesGrid,null);
                 ScanResult.Text=game.IsDemo?"Muestra CODEX/RUNE cargada. Las acciones de Steam están bloqueadas.":"INI importado. Solo se añadieron desbloqueos con fecha válida; revisá Logs para omisiones.";
-                LibraryCount.Text=games.Count+" historiales";SetStatus(ScanResult.Text);Log(ScanResult.Text);PersistLibrary();GoTo("Plan");
+                ApplyLibraryFilter();SetStatus(ScanResult.Text);Log(ScanResult.Text);PersistLibrary();GoTo("Plan");
             }
             catch(OperationCanceledException){SetStatus("Importación INI cancelada.");}
             catch(Exception ex){Log(ex.ToString());MessageBox.Show(this,ex.Message,"CODEX/RUNE",MessageBoxButton.OK,MessageBoxImage.Warning);}
@@ -500,11 +563,7 @@ namespace AchievementTimelineReplay.Wpf
         void CancelScanClick(object sender,RoutedEventArgs e) {scanCancellation?.Cancel();CancelScanButton.IsEnabled=false;ScanResult.Text="Cancelando escaneo…";}
         void LibraryFilterChanged(object sender,TextChangedEventArgs e)
         {
-            if(!initialized)return;
-            ICollectionView view=CollectionViewSource.GetDefaultView(GamesGrid.ItemsSource);
-            if(view==null)return;
-            string q=LibrarySearch.Text.Trim();
-            view.Filter=o=>o is GameRow g && (q.Length==0 || g.GameName.IndexOf(q,StringComparison.CurrentCultureIgnoreCase)>=0 || g.AppId.ToString().Contains(q,StringComparison.OrdinalIgnoreCase));
+            ApplyLibraryFilter();
         }
         void GameChanged(object sender,SelectionChangedEventArgs e)
         {
@@ -595,6 +654,7 @@ namespace AchievementTimelineReplay.Wpf
                 var row=games.FirstOrDefault(g=>ReferenceEquals(g.Game,currentGame));
                 if(row!=null)row.Origin=ReadLibraryOrigin(currentGame);
                 SetStatus("Origen actualizado para "+currentGame.GameName+". No modifica archivos de logros ni Steam.");
+                ApplyLibraryFilter();
             }
             catch(Exception ex){LoadOrigin();MessageBox.Show(this,ex.Message,"No se pudo guardar el origen",MessageBoxButton.OK,MessageBoxImage.Warning);}
         }
@@ -1011,7 +1071,9 @@ namespace AchievementTimelineReplay.Wpf
             RefreshLibraryButton.IsEnabled=ScanButton.IsEnabled;
             RemoveLibraryButton.IsEnabled=ScanButton.IsEnabled && currentGame!=null;
             UpdateButton.IsEnabled=!checkingUpdates && !running && !scanning && !preparing && !querying;
-            ImportIniButton.IsEnabled=ScanIniDefaults.IsEnabled=ImportGoldbergButton.IsEnabled=ScanGoldbergDefaults.IsEnabled=ScanButton.IsEnabled;
+            ImportIniButton.IsEnabled=ImportGoldbergButton.IsEnabled=ScanButton.IsEnabled;
+            foreach(var check in scanSourceChecks.Values)check.IsEnabled=ScanButton.IsEnabled;
+            ClearLibraryButton.IsEnabled=ScanButton.IsEnabled && (games.Count>0 || File.Exists(libraryStore.FilePath) || File.Exists(libraryStore.BackupPath));
             DefinitionTools.Visibility=available && GoldbergHistory.NeedsDefinitions(currentGame)?Visibility.Visible:Visibility.Collapsed;
             FindDefinitionsButton.IsEnabled=CanEditPlan && !querying;
             StartButton.IsEnabled=!checkingUpdates && live && !running && !scanning && !querying && !preparing && order.Any(x=>x.Included) && GapLimitValid();

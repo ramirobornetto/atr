@@ -46,7 +46,7 @@ namespace AchievementTimelineReplay
     {
         readonly string directory,snapshots;
         public LibraryStore(string directory,string snapshots){this.directory=directory;this.snapshots=snapshots;}
-        public static bool ShouldRetainAfterScan(GameEntry game) => File.Exists(game.StatsPath);
+        public static bool ShouldRetainAfterScan(GameEntry game,bool sourceEnabled=true) => !sourceEnabled || File.Exists(game.StatsPath);
         public static bool NeedsAccountRefresh(GameEntry game,uint activeAccount) => String.IsNullOrEmpty(game.HistoryId) && activeAccount!=0 && game.AccountId!=activeAccount;
         public string FilePath => Path.Combine(directory,"catalog.json");
         public string BackupPath => Path.Combine(directory,"catalog.previous.json");
@@ -133,6 +133,11 @@ namespace AchievementTimelineReplay
                 result.Games.Add(game);
             }
             return result;
+        }
+        public void Clear()
+        {
+            // Remove the fallback too, so it cannot resurrect the cleared catalog on startup.
+            File.Delete(BackupPath);File.Delete(FilePath);
         }
         public void Save(IEnumerable<GameEntry> games,string steamRoot,DateTimeOffset? lastScan,string summary)
         {

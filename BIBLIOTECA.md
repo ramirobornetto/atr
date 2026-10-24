@@ -25,3 +25,11 @@ Antes de ejecutar se consulta SAM como en las versiones anteriores. Con el CLI m
 Los metadatos se escriben mediante un archivo temporal y reemplazo final. Se mantiene `catalog.previous.json`; si el catálogo principal no puede leerse, se intenta esa copia. Los registros corruptos o con identidades incompatibles se señalan sin acceder a snapshots arbitrarios. Un guardado explícito posterior conserva el catálogo corrupto con otro nombre antes de reemplazarlo. No se reescriben snapshots al cargar la biblioteca.
 
 La actualización del programa conserva este directorio y los borradores de actualización independientes. Un borrador recuperado tras actualizar aparece al seleccionar el historial, que ahora normalmente ya estará disponible en el catálogo al arrancar.
+
+## Fuentes y visibilidad (0.8.3)
+
+Las casillas de Escaneo controlan la importación por formato/ubicación detectados. Los interruptores de Biblioteca solo muestran/ocultan lo ya importado por su origen visible, incluyendo correcciones manuales. Son independientes. Cada botón muestra la cantidad guardada de su origen; «Mostrando X de Y» tiene en cuenta también la búsqueda por nombre/AppID. Todos los orígenes pueden desactivarse; un mensaje explica cuándo no hay resultados. Las preferencias se guardan al cambiar y sobreviven al reinicio.
+
+Si un origen no se escanea, sus entradas anteriores se conservan, incluso con archivos faltantes. Para quitar automáticamente archivos faltantes, escanear con ese origen habilitado. CODEX, RUNE, Goldberg y GSE tienen controles independientes; una etiqueta manual no modifica el criterio usado para localizar sus archivos.
+
+La papelera roja **Borrar biblioteca** elimina `catalog.json` y `catalog.previous.json`, y vacía la vista tras confirmar. No borra originales, snapshots, planes ni etiquetas de origen; se pueden recuperar escaneando o importando las mismas rutas. Descarta los borradores no guardados. No restablece los filtros ni las opciones de escaneo. Si quedan filtros apagados, los juegos reimportados seguirán ocultos hasta activarlos.

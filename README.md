@@ -1,8 +1,8 @@
 # Achievement Timeline Replay
 
-## Descargar v0.8.2 para Windows x64
+## Descargar v0.8.3 para Windows x64
 
-[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.8.2_Windows_x64.zip)
+[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.8.3_Windows_x64.zip)
 
 Extraer **todo el ZIP** en una carpeta nueva y abrir `AchievementTimelineReplay.Wpf.exe`. No se necesita compilar ni instalar .NET. Mantener las DLL y demás archivos junto al ejecutable. Steam y SamRewritten se seleccionan en la aplicación, como antes; no vienen incluidos.
 
@@ -183,3 +183,11 @@ Verificación de 0.8.1: 212 comprobaciones automáticas pasadas, incluyendo cat�
 Un reescaneo completado quita de la biblioteca las fuentes cuyo archivo ya no existe, conservando planes, orígenes y snapshots. Cancelar o fallar el escaneo mantiene la biblioteca anterior. Los errores de lectura de archivos existentes conservan su entrada marcada.
 
 Goldberg/GSE busca nombres automáticamente; se elimina la casilla previa a la importación. Si faltan nombres, el plan ofrece «Buscar archivo de definición…» con ayuda «?». La selección manual se valida por IDs y no cambia fechas ni parámetros del plan. Las etiquetas se guardan en el catálogo sin modificar los snapshots originales.
+
+## v0.8.3 — fuentes y filtros independientes
+
+Escaneo permite activar Steam, SteamIdra/LuaTools, Goldberg, GSE, CODEX y RUNE por separado. Los BIN se clasifican por presencia de `<AppID>.lua` en `Steam/config/stplug-in`: el LUA solo filtra, no aporta logros ni certifica origen o propiedad. Activar ambos incluye los BIN en una sola pasada. CODEX/RUNE compatible permite refrescar importaciones INI recordadas sin proveedor identificable por ruta. Desactivar un origen conserva su catálogo previo, incluso si su archivo no está disponible; no lo reimporta ni lo purga.
+
+Biblioteca añade interruptores por origen con cantidades, búsqueda combinada y contador «Mostrando X de Y». Estos filtros usan el origen visible/manual y no escanean, importan ni borran. Las preferencias de escaneo y visibilidad se guardan por separado en `source-options.json`.
+
+La papelera roja borra el catálogo y su respaldo tras confirmar. Su «?» explica que conserva archivos de logros, snapshots, planes y orígenes. Se deshabilita mientras hay operaciones activas. Los borradores sin guardar se descartan; las preferencias se mantienen.
