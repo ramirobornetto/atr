@@ -1,6 +1,6 @@
 # Xbox directo — v0.12.0
 
-ATR incluye una fuente opcional **Xbox (perfil)**, independiente de PlayniteAchievements. Consulta el historial de juegos jugados y los logros del perfil Microsoft conectado. No obtiene un catálogo de licencias compradas ni escribe desbloqueos en Xbox. Los juegos sin logros desbloqueados también pueden aparecer si Xbox devuelve un catálogo (por ejemplo, 0/35). Desde v0.12.1 se omiten las entradas vacías 0/0, incluidas las ya guardadas, sin borrar sus archivos. El filtro no se aplica a otras fuentes.
+ATR incluye una fuente opcional **Xbox (perfil)**, independiente de PlayniteAchievements. Consulta el historial de juegos jugados y los logros del perfil Microsoft conectado. No obtiene un catálogo de licencias compradas ni escribe desbloqueos en Xbox. Desde v0.12.2 solo se muestran juegos con al menos un logro desbloqueado. Se omiten 0/0, 0/35 y cualquier título sin desbloqueos, también al cargar la biblioteca guardada. Un desbloqueo sin fecha válida sí cuenta. No se borran archivos ni se aplica este filtro a otras fuentes.
 
 ## Estado de la integración
 
@@ -58,4 +58,9 @@ No compartir `session.dat`, carpetas completas de datos ni códigos de acceso. L
 
 La interfaz muestra **Xbox Live (perfil)** en Escaneo, **Xbox Live** como origen y **Xbox Live → Steam** en historiales convertidos. Internamente se conserva la clave Xbox para no invalidar preferencias, identidades ni correspondencias. Las entradas originales de Steam continúan separadas.
 
-El filtro se aplica después de consultar los logros del título: no se decide únicamente por el total anunciado en el historial de títulos. Por eso se conserva un desbloqueo aunque el total inicial sea cero. Los historiales guardados con snapshot inválido no se consideran vacíos por falta de datos: conservan su aviso de error.
+El filtro se aplica después de consultar los logros del título: no se decide únicamente por el total anunciado en el historial de títulos. Por eso se conserva un desbloqueo aunque el total inicial sea cero. Desde v0.12.2 la visibilidad requiere al menos un desbloqueo leído del snapshot o del servicio; un total de catálogo positivo ya no alcanza.
+
+
+## Criterio vigente desde v0.12.2
+
+Solo juegos con uno o más desbloqueos. Reemplaza el filtro 0/0 de v0.12.1: 0/35 también se omite. No exige una fecha válida ni prueba propiedad. Los archivos de origen, snapshots y planes se conservan aunque una entrada deje de mostrarse.

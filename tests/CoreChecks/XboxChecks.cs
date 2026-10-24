@@ -63,7 +63,7 @@ static class XboxChecks
         Check(emptyLoaded.Games.Count==0,"old direct Xbox 0/0 entries are hidden when reloading the saved catalog without deleting source files");
         Check(File.Exists(empty.StatsPath) && !XboxProfile.ShouldInclude(empty),"empty Xbox entries are excluded without deleting their cache or snapshots");
         var locked=XboxProfile.ParseHistory("123456789",new XboxTitle{Id="10",Name="Locked Xbox game",Total=35},Array.Empty<JsonElement>(),dir);XboxProfile.SaveHistory(locked,snapshots);library.Save(new[]{locked},"",null,"");
-        Check(XboxProfile.ShouldInclude(locked) && library.Load().Games.Count==1,"Xbox 0/35 titles remain in the library despite having no unlocks");
+        Check(!XboxProfile.ShouldInclude(locked) && library.Load().Games.Count==0,"Xbox titles with a catalog but zero unlocks are excluded during scan eligibility and catalog reload");
         Check(XboxProfile.ShouldInclude(game) && XboxProfile.ShouldInclude(new GameEntry{Platform="Steam"}),"the empty Xbox filter preserves real unlocks and does not filter native Steam histories");
         Check(SourceSelection.DisplayOrigin("Xbox")=="Xbox Live" && SourceSelection.DisplayOrigin("Xbox → Steam")=="Xbox Live → Steam" && SourceSelection.LibraryCategory("Xbox Live → Steam")=="Xbox","display labels identify Xbox Live while converted entries retain the Xbox filter category");
         var legacy=XboxProfile.ParseHistory("123456789",new XboxTitle{Id="9",Name="Legacy",Legacy=true},new[]{J("{\"id\":4,\"unlocked\":true,\"timeUnlocked\":null}"),J("{\"id\":5,\"unlocked\":true,\"isRevoked\":true}")},dir);

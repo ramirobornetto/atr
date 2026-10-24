@@ -1,8 +1,8 @@
 # Achievement Timeline Replay
 
-## Descargar v0.12.1 para Windows x64
+## Descargar v0.12.2 para Windows x64
 
-[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.12.1_Windows_x64.zip)
+[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.12.2_Windows_x64.zip)
 
 Extraer **todo el ZIP** en una carpeta nueva y abrir `AchievementTimelineReplay.Wpf.exe`. No se necesita compilar ni instalar .NET. Mantener las DLL y demás archivos junto al ejecutable. Steam y SamRewritten se seleccionan en la aplicación, como antes; no vienen incluidos.
 
@@ -225,3 +225,8 @@ Nuevo **Conectar Xbox…** y fuente opcional **Xbox (perfil)**, independiente de
 El escaneo Xbox omite títulos que, tras consultar sus logros, siguen con **0 desbloqueados y 0 de total**. Se conservan 0/35 y otros títulos con catálogo, además de cualquier desbloqueo real, incluso sin fecha. Las entradas Xbox directo 0/0 guardadas en versiones anteriores también se ocultan al cargar/actualizar la biblioteca; no se borran sus archivos, snapshots ni planes. Las fuentes Steam y PA no se filtran por esta regla.
 
 La etiqueta visible pasa a **Xbox Live** y los planes convertidos a **Xbox Live → Steam**. Se mantienen las identidades, las correspondencias y los filtros existentes. No se infiere propiedad ni tienda de compra y no se mezclan logros Steam/Xbox durante el escaneo.
+
+
+## v0.12.2 — Xbox Live solo con desbloqueos
+
+Por preferencia del usuario, Xbox Live directo ahora incluye únicamente juegos con al menos un logro desbloqueado. Se omiten tanto 0/0 como 0/35 y similares, también al cargar el catálogo guardado. Los desbloqueos sin fecha válida cuentan y se conservan. No se borran archivos ni planes y esta regla no cambia las otras fuentes. Reemplaza el criterio de v0.12.1 que admitía títulos sin desbloqueos si tenían catálogo.

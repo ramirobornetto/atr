@@ -144,7 +144,7 @@ namespace AchievementTimelineReplay.Wpf
             ApplyLibraryFilter();
             GoTo("Escaneo");
             UpdateButtons();
-            Log("WPF v0.12.1 iniciada. Motor derivado de v0.5.3. No se ha modificado Steam.");
+            Log("WPF v0.12.2 iniciada. Motor derivado de v0.5.3. No se ha modificado Steam.");
             LoadSavedLibrary();
             if(!String.IsNullOrWhiteSpace(SamPath.Text)) _=ValidateSamAsync(false);
         }
@@ -454,7 +454,7 @@ namespace AchievementTimelineReplay.Wpf
                                 try
                                 {
                                     var history=api.HistoryAsync(session,title,Path.Combine(LegacyTools.DataDirectory,"Xbox","Histories"),token).GetAwaiter().GetResult();
-                                    if(!XboxProfile.ShouldInclude(history)){Log("Xbox Live · "+title.Name+": omitido, sin catálogo ni desbloqueos (0/0).");continue;}
+                                    if(!XboxProfile.ShouldInclude(history)){Log("Xbox Live · "+title.Name+": omitido, sin logros desbloqueados.");continue;}
                                     XboxProfile.SaveHistory(history,Path.Combine(LegacyTools.DataDirectory,"Snapshots"));all.Add(history);
                                 }
                                 catch(OperationCanceledException){throw;}

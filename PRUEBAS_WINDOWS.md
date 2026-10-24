@@ -79,3 +79,8 @@ La barra de progreso global de las demás fuentes sigue siendo un pendiente anot
 - Escanear Xbox Live de nuevo: omitir entradas vacías como Sekiro 0/0; conservar Cuphead 7/42 y títulos con catálogo pero sin desbloqueos (0/35). Logs indica cada omisión.
 - Escanear Steam: su entrada de Sekiro debe conservar sus logros, sin recibir datos de la entrada Xbox ni ser filtrada por esta regla.
 - Comprobar etiquetas Xbox Live / Xbox Live → Steam y que el filtro Xbox Live conserve su estado anterior y afecte ambos tipos de entrada. Verificar también la selección de origen en Plan.
+
+
+## v0.12.2 — Xbox Live solo juegos con desbloqueos
+
+Actualizar y abrir la biblioteca guardada: deben desaparecer también los títulos Xbox Live 0/35, 0/175 y 0/200. Reescanear: conservar Cuphead 7/42 y todos los títulos con al menos un desbloqueo, incluidos los que no tengan fecha válida. Omitir juegos sin desbloqueos e indicar el motivo en Logs. Esta regla es solo para Xbox directo; los archivos, snapshots, planes y otras fuentes se conservan.
