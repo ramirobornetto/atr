@@ -25,3 +25,7 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+## Microsoft Edge WebView2
+
+SDK Microsoft.Web.WebView2 1.0.4314.35, usado por el navegador de conexión Epic. Su licencia se incluye en third_party/WebView2-LICENSE.txt. El runtime Evergreen del navegador no se redistribuye dentro de este paquete.

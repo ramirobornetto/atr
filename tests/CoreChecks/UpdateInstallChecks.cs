@@ -51,9 +51,14 @@ static class UpdateInstallChecks
         string target=Path.Combine(root,"application");Directory.CreateDirectory(target);
         File.WriteAllText(Path.Combine(target,"AchievementTimelineReplay.Wpf.exe"),"old executable");File.WriteAllText(Path.Combine(target,"user-notes.txt"),"keep notes");
         Directory.CreateDirectory(Path.Combine(target,"Plans"));File.WriteAllText(Path.Combine(target,"Plans","keep.json"),"keep plan");
+        string[] userData={"Library/catalog.json","Snapshots/source/snapshot.json","Runs/source/latest.json","Xbox/session.dat","Epic/session.dat","Epic/Browser/Default/Cookies","Mappings/choices.json","source-options.json"};
+        foreach(string relative in userData){string file=Path.Combine(target,relative);Directory.CreateDirectory(Path.GetDirectoryName(file));File.WriteAllText(file,"fixture "+relative);}
+        File.WriteAllText(Path.Combine(stage,"Microsoft.Web.WebView2.Core.dll"),"SDK fixture");
         var installed=UpdateInstaller.Install(stage,target,Path.Combine(root,"backup"));
         Check(File.ReadAllText(Path.Combine(target,"AchievementTimelineReplay.Wpf.exe"))=="new" && File.ReadAllText(Path.Combine(target,"user-notes.txt"))=="keep notes" && File.ReadAllText(Path.Combine(target,"Plans","keep.json"))=="keep plan","installation replaces program files while preserving unrelated files and plans");
+        Check(userData.All(relative=>File.ReadAllText(Path.Combine(target,relative))=="fixture "+relative) && File.Exists(Path.Combine(target,"Microsoft.Web.WebView2.Core.dll")),"updating browser assemblies preserves library, sessions, browser profile, reports, snapshots and mappings");
         installed.Rollback();
+        Check(userData.All(relative=>File.ReadAllText(Path.Combine(target,relative))=="fixture "+relative) && !File.Exists(Path.Combine(target,"Microsoft.Web.WebView2.Core.dll")),"rollback removes introduced browser files and preserves all user data");
         Check(File.ReadAllText(Path.Combine(target,"AchievementTimelineReplay.Wpf.exe"))=="old executable" && !File.Exists(Path.Combine(target,"ATR.Updater.dll")),"rollback restores old files and removes files introduced by update");
         string partialStage=Path.Combine(root,"partial-stage"),partialTarget=Path.Combine(root,"partial-target");Directory.CreateDirectory(partialStage);Directory.CreateDirectory(partialTarget);
         File.WriteAllText(Path.Combine(partialStage,"a.dll"),"new a");File.WriteAllText(Path.Combine(partialStage,"b.dll"),"new b");File.WriteAllText(Path.Combine(partialStage,"z.dll"),"blocked");

@@ -34,6 +34,8 @@ static class MigrationChecks
         Check(File.Exists(Path.Combine(Path.GetDirectoryName(store.LatestPath(game)),run.Id+".json")),"each run retains its own report alongside the recovery pointer");
         run.Action("B","Aplicado sin verificar");run.Reconcile(new Dictionary<string,string>{{"A","Desbloqueado"},{"B","Desbloqueado"},{"C","Bloqueado"}});
         Check(run.Items.Single(i=>i.ApiId=="B").Status=="Aplicado" && run.Items.Single(i=>i.ApiId=="C").Status=="Pendiente","final Steam verification confirms applied writes and keeps unattempted achievements pending");
+        bool accountRejected=false,unknownRejected=false;try{run.EnsureResumeAccount(8);}catch(InvalidOperationException){accountRejected=true;}try{run.EnsureResumeAccount(0);}catch(InvalidOperationException){unknownRejected=true;}
+        run.EnsureResumeAccount(7);Check(accountRejected && unknownRejected,"recovery rejects another or unidentified current Steam account when the report binds a known account");
         Check(run.Report().Contains("[B]") && run.Report().Contains("AppID 42") && run.Report().Contains("Goldberg"),"the report includes game, destination, source and named achievement codes");
         run.Action("C","Aplicado sin verificar");run.Reconcile(new Dictionary<string,string>{{"C","Bloqueado"}});Check(run.Items.Single(i=>i.ApiId=="C").Status=="Fallido","SAM accepting a write is insufficient when final Steam verification still reports locked");
         var other=new GameEntry{AppId=42,AccountId=8,GameName="Other",Achievements=records};bool wrongSource=false;try{store.Save(other,run);}catch(InvalidDataException){wrongSource=true;}Check(wrongSource,"run persistence rejects a different account/history even for the same AppID");
@@ -64,7 +66,17 @@ esac
         Check(rejected && recovered.Items[0].Status=="Aplicado sin verificar" && recovered.Items[1].Status=="Fallido" && recovered.Items[2].Status=="Pendiente" && File.ReadAllLines(Path.Combine(dir,"commands")).Length==2,"real replay orchestration journals partial success and rejection without executing later achievements (fake SAM only)");
         run.Reconcile(new Dictionary<string,string>{{"A","Desbloqueado"},{"B","Bloqueado"},{"C","Bloqueado"}});var preview=MigrationPreview.Build(records,parameters,new Dictionary<string,string>{{"A","Desbloqueado"},{"B","Bloqueado"},{"C","Bloqueado"}});
         Check(preview.Schedule.Count==2 && preview.Schedule.Keys.All(a=>a.ApiId!="A"),"recovery uses a fresh query to skip the successful achievement and retry only remaining selections");
+        int commandsBefore=File.ReadAllLines(Path.Combine(dir,"commands")).Length;
+        var noCheckpoint=new LegacyReplayer(new ReplayEvents{Achievement=(a,state)=>throw new IOException("Simulated checkpoint write failure")});
+        bool blocked=false;try{noCheckpoint.Run(new List<ScheduleItem>{new ScheduleItem{Achievement=records[0]}},cli,SamCliMode.Modern,42,"Fixture",false,false,0,CancellationToken.None).GetAwaiter().GetResult();}catch(IOException){blocked=true;}
+        Check(blocked && File.ReadAllLines(Path.Combine(dir,"commands")).Length==commandsBefore,"a failed pre-write journal checkpoint prevents the SAM unlock command");
+        var cancelledRun=new MigrationRun{SourceKey=game.StorageKey,Plan=PlanStore.Capture(game,records,parameters),Items=records.Select(a=>new MigrationItem{ApiId=a.ApiId,Name=a.DisplayName}).ToList(),Outcome="En curso"};store.Save(game,cancelledRun);
+        using var afterFirst=new CancellationTokenSource();
+        var partial=new LegacyReplayer(new ReplayEvents{Achievement=(a,state)=>{cancelledRun.Action(a.ApiId,state);store.Save(game,cancelledRun);},Progress=(done,total,title)=>{if(done==1)afterFirst.Cancel();}});
+        try{partial.Run(records.Select(a=>new ScheduleItem{Achievement=a}).ToList(),cli,SamCliMode.Modern,42,"Fixture",false,false,0,afterFirst.Token).GetAwaiter().GetResult();throw new Exception("Cancellation expected");}catch(OperationCanceledException){cancelledRun.Outcome="Cancelada";store.Save(game,cancelledRun);}
+        var cancelledSaved=store.Load(game);Check(cancelledSaved.Outcome=="Cancelada" && cancelledSaved.Items[0].Status=="Aplicado sin verificar" && cancelledSaved.Items.Skip(1).All(i=>i.Status=="Pendiente"),"cancelling after the first actual fake-SAM write preserves a recoverable report with remaining selections pending");
+        int afterPartial=File.ReadAllLines(Path.Combine(dir,"commands")).Length;
         using var cancel=new CancellationTokenSource();cancel.Cancel();int callbacks=0;
-        var cancelled=new LegacyReplayer(new ReplayEvents{Achievement=(a,state)=>callbacks++});bool stopped=false;try{cancelled.Run(preview.Schedule.Values.ToList(),cli,SamCliMode.Modern,42,"Fixture",true,false,0,cancel.Token).GetAwaiter().GetResult();}catch(OperationCanceledException){stopped=true;}Check(stopped && callbacks==0 && File.ReadAllLines(Path.Combine(dir,"commands")).Length==2,"cancellation before replay makes no lock or unlock attempt and preserves the pending report entries");
+        var cancelled=new LegacyReplayer(new ReplayEvents{Achievement=(a,state)=>callbacks++});bool stopped=false;try{cancelled.Run(preview.Schedule.Values.ToList(),cli,SamCliMode.Modern,42,"Fixture",true,false,0,cancel.Token).GetAwaiter().GetResult();}catch(OperationCanceledException){stopped=true;}Check(stopped && callbacks==0 && File.ReadAllLines(Path.Combine(dir,"commands")).Length==afterPartial,"cancellation before replay makes no lock or unlock attempt and preserves the pending report entries");
     }
 }

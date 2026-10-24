@@ -38,7 +38,7 @@ namespace AchievementTimelineReplay
         const string GraphUrl="https://launcher.store.epicgames.com/graphql";
         const string SchemaQuery=@"query Achievement($SandboxId: String!, $Locale: String!) { Achievement { productAchievementsRecordBySandbox(sandboxId: $SandboxId, locale: $Locale) { productId achievements { achievement { name unlockedDisplayName unlockedDescription } } } } }";
         const string PlayerQuery=@"query playerProfileAchievementsByProductId($EpicAccountId: String!, $ProductId: String!) { PlayerProfile { playerProfile(epicAccountId: $EpicAccountId) { productAchievements(productId: $ProductId) { ... on PlayerProductAchievementsResponseSuccess { data { playerAchievements { playerAchievement { achievementName unlocked unlockDate } } } } } } } }";
-        const string LauncherUserAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) EpicGamesLauncher ATR/0.14.1";
+        const string LauncherUserAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) EpicGamesLauncher ATR/0.15.0";
         readonly HttpClient http;
         public Func<CancellationToken,Task<EpicSession>> RenewSession;
         static void Headers(HttpRequestMessage request,EpicSession session)
@@ -69,11 +69,11 @@ namespace AchievementTimelineReplay
         public EpicProfile(HttpMessageHandler handler=null)
         {
             http=handler==null?new HttpClient(new HttpClientHandler{AllowAutoRedirect=false}):new HttpClient(handler);
-            http.Timeout=TimeSpan.FromSeconds(35);http.DefaultRequestHeaders.UserAgent.ParseAdd("ATR/0.14.1");
+            http.Timeout=TimeSpan.FromSeconds(35);http.DefaultRequestHeaders.UserAgent.ParseAdd("ATR/0.15.0");
         }
         internal static string Text(JsonElement e,string key)=>e.ValueKind==JsonValueKind.Object && e.TryGetProperty(key,out var v) && v.ValueKind==JsonValueKind.String?v.GetString():null;
         static JsonElement At(JsonElement e,params string[] keys)
-        {foreach(string key in keys){if(e.ValueKind!=JsonValueKind.Object || !e.TryGetProperty(key,out e))return default;}return e;}
+        {foreach(string key in keys){if(e.ValueKind==JsonValueKind.Null)return e;if(e.ValueKind!=JsonValueKind.Object || !e.TryGetProperty(key,out e))return default;}return e;}
         static bool ValidId(string value)=>!String.IsNullOrWhiteSpace(value) && value.Length<=512 && !value.Any(Char.IsControl);
         public static string AuthorizationCode(string input)
         {
@@ -156,15 +156,19 @@ namespace AchievementTimelineReplay
             throw new InvalidDataException("Se excedió el límite de páginas de Epic; no se importó una biblioteca parcial.");
         }
         public async Task<GameEntry> HistoryAsync(EpicSession session,EpicGame asset,string directory,Action<string> log,CancellationToken token)
+            =>(await LookupAsync(session,asset,directory,log,token).ConfigureAwait(false)).Game;
+        public async Task<EpicHistoryLookup> LookupAsync(EpicSession session,EpicGame asset,string directory,Action<string> log,CancellationToken token)
         {
             using var schema=await Graph(SchemaQuery,new{SandboxId=asset.Namespace,Locale="es-ES"},session,token).ConfigureAwait(false);
             var product=At(schema.RootElement,"data","Achievement","productAchievementsRecordBySandbox");
-            if(product.ValueKind==JsonValueKind.Null)return null;
-            string productId=Text(product,"productId");if(!ValidId(productId))throw new InvalidDataException("Epic no devolvió un producto de logros válido para este título.");
+            if(product.ValueKind==JsonValueKind.Null)return new EpicHistoryLookup{Kind=RemoteScanKind.NoCatalog};
+            if(product.ValueKind!=JsonValueKind.Object)throw new InvalidDataException("Respuesta de esquema Epic no reconocida.");
+            string productId=Text(product,"productId");if(String.IsNullOrWhiteSpace(productId))return new EpicHistoryLookup{Kind=RemoteScanKind.NoCatalog};if(!ValidId(productId))throw new InvalidDataException("Epic no devolvió un producto de logros válido para este título.");
             var definitions=At(product,"achievements");if(definitions.ValueKind!=JsonValueKind.Array)throw new InvalidDataException("Esquema de logros Epic incompleto.");
             using var player=await Graph(PlayerQuery,new{EpicAccountId=session.AccountId,ProductId=productId},session,token).ConfigureAwait(false);
             var progress=At(player.RootElement,"data","PlayerProfile","playerProfile","productAchievements","data","playerAchievements");
-            if(progress.ValueKind!=JsonValueKind.Array)throw new InvalidDataException("Epic no devolvió el progreso del perfil. Revisá la cuenta y la privacidad; no se interpretó como cero logros.");
+            if(progress.ValueKind==JsonValueKind.Null || progress.ValueKind==JsonValueKind.Undefined)return new EpicHistoryLookup{Kind=RemoteScanKind.NoProgress};
+            if(progress.ValueKind!=JsonValueKind.Array)throw new InvalidDataException("Formato del progreso Epic no reconocido.");
             var game=ParseHistory(session.AccountId,asset,definitions,progress,directory,productId);
             if(game.Achievements.Count>0 && String.IsNullOrWhiteSpace(asset.Title) && ValidId(asset.CatalogId))
             {
@@ -178,7 +182,7 @@ namespace AchievementTimelineReplay
                 catch(EpicServiceException){throw;}
                 catch(Exception){log?.Invoke("Epic: nombre de catálogo no disponible; se conserva el identificador del juego.");}
             }
-            return game;
+            return new EpicHistoryLookup{Game=game,Kind=game.Achievements.Count>0?RemoteScanKind.Recovered:RemoteScanKind.NoUnlocks};
         }
         public static string ProfileKey(string account)=>Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes("Epic|"+account.ToLowerInvariant()))).Substring(0,24);
         public static string Identity(string path,string profile,string external)=>"epic_"+Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Path.GetFullPath(path).ToUpperInvariant()+"|"+profile+"|"+external))).Substring(0,24);

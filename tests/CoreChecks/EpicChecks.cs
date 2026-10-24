@@ -19,7 +19,7 @@ static class EpicChecks
     sealed class Service : HttpMessageHandler
     {
         public bool Repeat,Unauthorized,GraphErrors,NullProduct,MissingProgress,SwitchAccount,Headers=true;
-        public int UnauthorizedRemaining;public bool DenyCatalog;public string DeniedSandbox,AllowedAccess="TEST_ACCESS_EPIC";
+        public int UnauthorizedRemaining;public bool DenyCatalog,MissingProductId,NullAchievementParent,EmptyProgress;public string DeniedSandbox,AllowedAccess="TEST_ACCESS_EPIC";
         public List<string> Urls=new List<string>();public List<string> Bodies=new List<string>();
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,CancellationToken token)
         {
@@ -45,8 +45,10 @@ static class EpicChecks
                     if(DeniedSandbox!=null && doc.RootElement.GetProperty("variables").TryGetProperty("SandboxId",out var sandbox) && sandbox.GetString()==DeniedSandbox)return new HttpResponseMessage(HttpStatusCode.Forbidden){Content=new StringContent("{\"errorCode\":\"errors.com.epicgames.access.denied\",\"message\":\"PRIVATE_DETAIL\"}")};
                     string query=doc.RootElement.GetProperty("query").GetString();
                     if(GraphErrors)json="{\"errors\":[{\"message\":\"PRIVATE_GRAPHQL_DETAIL\"}],\"data\":{}}";
+                    else if(query.Contains("productAchievementsRecordBySandbox") && NullAchievementParent)json="{\"data\":{\"Achievement\":null}}";
+                    else if(query.Contains("productAchievementsRecordBySandbox") && MissingProductId)json="{\"data\":{\"Achievement\":{\"productAchievementsRecordBySandbox\":{\"achievements\":[]}}}}";
                     else if(query.Contains("productAchievementsRecordBySandbox"))json="{\"data\":{\"Achievement\":{\"productAchievementsRecordBySandbox\":"+(NullProduct?"null":"{\"productId\":\"product\",\"achievements\":"+Definitions+"}")+"}}}";
-                    else json="{\"data\":{\"PlayerProfile\":{\"playerProfile\":{\"productAchievements\":{\"data\":{\"playerAchievements\":"+(MissingProgress?"null":Progress)+"}}}}}}";
+                    else json="{\"data\":{\"PlayerProfile\":{\"playerProfile\":{\"productAchievements\":{\"data\":{\"playerAchievements\":"+(MissingProgress?"null":EmptyProgress?"[]":Progress)+"}}}}}}";
                 }
                 else if(DenyCatalog)return new HttpResponseMessage(HttpStatusCode.Forbidden){Content=new StringContent("{}")};
                 else json="{\"catalog-id\":{\"title\":\"Catalog game name\"}}";
@@ -90,9 +92,15 @@ static class EpicChecks
         Check(withoutName.Achievements.Count==1,"a denied optional catalog name cannot discard successfully read achievement progress");
         Check(service.Urls.All(u=>!u.Contains(rawCode) && !u.Contains("TEST_ACCESS_EPIC") && !u.Contains("TEST_REFRESH_EPIC")),"user session secrets never enter API URLs");
         var repeat=new Service{Repeat=true};using var repeatApi=new EpicProfile(repeat);bool repeated=false;try{await repeatApi.GamesAsync(session,CancellationToken.None);}catch(InvalidDataException){repeated=true;}Check(repeated && repeat.Urls.Count==2,"repeated library cursors fail instead of looping or returning a silently incomplete library");
-        var missing=new Service{MissingProgress=true};using var missingApi=new EpicProfile(missing);bool unavailable=false;try{await missingApi.HistoryAsync(session,asset,dir,_=>{},CancellationToken.None);}catch(InvalidDataException){unavailable=true;}Check(unavailable,"a missing/private profile response is not misinterpreted as zero unlocks");
+        var missing=new Service{MissingProgress=true};using var missingApi=new EpicProfile(missing);var unavailable=await missingApi.LookupAsync(session,asset,dir,_=>{},CancellationToken.None);Check(unavailable.Kind==RemoteScanKind.NoProgress && unavailable.Game==null,"a missing/private profile response is not misinterpreted as zero unlocks");
         var graphErrors=new Service{GraphErrors=true};using var errorApi=new EpicProfile(graphErrors);string message="";try{await errorApi.HistoryAsync(session,asset,dir,_=>{},CancellationToken.None);}catch(InvalidOperationException ex){message=ex.Message;}Check(message.Contains("error") && !message.Contains("PRIVATE_GRAPHQL_DETAIL"),"GraphQL errors reject partial data without exposing raw private server response text");
         var unsupported=new Service{NullProduct=true};using var unsupportedApi=new EpicProfile(unsupported);Check(await unsupportedApi.HistoryAsync(session,asset,dir,_=>{},CancellationToken.None)==null,"a title without an Epic Games achievement product is skipped without manufacturing achievements");
+        var noProductId=new Service{MissingProductId=true};using var noProductApi=new EpicProfile(noProductId);
+        Check((await noProductApi.LookupAsync(session,asset,dir,_=>{},CancellationToken.None)).Kind==RemoteScanKind.NoCatalog,"a recognized empty achievement product is a missing-catalog result rather than a parsing error");
+        var nullParent=new Service{NullAchievementParent=true};using var nullApi=new EpicProfile(nullParent);
+        Check((await nullApi.LookupAsync(session,asset,dir,_=>{},CancellationToken.None)).Kind==RemoteScanKind.NoCatalog,"a null achievement parent remains an unavailable catalog through nested JSON traversal");
+        var emptyProgress=new Service{EmptyProgress=true};using var emptyApi=new EpicProfile(emptyProgress);
+        Check((await emptyApi.LookupAsync(session,asset,dir,_=>{},CancellationToken.None)).Kind==RemoteScanKind.NoUnlocks,"an explicit empty progress array is classified separately from missing progress");
         var denied=new Service{Unauthorized=true};using var deniedApi=new EpicProfile(denied);bool rejected=false;try{await deniedApi.GamesAsync(session,CancellationToken.None);}catch(EpicServiceException ex){rejected=!ex.Message.Contains("PRIVATE_RESPONSE");}Check(rejected,"expired or forbidden sessions stop the remote phase with a sanitized reconnect message");
         var resourceDenied=new Service{DeniedSandbox="sandbox"};using var resourceApi=new EpicProfile(resourceDenied);EpicServiceException forbidden=null;
         try{await resourceApi.HistoryAsync(session,asset,dir,_=>{},CancellationToken.None);}catch(EpicServiceException ex){forbidden=ex;}

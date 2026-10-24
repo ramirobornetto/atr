@@ -1,8 +1,8 @@
 # Achievement Timeline Replay
 
-## Descargar v0.14.1 para Windows x64
+## Descargar v0.15.0 para Windows x64
 
-[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.14.1_Windows_x64.zip)
+[Descargar ZIP con ejecutable y .NET incluido](downloads/ATR_v0.15.0_Windows_x64.zip)
 
 Extraer **todo el ZIP** en una carpeta nueva y abrir `AchievementTimelineReplay.Wpf.exe`. No se necesita compilar ni instalar .NET. Mantener las DLL y demás archivos junto al ejecutable. Steam y SamRewritten se seleccionan en la aplicación, como antes; no vienen incluidos.
 
@@ -260,3 +260,12 @@ La conexión utiliza un flujo compatible con el launcher, no requiere Entra y de
 Las consultas Epic usan cabeceras compatibles con las del lector PA (cliente launcher, Accept JSON e idioma). Un 403 de un título no detiene los demás; un nombre de catálogo denegado no descarta desbloqueos ya leídos. Un 401 permite renovar la sesión una sola vez y repetir esa consulta; no hay reintentos automáticos para 403 ni límites 429.
 
 Los mensajes identifican operación, código HTTP y, cuando existe, un código público de error Epic. No muestran cuerpos privados ni tokens. El resumen indica incidencias/fase detenida en lugar de presentar cero juegos como una consulta limpia. El flujo de navegador/código temporal no cambia. La validación real de logros sigue pendiente con la cuenta del usuario; la vinculación y lectura de biblioteca ya fueron confirmadas por él.
+
+
+## v0.15.0 — conexiones simplificadas y resultados claros
+
+Xbox usa el registro de ATR preconfigurado, sin mostrar Client ID ni pedir configuración al usuario. Abre Microsoft y permite copiar el código temporal. Epic incorpora una ventana WebView2 para capturar la autorización automáticamente; conserva la alternativa externa si el runtime o un proveedor no están disponibles. Al completar una nueva conexión se selecciona su fuente para el próximo escaneo; desconectar desactiva esa fuente sin borrar historiales.
+
+Los resúmenes Xbox/Epic separan recuperados, sin catálogo, sin progreso disponible, sin desbloqueos, repetidos y errores reales. La ausencia de progreso Epic deja de recomendar cambios de privacidad sin evidencia. Los fallos de PA se informan como errores de lectura aparte de los historiales importados.
+
+Se amplían pruebas de cancelación, reanudación ligada a cuenta, bloqueo de escrituras ante un fallo de checkpoint y conservación de biblioteca, sesiones, navegador, snapshots y planes al actualizar/volver atrás. Los cambios visuales generales quedan fuera de esta versión. Los nuevos flujos de ingreso aún requieren prueba real en Windows; ver XBOX.md, EPIC.md y PRUEBAS_WINDOWS.md.

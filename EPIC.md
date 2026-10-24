@@ -1,59 +1,57 @@
-# Epic Games directo — v0.14.0
+# Epic Games — conexión y resultados desde v0.15.0
 
-La fuente opcional **Epic (perfil)** consulta la biblioteca de tu cuenta y los desbloqueos disponibles en los servicios de Epic Games. Es independiente de PA y está desactivada inicialmente. Solo se muestran juegos con al menos un logro desbloqueado; un desbloqueo sin fecha válida también cuenta.
+La fuente **Epic (perfil)** es independiente de PA y consulta los logros disponibles del servicio Epic Games para la cuenta conectada. Solo importa juegos con al menos un desbloqueo, también sin fecha válida.
 
-## Conectar
+## Conexión habitual
 
-1. En **Escaneo**, abrir **Conectar Epic…**.
-2. Pulsar **1. Iniciar sesión en Epic**. La contraseña, la autenticación en dos pasos y cualquier comprobación se completan en el navegador, en el sitio oficial de Epic.
-3. Después, pulsar **2. Obtener código**. Epic debe mostrar una respuesta que contiene `authorizationCode`.
-4. Copiar el valor de ese campo y pegarlo en ATR. También se admite pegar el JSON que contiene `authorizationCode`. No pegar la contraseña, un access token ni archivos de sesión de otro programa.
-5. Pulsar **Conectar** y comprobar el nombre de cuenta que muestra ATR.
-6. Activar **Epic (perfil)** y escanear. Usar el filtro **Epic** en Biblioteca.
+1. Abrir **Escaneo → Conectar Epic…**.
+2. Pulsar **Iniciar sesión en Epic**. Se abre el sitio de Epic en una ventana de navegador integrada.
+3. Ingresar con Epic y completar las verificaciones que solicite. ATR no recibe la contraseña: la página oficial la envía a Epic.
+4. La autorización se captura automáticamente al completarse. Si el sitio terminó de ingresar pero la ventana sigue abierta, usar **Continuar después de ingresar**.
+5. ATR muestra la cuenta conectada. Al cerrar el diálogo, Epic (perfil) queda seleccionado para el siguiente escaneo.
+6. Pulsar **Escanear biblioteca** y usar el filtro Epic en Biblioteca.
 
-El código es temporal y de un solo uso. Si venció, obtener uno nuevo. Si el navegador tiene abierta otra cuenta, cambiar de cuenta en Epic antes de obtener el código. Desconectar en ATR no cierra la sesión del navegador ni del launcher.
+La ventana integrada usa Microsoft Edge WebView2. El paquete incluye su SDK y cargador, pero no el navegador Evergreen completo. Si el runtime no está disponible o un proveedor de ingreso no funciona dentro de esa ventana, se ofrece la alternativa externa. No es necesario instalar el runtime para usar la alternativa.
 
-No requiere Entra ni un registro Microsoft. Es un flujo compatible con **Epic Games Launcher**, como el utilizado por PlayniteAchievements, con constantes de cliente launcher públicas; no es un registro OAuth propio de ATR. No se oculta esa identidad ni se extraen las sesiones de PA, Heroic o del launcher. La disponibilidad del flujo y de sus permisos depende de Epic y puede cambiar.
+## Alternativa externa
 
-## Qué se consulta
+Elegir **Usar navegador externo**. Ingresar en Epic; si hace falta, usar **Obtener código en Epic**. Copiar el valor authorizationCode o el JSON que lo contiene y usar **Pegar código y conectar**. También se puede pegar manualmente y pulsar **Conectar con el código**. El portapapeles solo se lee al pulsar ese botón.
 
-Se pagina la biblioteca Windows del servicio Epic. Para cada título se consulta el catálogo de logros por sandbox y el progreso de la cuenta conectada por producto de logros. Los alias de biblioteca que resuelven al mismo sandbox/producto usan la misma identidad y se guarda una sola fuente. Si falta un título legible se intenta obtenerlo del catálogo; si no está disponible, se muestra un identificador explícito para que el usuario elija el destino por nombre manualmente.
+No requiere Entra ni un registro Microsoft. Es un flujo compatible con Epic Games Launcher, como el utilizado por PA, con constantes públicas de ese cliente. No es un registro OAuth propio de ATR ni utiliza sesiones de otras aplicaciones. Los códigos son temporales y de un solo uso.
 
-La integración cubre los logros que expone ese servicio de Epic Games. **No garantiza recuperar todos los logros EOS de todos los juegos**, logros de emuladores ni progreso que el servicio no haya sincronizado. No convierte una compra en un historial de logros. Un juego sin un producto de logros disponible se omite; una respuesta incompleta, un error GraphQL o un perfil inaccesible no se interpretan como cero desbloqueos.
+## Qué significan los resultados
 
-El estado `unlocked: true` determina el desbloqueo. Las fechas ausentes o inválidas se conservan como **Sin fecha**. Una fecha aislada no transforma un logro bloqueado en desbloqueado. Si un código histórico ya no aparece en el esquema, se conserva como identificador original, sin inventar un equivalente Steam.
+El resumen separa:
 
-Los errores se registran y los historiales anteriores se conservan. Un rechazo de sesión o un límite de consultas detiene la fase Epic. Un error aislado por título permite continuar con los demás. La barra global incluye esta fase y el guardado final.
+- **Recuperados:** se leyó al menos un desbloqueo y se guardó su snapshot.
+- **Sin catálogo:** Epic no devolvió un producto/catálogo de logros utilizable para esa entrada. Puede corresponder a un juego sin soporte, un complemento o un catálogo no disponible.
+- **Sin progreso disponible:** no se recibió el bloque de progreso esperado. No equivale a cero desbloqueos ni demuestra un problema de privacidad; no se reemplaza un historial anterior por cero.
+- **Sin desbloqueos:** se recibió un progreso explícito sin logros desbloqueados.
+- **Repetidos:** otra entrada de biblioteca resolvió a la misma identidad de producto ya guardada.
+- **Errores:** rechazo HTTP, límite de consultas, contenido no reconocido, códigos duplicados o fallos reales al guardar/leer. Un fallo de fase previo a enumerar se cuenta aparte de los títulos revisados.
 
-## Correspondencias con Steam
+Así, 69 elementos con 2 recuperados, 36 sin catálogo y 31 sin progreso disponible no se presentan como 67 errores. El resumen también indica si una fase se detuvo.
 
-Elegir el historial Epic, preparar equivalencias y seleccionar el juego/edición correctos de Steam. Se conservan los códigos Epic y Steam en columnas separadas. Los logros del desplegable de Steam están ordenados alfabéticamente por nombre; la columna Fecha se quitó solo de esa ventana. Las fechas originales siguen disponibles en Plan y en los snapshots.
+Los errores identifican operación y HTTP. Un 401 intenta renovar una sola vez. Un 403 de un título no detiene otros títulos, y un nombre de catálogo denegado no descarta los desbloqueos ya leídos. Un 429 detiene sin reintentos. Nunca se imprimen tokens ni cuerpos completos de errores.
 
-Solo las correspondencias confirmadas preparan un historial **Epic → Steam**. La ejecución sigue pasando por SAM y el resumen de migración. No se escribe ni se desbloquea nada en Epic.
+## Límites y separación
 
-Los perfiles conocidos diferentes permanecen separados. No se unen listas por parecido de nombres. Una entrada de PA y otra de Epic directo pueden permanecer separadas si sus identificadores de juego no permiten demostrar que corresponden al mismo producto. Se mantienen los datos de cada fuente.
+Solo se recuperan los logros que expone el servicio Epic Games consultado: no se garantiza todo el progreso EOS de todos los títulos ni logros de emuladores. Un estado unlocked verdadero determina el desbloqueo; una fecha aislada no lo activa. Los desbloqueos sin fecha se conservan como Sin fecha.
 
-## Sesión y datos locales
+Biblioteca se pagina y después se consulta esquema por sandbox y progreso por producto de logros/cuenta. Los alias del mismo sandbox/producto comparten identidad. Los perfiles conocidos distintos se mantienen separados. PA y Epic directo pueden conservar entradas distintas si no hay identidad suficiente para demostrar que son el mismo producto; no se agrupan por parecido de nombres ni se unen sus listas.
 
-`%LOCALAPPDATA%\AchievementTimelineReplay\Epic\session.dat` guarda el refresh token y el contexto de cuenta cifrados con **DPAPI CurrentUser**. El access token solo permanece en memoria. La renovación comprueba que siga siendo la misma cuenta y guarda la rotación del refresh token. El código de autorización se limpia del campo y no se guarda.
+Las correspondencias confirmadas preparan un historial Epic → Steam separado y conservan las fechas de origen. Las acciones sobre Steam siguen pasando por SAM y su resumen previo. No se escribe en Epic.
 
-Las copias normalizadas de los logros están en `Epic\Histories\<perfil>`, con identificadores de archivo derivados por hash. Los snapshots, planes e informes usan las carpetas habituales. Desconectar elimina solo la sesión local de ATR. El actualizador conserva la carpeta Epic; borrar la biblioteca no elimina sesiones, snapshots ni planes.
+## Datos locales
 
-No compartir códigos ni `session.dat`. Los historiales también son datos personales. No se imprimen códigos, tokens ni cuerpos privados de errores de Epic en los logs. El código de ATR solo usa autenticación y consultas de lectura; esto no significa que la credencial del cliente launcher tenga un permiso OAuth limitado técnicamente a esas consultas.
+La sesión renovable se guarda cifrada con DPAPI CurrentUser en `%LOCALAPPDATA%\AchievementTimelineReplay\Epic\session.dat`; el access token no se persiste. La renovación verifica que siga siendo la misma cuenta. Los snapshots y copias normalizadas de desbloqueos no contienen tokens.
 
-## Estado y validación
+El navegador integrado tiene su propio perfil en Epic/Browser. Al iniciar una conexión integrada se limpian sus cookies para que el usuario elija la cuenta; no se toca el navegador externo, el launcher ni PA. La captura automática solo acepta respuestas del endpoint HTTPS oficial esperado y el callback local exacto de una autorización en curso. No lee campos de contraseña ni acepta códigos enviados por otras páginas.
 
-Se implementaron la conexión, renovación, consultas paginadas, lectura de logros, persistencia, perfiles separados y correspondencias con Steam. Las pruebas automatizadas usan respuestas simuladas. **El acceso real a Epic y la interfaz de conexión todavía deben validarse en Windows con una cuenta del usuario.** La compatibilidad con todos los títulos no está verificada.
+Desconectar elimina la sesión local de ATR y desactiva su fuente de escaneo al cerrar el diálogo. No elimina historiales ni planes. El actualizador conserva Epic, sesiones y perfil de navegador. No compartir códigos, session.dat ni carpetas completas de datos.
 
-Se tomó como referencia el protocolo de PlayniteAchievements, disponible bajo MIT; ver [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+## Validación
 
+El usuario confirmó en v0.14.1 la recuperación de DREDGE 60/60 y KILL KNIGHT 12/47, y la migración real de DREDGE a Steam. Las pruebas automáticas cubren lectura, renovación, clasificación, captura restringida de códigos, perfiles y preservación de datos. El nuevo navegador integrado y sus proveedores de ingreso requieren validación manual en Windows; no se presentan las pruebas simuladas como accesos reales a una cuenta.
 
-## v0.14.1 — acceso denegado y sesión
-
-Se alinean las cabeceras con el flujo compatible con launcher utilizado por PA. Cada fallo indica si ocurrió en autenticación, renovación, biblioteca, esquema, progreso o catálogo, además de HTTP 401/403/429. Solo se exponen códigos públicos conocidos del error, nunca sus cuerpos completos.
-
-Un 401 en una consulta de datos renueva la sesión y repite la consulta como máximo una vez, conservando la cuenta. Un 403 de un título se registra y permite intentar los demás títulos; un 403 de biblioteca impide enumerar y detiene esa fase. No se vuelve a intentar el recurso 403 ni se ignora un límite 429. Si solo falla la obtención del nombre del catálogo, los desbloqueos ya recuperados se conservan con su identificador.
-
-Los errores se reflejan como incidencias en el resumen. La cuenta ya se pudo vincular y su biblioteca enumerar en una prueba real del usuario, pero el acceso a los logros aún requiere validación con esta corrección. No se atribuye un rechazo genérico automáticamente a una sesión vencida.
-
-La diferencia con PA al vincular es de interfaz: PA dispone de un navegador integrado; ATR usa el navegador externo y un código temporal. La contraseña siempre se introduce en Epic. Esta corrección no añade un navegador integrado.
+Referencias de terceros: THIRD_PARTY_NOTICES.md.

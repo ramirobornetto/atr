@@ -14,6 +14,7 @@ namespace AchievementTimelineReplay
     }
     internal sealed class XboxConnection
     {
+        internal const string DefaultClientId="772c358d-c3c9-4160-9b6d-798c7324a8cc";
         readonly string directory;
         readonly Func<byte[],bool,byte[]> protect;
         public XboxConnection(string directory,Func<byte[],bool,byte[]> protector=null){this.directory=directory;protect=protector??WindowsSecret.Transform;}
@@ -24,7 +25,7 @@ namespace AchievementTimelineReplay
         {
             get
             {
-                if(!File.Exists(SettingsPath))return "";
+                if(!File.Exists(SettingsPath))return DefaultClientId;
                 if(new FileInfo(SettingsPath).Length>4096)throw new InvalidDataException("Configuración Xbox inválida.");
                 return XboxProfile.ClientId(JsonSerializer.Deserialize<XboxConnectionSettings>(File.ReadAllText(SettingsPath))?.ClientId);
             }

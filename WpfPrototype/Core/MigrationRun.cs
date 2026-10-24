@@ -29,6 +29,8 @@ namespace AchievementTimelineReplay
         public string Note {get;set;}
         public SavedPlan Plan {get;set;}
         public List<MigrationItem> Items {get;set;}=new List<MigrationItem>();
+        public void EnsureResumeAccount(uint account)
+        {if(SteamAccount!=0 && SteamAccount!=account)throw new InvalidOperationException("La última migración corresponde a otra cuenta Steam, o no se pudo identificar la cuenta actual. Iniciá sesión con la cuenta original antes de reanudar.");}
         public string Summary=>String.Join(" · ",Items.GroupBy(i=>i.Status).Select(g=>g.Count()+" "+g.Key.ToLowerInvariant()));
         public string Report()=>"Migración: "+Plan.GameName+" · AppID "+Plan.AppId+Environment.NewLine+"Historial: "+SourceLabel+Environment.NewLine+"Archivo: "+SourcePath+Environment.NewLine+"Cuenta Steam: "+(SteamAccount==0?"no identificada":SteamAccount.ToString())+Environment.NewLine+"Resultado: "+Outcome+" · "+UpdatedUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")+Environment.NewLine+Summary+Environment.NewLine+Note+Environment.NewLine+String.Join(Environment.NewLine,Items.Select(i=>i.Status+" · "+i.Name+" ["+i.ApiId+"]"+(String.IsNullOrEmpty(i.Detail)?"":" · "+i.Detail)));
         public void Action(string api,string state)

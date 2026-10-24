@@ -51,6 +51,7 @@ static class Program
             DiscoveryMatchingChecks.Run(root);
             XboxChecks.Run(root);
             EpicChecks.Run(root);
+            ConnectionFlowChecks.Run(root);
             MigrationChecks.Run(root);
             var countedGame=new GameEntry{TotalAchievements=40};
             for(int i=0;i<16;i++)countedGame.Achievements.Add(new AchievementRecord{ApiId="ACH_"+i});

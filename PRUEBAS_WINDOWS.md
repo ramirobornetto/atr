@@ -129,3 +129,16 @@ Pendiente de validación manual real: inicio de sesión y respuestas de Epic en 
 - Un título 403 no debe detener los demás. Un 401 renueva una sola vez y, si persiste, detiene. Un 429 detiene sin reintentos.
 - Un fallo de nombre en el catálogo conserva los desbloqueos recuperados. El resumen debe indicar incidencias cuando corresponda.
 - La validación de acceso real a logros sigue pendiente; las nuevas pruebas de errores y renovación usan respuestas simuladas.
+
+
+## v0.15.0 — validación pendiente en Windows
+
+- Xbox en una instalación sin configuración previa: Conectar cuenta Microsoft sin campo Client ID ni pasos de Azure/Entra. Probar con otra cuenta Microsoft real además de la cuenta ya usada. Código temporal, copia, apertura automática, cancelación y expiración. Las sesiones anteriores deben seguir funcionando.
+- Epic: Iniciar sesión en la ventana integrada, verificar identidad y cierre automático al obtener autorización. Probar contraseña/2FA y los proveedores sociales que se utilicen. Continuar después de ingresar como alternativa. No debe mostrar códigos ni tokens en logs.
+- Probar Windows sin runtime WebView2 o elegir navegador externo: ingreso anterior con código sigue disponible. Cancelar/cerrar no debe guardar una sesión incompleta ni dejar controles bloqueados.
+- Nueva conexión selecciona su fuente al cerrar el diálogo. Desconectar la desactiva, conservando la biblioteca. No deben cambiar preferencias si solo se abre y cierra el estado de conexión.
+- Escanear Epic: comprobar que recuperados/sin catálogo/sin progreso/sin desbloqueos/repetidos/errores se distingan y que los contadores concilien. Sin progreso no equivale a cero ni se etiqueta automáticamente como error de privacidad.
+- Cancelar una migración después del primer logro; reabrir y reanudar en el mismo historial/cuenta. Debe omitir lo aplicado tras consultar Steam, mantener los pendientes y desactivar reparación. No repetir sobre logros valiosos solo para probar: elegir pocos desbloqueos pendientes y revisar el resumen.
+- Actualizar conservando biblioteca, sesiones Xbox/Epic, perfil del navegador, snapshots, correspondencias, planes e informes. Verificar recuperación de un borrador guardado antes de actualizar.
+
+La compilación y las pruebas de servicios/SAM simulado se ejecutan en el entorno de desarrollo. Este entorno no dispone de una sesión gráfica Windows ni de otra cuenta Microsoft del usuario; esos pasos manuales no se declaran aprobados automáticamente.
