@@ -1,0 +1,87 @@
+name: Publish release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag to publish
+        required: true
+        default: v0.19.1
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the tagged version
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+      - name: Verify the Windows package
+        env:
+          RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          python - <<'PY'
+          import hashlib,json,os,pathlib,xml.etree.ElementTree as ET
+          root=pathlib.Path('.')
+          manifest=json.loads((root/'downloads/latest-compact.json').read_text())
+          version=manifest['Version']
+          assert os.environ['RELEASE_TAG']=='v'+version
+          assert ET.parse(root/'WpfPrototype/AchievementTimelineReplay.Wpf.csproj').getroot().findtext('PropertyGroup/Version')==version
+          package=root/'downloads'/f'ATR_v{version}_Windows_x64.zip'
+          assert manifest['SizeBytes']==package.stat().st_size
+          assert manifest['Sha256']==hashlib.file_digest(package.open('rb'),'sha256').hexdigest()
+          assert (root/'downloads/SHA256SUMS.txt').read_text().strip()==manifest['Sha256']+'  '+package.name
+          PY
+          python tools/check-localization.py
+          python tools/check-windows-package.py "downloads/ATR_${RELEASE_TAG}_Windows_x64.zip"
+      - name: Publish release and assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          notes="$RUNNER_TEMP/release-notes.md"
+          python - "$notes" <<'PY'
+          import json,pathlib,sys
+          manifest=json.loads(pathlib.Path('downloads/latest-compact.json').read_text())
+          version=manifest['Version']
+          body=f'''Achievement Timeline Replay (ATR) — Windows x64
+
+          Recover achievement histories, review their mappings, and prepare their migration to Steam through SAM Rewritten.
+
+          **Download `ATR_v{version}_Windows_x64.zip`, extract the entire ZIP into a new folder, and open `AchievementTimelineReplay.exe`.** The extracted folder contains only the executable and `Support` (documentation and licenses). .NET and the updater are included; sample files are not bundled. Steam and SAM Rewritten must be installed separately.
+
+          - Histories from Steam, SteamIdra/LuaTools, Goldberg/GSE, CODEX/RUNE, Playnite Achievements, Xbox Live, and Epic Games.
+          - Reviewable achievement mappings, individual selection, live reordering, and configurable timing.
+          - Saved plans, resumable runs, Steam verification, and per-achievement reports.
+          - English, Spanish, and Brazilian Portuguese interface.
+
+          [English description](https://github.com/ramirobornetto/atr/blob/v{version}/en-description.md) · [English tutorial](https://github.com/ramirobornetto/atr/blob/v{version}/en-howto.md)
+
+          [Descripción en español](https://github.com/ramirobornetto/atr/blob/v{version}/DESCRIPCION.md) · [Tutorial en español](https://github.com/ramirobornetto/atr/blob/v{version}/es-howto.md)
+
+          **Upgrading from 0.18.3 or earlier:** install this ZIP manually into a new folder. Your saved library and plans remain in your Windows profile. The retired transition package is no longer distributed. Version 0.18.4 and compact versions can use **Update ATR**.
+
+          Original dates determine the plan's order and intervals. Steam records the actual execution date for new unlocks. Xbox and Epic queries do not modify their achievements.
+
+          SHA256: `{manifest['Sha256']}`
+          '''
+          pathlib.Path(sys.argv[1]).write_text(body,encoding='utf-8')
+          PY
+          if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" --verify-tag --draft --title "Achievement Timeline Replay $RELEASE_TAG" --notes-file "$notes"
+          fi
+          gh release upload "$RELEASE_TAG" "downloads/ATR_${RELEASE_TAG}_Windows_x64.zip" downloads/SHA256SUMS.txt --clobber
+          gh release edit "$RELEASE_TAG" --draft=false --latest --title "Achievement Timeline Replay $RELEASE_TAG" --notes-file "$notes"

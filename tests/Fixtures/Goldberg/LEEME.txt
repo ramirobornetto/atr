@@ -1,0 +1,12 @@
+MUESTRA SINTÉTICA, NO ES UN HISTORIAL REAL
+
+En ATR 0.7.0: Escaneo > Importar Goldberg… > elegir 480/achievements.json.
+No hace falta Steam, SAM ni instalar una emulación para importar y editar esta muestra.
+El AppID 480 sirve solo para reproducir la estructura de carpetas. Los IDs ATR_DEMO_* son ficticios.
+No borrar .atr-demo: ATR usa ese marcador y el snapshot para reconocer el modo demostración.
+
+Resultado esperado: 4 / 6, cuatro filas en orden cronológico y una espera de 17h 50m entre Explorador y De vuelta.
+Podés cambiar orden, casillas y esperas, probar el límite opcional, guardar/cargar el plan y restaurar el original.
+Consultar Steam, Abrir en SAM e Iniciar migración quedan deshabilitados para la muestra.
+La definición de nombres se encuentra junto al estado en steam_settings/achievements.json y se carga automáticamente para esta muestra.
+En un juego real esa definición suele estar en la instalación, separada de los guardados: marcar Elegir también definición de nombres para seleccionarla manualmente.

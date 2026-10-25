@@ -1,0 +1,162 @@
+[
+  {
+    "Origen": "Goldberg SteamEmu Saves",
+    "AppID": 1245620,
+    "Juego": "ELDEN RING",
+    "Archivo": "Goldberg SteamEmu Saves/1245620/achievements.json",
+    "Esperado": "4 / 6",
+    "Escenario": 1
+  },
+  {
+    "Origen": "Goldberg SteamEmu Saves",
+    "AppID": 1593500,
+    "Juego": "God of War",
+    "Archivo": "Goldberg SteamEmu Saves/1593500/achievements.json",
+    "Esperado": "4 / 6",
+    "Escenario": 2
+  },
+  {
+    "Origen": "Goldberg SteamEmu Saves",
+    "AppID": 1091500,
+    "Juego": "Cyberpunk 2077",
+    "Archivo": "Goldberg SteamEmu Saves/1091500/achievements.json",
+    "Esperado": "4 / 6",
+    "Escenario": 3
+  },
+  {
+    "Origen": "Goldberg SteamEmu Saves",
+    "AppID": 1174180,
+    "Juego": "Red Dead Redemption 2",
+    "Archivo": "Goldberg SteamEmu Saves/1174180/achievements.json",
+    "Esperado": "4 / 6",
+    "Escenario": 4
+  },
+  {
+    "Origen": "Goldberg SteamEmu Saves",
+    "AppID": 1888930,
+    "Juego": "The Last of Us Part I",
+    "Archivo": "Goldberg SteamEmu Saves/1888930/achievements.json",
+    "Esperado": "4 / 6",
+    "Escenario": 5
+  },
+  {
+    "Origen": "GSE Saves",
+    "AppID": 2322010,
+    "Juego": "God of War Ragnarok",
+    "Archivo": "GSE Saves/2322010/achievements.json",
+    "Esperado": "4 / 6",
+    "Escenario": 1
+  },
+  {
+    "Origen": "GSE Saves",
+    "AppID": 990080,
+    "Juego": "Hogwarts Legacy",
+    "Archivo": "GSE Saves/990080/achievements.json",
+    "Esperado": "4 / 6",
+    "Escenario": 2
+  },
+  {
+    "Origen": "GSE Saves",
+    "AppID": 1151640,
+    "Juego": "Horizon Zero Dawn",
+    "Archivo": "GSE Saves/1151640/achievements.json",
+    "Esperado": "4 / 6",
+    "Escenario": 3
+  },
+  {
+    "Origen": "GSE Saves",
+    "AppID": 1817070,
+    "Juego": "Marvel's Spider-Man Remastered",
+    "Archivo": "GSE Saves/1817070/achievements.json",
+    "Esperado": "4 / 6",
+    "Escenario": 4
+  },
+  {
+    "Origen": "GSE Saves",
+    "AppID": 2050650,
+    "Juego": "Resident Evil 4",
+    "Archivo": "GSE Saves/2050650/achievements.json",
+    "Esperado": "4 / 6",
+    "Escenario": 5
+  },
+  {
+    "Origen": "CODEX",
+    "AppID": 292030,
+    "Juego": "The Witcher 3: Wild Hunt",
+    "Archivo": "CODEX/292030/achievements.ini",
+    "Esperado": "4 / 6",
+    "Escenario": 1
+  },
+  {
+    "Origen": "CODEX",
+    "AppID": 883710,
+    "Juego": "Resident Evil 2",
+    "Archivo": "CODEX/883710/achievements.ini",
+    "Esperado": "4 / 6",
+    "Escenario": 2
+  },
+  {
+    "Origen": "CODEX",
+    "AppID": 782330,
+    "Juego": "DOOM Eternal",
+    "Archivo": "CODEX/782330/achievements.ini",
+    "Esperado": "4 / 6",
+    "Escenario": 3
+  },
+  {
+    "Origen": "CODEX",
+    "AppID": 750920,
+    "Juego": "Shadow of the Tomb Raider",
+    "Archivo": "CODEX/750920/achievements.ini",
+    "Esperado": "4 / 6",
+    "Escenario": 4
+  },
+  {
+    "Origen": "CODEX",
+    "AppID": 412020,
+    "Juego": "Metro Exodus",
+    "Archivo": "CODEX/412020/achievements.ini",
+    "Esperado": "4 / 6",
+    "Escenario": 5
+  },
+  {
+    "Origen": "RUNE",
+    "AppID": 1817190,
+    "Juego": "Marvel's Spider-Man: Miles Morales",
+    "Archivo": "RUNE/1817190/achievements.ini",
+    "Esperado": "4 / 6",
+    "Escenario": 1
+  },
+  {
+    "Origen": "RUNE",
+    "AppID": 2420110,
+    "Juego": "Horizon Forbidden West",
+    "Archivo": "RUNE/2420110/achievements.ini",
+    "Esperado": "4 / 6",
+    "Escenario": 2
+  },
+  {
+    "Origen": "RUNE",
+    "AppID": 1680880,
+    "Juego": "Forspoken",
+    "Archivo": "RUNE/1680880/achievements.ini",
+    "Esperado": "4 / 6",
+    "Escenario": 3
+  },
+  {
+    "Origen": "RUNE",
+    "AppID": 534380,
+    "Juego": "Dying Light 2 Stay Human",
+    "Archivo": "RUNE/534380/achievements.ini",
+    "Esperado": "4 / 6",
+    "Escenario": 4
+  },
+  {
+    "Origen": "RUNE",
+    "AppID": 1259420,
+    "Juego": "Days Gone",
+    "Archivo": "RUNE/1259420/achievements.ini",
+    "Esperado": "4 / 6",
+    "Escenario": 5
+  }
+]

@@ -1,0 +1,26 @@
+{
+  "ATR_DEMO_BEGIN": {
+    "earned": true,
+    "earned_time": 1704067200
+  },
+  "ATR_DEMO_EXPLORE": {
+    "earned": true,
+    "earned_time": 1704067800
+  },
+  "ATR_DEMO_RETURN": {
+    "earned": true,
+    "earned_time": 1704132000
+  },
+  "ATR_DEMO_FINISH": {
+    "earned": true,
+    "earned_time": 1704132600
+  },
+  "ATR_DEMO_LOCKED": {
+    "earned": false,
+    "earned_time": 0
+  },
+  "ATR_DEMO_SECRET": {
+    "earned": false,
+    "earned_time": 0
+  }
+}

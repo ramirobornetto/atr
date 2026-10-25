@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <ApplicationIcon>Assets/atr.ico</ApplicationIcon>
+    <Nullable>disable</Nullable>
+    <Version>0.19.1</Version>
+    <AssemblyName>AchievementTimelineReplay</AssemblyName>
+    <StartupObject>AchievementTimelineReplay.Wpf.App</StartupObject>
+    <PublishSingleFile Condition="'$(RuntimeIdentifier)' == 'win-x64'">true</PublishSingleFile>
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+  </PropertyGroup>
+  <ItemGroup><Compile Include="../Updater/Program.cs" Link="UpdateProgram.cs" /></ItemGroup>
+  <ItemGroup><PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4314.35" /></ItemGroup>
+  <ItemGroup><Resource Include="Assets/atr.ico" /><Resource Include="Assets/atr-logo.png" /><Resource Include="Assets/atr-background.png" /></ItemGroup>
+<ItemGroup><EmbeddedResource Include="Localization/*.json" Link="Localization/%(Filename)%(Extension)" LogicalName="ATR.Localization.%(Filename)%(Extension)" /></ItemGroup></Project>

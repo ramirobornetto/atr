@@ -1,0 +1,21 @@
+20 CARPETAS DE PRUEBA AAA — LOGROS FICTICIOS, NO HISTORIALES REALES
+
+Hay cinco carpetas numéricas en cada grupo: Goldberg SteamEmu Saves, GSE Saves, CODEX y RUNE.
+Los nombres y AppIDs identifican los títulos elegidos; los IDs ATR_DEMO_* y todos sus estados/fechas son inventados. No reemplazar archivos de un juego real.
+
+IMPORTACION MANUAL (sin instalar emulaciones):
+- Goldberg/GSE: elegir achievements.json desde Importar Goldberg.
+- CODEX/RUNE: elegir achievements.ini desde Importar CODEX/RUNE.
+- referencia-logros.json de CODEX/RUNE sirve para inspeccionar los mismos estados en JSON. No es un guardado nativo y no debe importarse con el lector Goldberg.
+- atr-demo.json identifica la muestra y sus nombres; no es el archivo de estado.
+
+BUSQUEDA AUTOMATICA: copiar cada carpeta numérica completa a su ubicación correspondiente, solo si no existe ya una carpeta con ese AppID:
+Goldberg: %APPDATA%\Goldberg SteamEmu Saves
+GSE: %APPDATA%\GSE Saves
+CODEX: %PUBLIC%\Documents\Steam\CODEX o %APPDATA%\Steam\CODEX
+RUNE: %PUBLIC%\Documents\Steam\RUNE o %APPDATA%\Steam\RUNE
+No copiar el grupo CODEX dentro de Goldberg ni el JSON de referencia como achievements.json.
+
+RESULTADO: cada carpeta debe dar 4 / 6, nombre del título con indicación de muestra y acciones Steam bloqueadas. Hay cinco patrones de intervalos, incluidos empates y pausas entre días. Se pueden probar casillas, orden, límites, guardar/cargar/restaurar y abrir ubicación.
+Mantener .atr-demo y atr-demo.json. Si se renombra la carpeta AppID, el nombre del descriptor se ignora y se conserva la indicación de muestra por los IDs ficticios.
+El catálogo enumera los 20 títulos, archivos y resultados esperados.
